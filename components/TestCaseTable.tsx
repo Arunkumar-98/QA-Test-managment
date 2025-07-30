@@ -664,12 +664,17 @@ export function TestCaseTable({
 
   // Calculate optimal column widths based on content
   const calculateColumnWidths = () => {
+    // Get viewport width for responsive calculations
+    const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1200
+    const isLargeScreen = viewportWidth >= 1400
+    const isMediumScreen = viewportWidth >= 1024
+    
     const columnWidths: { [key: string]: number } = {
       checkbox: 50, // Fixed width for checkbox
       dragHandle: 50, // Fixed width for drag handle
       id: 60, // Fixed width for ID
-      testCase: 200, // Minimum width for test case name
-      description: 250, // Minimum width for description
+      testCase: isLargeScreen ? 250 : isMediumScreen ? 200 : 180, // Responsive test case name
+      description: isLargeScreen ? 300 : isMediumScreen ? 250 : 200, // Responsive description
       status: 100, // Fixed width for status badges
       priority: 100, // Fixed width for priority badges
       category: 120, // Fixed width for category
@@ -678,34 +683,39 @@ export function TestCaseTable({
       date: 100, // Fixed width for date
       actions: 140, // Fixed width for action buttons
       automationActions: 120, // Fixed width for automation
-      stepsToReproduce: 300, // Minimum width for steps
+      stepsToReproduce: isLargeScreen ? 350 : isMediumScreen ? 300 : 250, // Responsive steps
       environment: 100, // Fixed width for environment
-      prerequisites: 200, // Minimum width for prerequisites
+      prerequisites: isLargeScreen ? 250 : isMediumScreen ? 200 : 180, // Responsive prerequisites
       automation: 100, // Fixed width for automation
-      expectedResult: 250, // Minimum width for expected result
+      expectedResult: isLargeScreen ? 300 : isMediumScreen ? 250 : 200, // Responsive expected result
     }
 
-    // Calculate dynamic widths based on content
+    // Calculate dynamic widths based on content with better constraints
     sortedTestCases.forEach(testCase => {
-      // Test Case name width
-      const testCaseWidth = Math.max(columnWidths.testCase, testCase.testCase.length * 8)
-      columnWidths.testCase = Math.min(testCaseWidth, 400) // Max 400px
+      // Test Case name width with better text measurement
+      const testCaseText = testCase.testCase || ''
+      const testCaseWidth = Math.max(columnWidths.testCase, Math.min(testCaseText.length * 8, 400))
+      columnWidths.testCase = Math.min(testCaseWidth, isLargeScreen ? 400 : isMediumScreen ? 350 : 300)
 
-      // Description width
-      const descWidth = Math.max(columnWidths.description, testCase.description.length * 7)
-      columnWidths.description = Math.min(descWidth, 500) // Max 500px
+      // Description width with truncation consideration
+      const descText = testCase.description || ''
+      const descWidth = Math.max(columnWidths.description, Math.min(descText.length * 7, 500))
+      columnWidths.description = Math.min(descWidth, isLargeScreen ? 500 : isMediumScreen ? 400 : 300)
 
       // Steps to Reproduce width
-      const stepsWidth = Math.max(columnWidths.stepsToReproduce, testCase.stepsToReproduce.length * 6)
-      columnWidths.stepsToReproduce = Math.min(stepsWidth, 600) // Max 600px
+      const stepsText = testCase.stepsToReproduce || ''
+      const stepsWidth = Math.max(columnWidths.stepsToReproduce, Math.min(stepsText.length * 6, 600))
+      columnWidths.stepsToReproduce = Math.min(stepsWidth, isLargeScreen ? 600 : isMediumScreen ? 450 : 350)
 
       // Expected Result width
-      const expectedWidth = Math.max(columnWidths.expectedResult, testCase.expectedResult.length * 7)
-      columnWidths.expectedResult = Math.min(expectedWidth, 500) // Max 500px
+      const expectedText = testCase.expectedResult || ''
+      const expectedWidth = Math.max(columnWidths.expectedResult, Math.min(expectedText.length * 7, 500))
+      columnWidths.expectedResult = Math.min(expectedWidth, isLargeScreen ? 500 : isMediumScreen ? 400 : 300)
 
       // Prerequisites width
-      const prereqWidth = Math.max(columnWidths.prerequisites, testCase.prerequisites.length * 6)
-      columnWidths.prerequisites = Math.min(prereqWidth, 400) // Max 400px
+      const prereqText = testCase.prerequisites || ''
+      const prereqWidth = Math.max(columnWidths.prerequisites, Math.min(prereqText.length * 6, 400))
+      columnWidths.prerequisites = Math.min(prereqWidth, isLargeScreen ? 400 : isMediumScreen ? 300 : 250)
     })
 
     return columnWidths
@@ -725,6 +735,18 @@ export function TestCaseTable({
       setCurrentPage(totalPages)
     }
   }, [currentPage, totalPages, setCurrentPage])
+
+  // Handle viewport resize for responsive column widths
+  useEffect(() => {
+    const handleResize = () => {
+      // Force re-render when viewport changes
+      const event = new Event('resize')
+      window.dispatchEvent(event)
+    }
+
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   const handleOpenStatusHistory = (testCase: TestCase) => {
     setSelectedTestCaseForHistory(testCase)
@@ -1001,6 +1023,24 @@ export function TestCaseTable({
       {/* Table */}
       <div className="bg-white flex-1 flex flex-col overflow-hidden">
         <div className="flex-1 flex flex-col">
+          {/* Viewport Info Bar */}
+          <div className="px-4 py-2 bg-slate-50 border-b border-slate-200">
+            <div className="flex items-center justify-between text-xs text-slate-600">
+              <div className="flex items-center gap-4">
+                <span>📊 {paginatedTestCases.length} of {sortedTestCases.length} test cases</span>
+                <span>📱 {typeof window !== 'undefined' ? `${window.innerWidth}px` : 'Desktop'} viewport</span>
+                <span>📋 {Object.keys(tableColumns).filter(key => tableColumns[key]?.visible).length} columns visible</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">
+                  {typeof window !== 'undefined' ? 
+                    (window.innerWidth >= 1400 ? 'Large' : window.innerWidth >= 1024 ? 'Medium' : 'Small') : 
+                    'Desktop'} View
+                </span>
+              </div>
+            </div>
+          </div>
+          
           <div className="w-full px-4 py-4">
             <DndContext
               sensors={sensors}
@@ -1011,8 +1051,22 @@ export function TestCaseTable({
                 items={paginatedTestCases.map(testCase => testCase.id)}
                 strategy={verticalListSortingStrategy}
               >
-                <div className="relative w-full overflow-auto border border-slate-200 rounded-lg" style={{ maxHeight: 'calc(100vh - 400px)' }}>
-                  <Table className="w-full border-collapse" style={{ tableLayout: 'auto', minWidth: '100%' }}>
+                <div className="relative w-full overflow-auto border border-slate-200 rounded-lg shadow-sm" style={{ 
+                  maxHeight: 'calc(100vh - 350px)',
+                  minHeight: '400px'
+                }}>
+                  {/* Scroll Indicators */}
+                  <div className="absolute top-2 right-2 z-10">
+                    <div className="flex items-center gap-1 text-xs text-slate-500 bg-white/80 px-2 py-1 rounded border">
+                      <span>↔</span>
+                      <span>Scroll</span>
+                    </div>
+                  </div>
+                  <Table className="w-full border-collapse" style={{ 
+                    tableLayout: 'fixed', 
+                    minWidth: '100%',
+                    width: 'max-content'
+                  }}>
                 <TableHeader>
                         <TableRow className="bg-slate-50 border-b-2 border-slate-300 sticky top-0 z-20">
                           <TableHead className="p-2 lg:p-4 border-r border-slate-200 bg-slate-50" style={{ width: `${columnWidths.checkbox}px` }}>
