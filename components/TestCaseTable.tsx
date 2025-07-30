@@ -806,7 +806,7 @@ export function TestCaseTable({
   }
 
   return (
-    <>
+    <div className="h-full flex flex-col">
       {/* Search and Filters - Modern Professional Design */}
       <div className="bg-gradient-to-r from-slate-50 to-blue-50/30 border-b border-slate-200/60 px-6 py-6">
         <div className="flex flex-col gap-6">
@@ -1021,7 +1021,7 @@ export function TestCaseTable({
       </div>
 
       {/* Table */}
-      <div className="bg-white flex-1 flex flex-col overflow-hidden">
+      <div className="bg-white flex-1 flex flex-col overflow-hidden pb-4">
         <div className="flex-1 flex flex-col">
           {/* Viewport Info Bar */}
           <div className="px-4 py-2 bg-slate-50 border-b border-slate-200">
@@ -1052,8 +1052,8 @@ export function TestCaseTable({
                 strategy={verticalListSortingStrategy}
               >
                 <div className="relative w-full overflow-auto border border-slate-200 rounded-lg shadow-sm mb-6" style={{ 
-                  maxHeight: 'calc(100vh - 380px)',
-                  minHeight: '400px'
+                  maxHeight: 'calc(100vh - 450px)',
+                  minHeight: '300px'
                 }}>
                   {/* Scroll Indicators */}
                   <div className="absolute top-2 right-2 z-10">
@@ -1321,7 +1321,7 @@ export function TestCaseTable({
       <div className="h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent mx-6"></div>
 
       {/* Pagination */}
-      <div className="px-6 py-8 border-t border-slate-200 bg-gradient-to-r from-slate-50/50 to-blue-50/30 shadow-sm">
+      <div className="px-6 py-6 border-t border-slate-200 bg-gradient-to-r from-slate-50/50 to-blue-50/30 shadow-sm sticky bottom-0 z-10">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2">
@@ -1656,6 +1656,6 @@ Status: Pending`
         </div>
       )}
       
-    </>
+    </div>
   )
 } 
