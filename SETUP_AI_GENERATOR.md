@@ -7,7 +7,7 @@ Create or update your `.env.local` file in the project root:
 
 ```bash
 # Add this line to your .env.local file
-GEMINI_API_KEY=AIzaSyBRd6A5zvNlo7b92_sZSTnZJB68Y6-YK2M
+GEMINI_API_KEY=your_gemini_api_key_here
 ```
 
 ### 2. Restart Your Development Server
