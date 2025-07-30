@@ -1051,8 +1051,8 @@ export function TestCaseTable({
                 items={paginatedTestCases.map(testCase => testCase.id)}
                 strategy={verticalListSortingStrategy}
               >
-                <div className="relative w-full overflow-auto border border-slate-200 rounded-lg shadow-sm" style={{ 
-                  maxHeight: 'calc(100vh - 350px)',
+                <div className="relative w-full overflow-auto border border-slate-200 rounded-lg shadow-sm mb-6" style={{ 
+                  maxHeight: 'calc(100vh - 380px)',
                   minHeight: '400px'
                 }}>
                   {/* Scroll Indicators */}
@@ -1317,10 +1317,13 @@ export function TestCaseTable({
           )}
       </div>
 
+      {/* Visual Separator */}
+      <div className="h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent mx-6"></div>
+
       {/* Pagination */}
-      <div className="p-4 lg:p-6 border-t border-slate-200 bg-slate-50/30">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div className="flex items-center gap-4">
+      <div className="px-6 py-8 border-t border-slate-200 bg-gradient-to-r from-slate-50/50 to-blue-50/30 shadow-sm">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+          <div className="flex items-center gap-6">
             <div className="flex items-center gap-2">
               <span className="text-sm text-slate-600">Rows per page:</span>
               <Select value={rowsPerPage.toString()} onValueChange={handleRowsPerPageChange}>
@@ -1339,12 +1342,13 @@ export function TestCaseTable({
               Showing {startIndex + 1} to {Math.min(endIndex, testCases.length)} of {testCases.length} results
             </span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <Button 
               variant="outline" 
               size="sm" 
               disabled={currentPage === 1}
               onClick={() => handlePageChange(currentPage - 1)}
+              className="px-4 py-2"
             >
               Previous
             </Button>
@@ -1389,6 +1393,7 @@ export function TestCaseTable({
               size="sm"
               disabled={currentPage === totalPages || totalPages === 0}
               onClick={() => handlePageChange(currentPage + 1)}
+              className="px-4 py-2"
             >
               Next
             </Button>
