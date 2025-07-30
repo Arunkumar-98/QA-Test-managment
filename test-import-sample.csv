@@ -1,0 +1,11 @@
+Test ID,Test Case Name,Description,Steps to Reproduce,Expected Result,Priority,Status,Category,Platform
+TC001,App Launch Test,Verify app launches successfully,1. Open the application,Main Recording Interface displays correctly,Critical,Not Started,Functional,Web
+TC002,Mode Toggle Test,Verify mode selection toggle works,Toggle between Transcribe and Dictate modes,Mode changes reflect in UI,High,Not Started,Functional,Web
+TC003,Start Recording Test,Verify recording starts successfully,Press "Start Recording" button,Recording interface appears timer starts,Critical,Not Started,Functional,Web
+TC004,Pause Recording Test,Verify pause functionality,Start recording press Pause,Recording pauses timer freezes,Critical,Not Started,Functional,Web
+TC005,Resume Recording Test,Verify resume functionality,Pause recording press Resume,Recording continues timer resumes,Critical,Not Started,Functional,Web
+TC006,End Recording Test,Verify end recording functionality,Start recording press End,Recording stops session saves,Critical,Not Started,Functional,Web
+TC007,Timer Accuracy Test,Verify timer accuracy during recording,Record for known duration compare timer,Timer matches actual recording duration,High,Not Started,Functional,Web
+TC008,Patient Info Fields Test,Verify patient info fields display,Start recording,Patient Name DOB Date & Time fields visible,High,Not Started,Functional,Web
+TC009,Recording Controls Test,Verify recording controls are accessible,Start recording,Pause/Resume End buttons visible and functional,Critical,Not Started,Functional,Web
+TC010,Session Data Persistence Test,Verify recording sessions save correctly,Complete recording check if data persists,Recording data available in visits list,Critical,Not Started,Functional,Web 

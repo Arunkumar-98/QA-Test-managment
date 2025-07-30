@@ -1,0 +1,8 @@
+{
+  "venvPath": ".",
+  "venv": "automation-env",
+  "pythonPath": "./automation-env/bin/python",
+  "extraPaths": [
+    "./automation-env/lib/python3.13/site-packages"
+  ]
+} 
