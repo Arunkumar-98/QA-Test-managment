@@ -1387,7 +1387,7 @@ export function QAApplication() {
                   onUpdateTestCaseStatus={updateTestCaseStatus}
                   onBulkUpdateStatus={bulkUpdateStatus}
                   onToggleTestCaseSelection={toggleTestCaseSelection}
-                  onToggleSelectAll={toggleSelectAll}
+                  onToggleSelectAll={(filteredTestCases) => toggleSelectAll(filteredTestCases)}
                   onClearAllTestCases={clearAllTestCases}
                   onFileUpload={handleFileUpload}
                   onExportToExcel={handleExportToExcel}

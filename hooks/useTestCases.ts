@@ -197,12 +197,25 @@ export const useTestCases = (currentProjectId: string) => {
     })
   }, [])
 
-  const toggleSelectAll = useCallback(() => {
+  const toggleSelectAll = useCallback((filteredTestCases?: TestCase[]) => {
+    const testCasesToToggle = filteredTestCases || testCases
     setSelectedTestCases(prev => {
-      if (prev.size === testCases.length) {
-        return new Set()
+      const currentSelectedIds = new Set(prev)
+      const testCaseIds = new Set(testCasesToToggle.map(tc => tc.id))
+      
+      // Check if all filtered test cases are currently selected
+      const allSelected = testCaseIds.size > 0 && Array.from(testCaseIds).every(id => currentSelectedIds.has(id))
+      
+      if (allSelected) {
+        // Deselect all filtered test cases
+        const newSelected = new Set(currentSelectedIds)
+        Array.from(testCaseIds).forEach(id => newSelected.delete(id))
+        return newSelected
       } else {
-        return new Set(testCases.map(tc => tc.id))
+        // Select all filtered test cases (keep existing selections)
+        const newSelected = new Set(currentSelectedIds)
+        Array.from(testCaseIds).forEach(id => newSelected.add(id))
+        return newSelected
       }
     })
   }, [testCases])

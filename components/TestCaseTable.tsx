@@ -404,7 +404,7 @@ interface TestCaseTableProps {
   onUpdateTestCaseStatus: (id: string, status: TestCase["status"]) => void
   onBulkUpdateStatus: (status: TestCase["status"]) => void
   onToggleTestCaseSelection: (id: string) => void
-  onToggleSelectAll: () => void
+  onToggleSelectAll: (filteredTestCases?: TestCase[]) => void
   onClearAllTestCases: () => void
   onFileUpload: (event: React.ChangeEvent<HTMLInputElement>) => void
   onExportToExcel: () => void
@@ -1017,8 +1017,8 @@ export function TestCaseTable({
                         <TableRow className="bg-slate-50 border-b-2 border-slate-300 sticky top-0 z-20">
                           <TableHead className="p-2 lg:p-4 border-r border-slate-200 bg-slate-50" style={{ width: `${columnWidths.checkbox}px` }}>
                       <Checkbox
-                        checked={selectedTestCases.size === testCases.length && testCases.length > 0}
-                        onCheckedChange={onToggleSelectAll}
+                        checked={selectedTestCases.size === paginatedTestCases.length && paginatedTestCases.length > 0}
+                        onCheckedChange={() => onToggleSelectAll(paginatedTestCases)}
                       />
                     </TableHead>
                           {isDragEnabled && (
