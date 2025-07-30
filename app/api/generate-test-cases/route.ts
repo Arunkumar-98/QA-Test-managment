@@ -2,9 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { supabase } from '@/lib/supabase'
 
-// Initialize Gemini API
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
+// Initialize Gemini API (will be done inside the function to use current env vars)
 
 export async function POST(request: NextRequest) {
   try {
@@ -99,6 +97,10 @@ Ensure the test cases are:
 Return only the JSON array, no additional text or explanations.
 `
 
+    // Initialize Gemini API with current environment variable
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
+    
     // Generate test cases using Gemini
     const result = await model.generateContent(prompt)
     const response = await result.response
