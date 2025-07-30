@@ -29,7 +29,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzd
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here
 
 # Gemini API Configuration
-GEMINI_API_KEY=AIzaSyBRd6A5zvNlo7b92_sZSTnZJB68Y6-YK2M
+GEMINI_API_KEY=your_gemini_api_key_here
 ```
 
 ### **Step 3: Add to Live Deployment**
@@ -76,7 +76,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzd
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here
 
 # Required for AI features
-GEMINI_API_KEY=AIzaSyBRd6A5zvNlo7b92_sZSTnZJB68Y6-YK2M
+GEMINI_API_KEY=your_gemini_api_key_here
 ```
 
 ## 🎯 **Priority Order**
