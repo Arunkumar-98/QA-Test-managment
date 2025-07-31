@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { TestCaseTable } from '@/components/TestCaseTable'
 import { useTestCases } from '@/hooks/useTestCases'
@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button'
 import { ArrowLeft, Maximize2, Minimize2 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 
-export default function FullscreenTablePage() {
+function FullscreenTableContent() {
   const searchParams = useSearchParams()
   const projectParam = searchParams.get('project') || ''
   
@@ -200,5 +200,20 @@ export default function FullscreenTablePage() {
         />
       </div>
     </div>
+  )
+}
+
+export default function FullscreenTablePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-slate-600">Loading full-screen table...</p>
+        </div>
+      </div>
+    }>
+      <FullscreenTableContent />
+    </Suspense>
   )
 } 
