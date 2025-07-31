@@ -725,9 +725,9 @@ export function TestCaseTable({
   const columnWidths = calculateColumnWidths()
 
   // Calculate pagination
-  const totalPages = Math.ceil(sortedTestCases.length / rowsPerPage)
-  const startIndex = (currentPage - 1) * rowsPerPage
-  const endIndex = startIndex + rowsPerPage
+  const totalPages = Math.ceil(sortedTestCases.length / (rowsPerPage || 10))
+  const startIndex = (currentPage - 1) * (rowsPerPage || 10)
+  const endIndex = startIndex + (rowsPerPage || 10)
   const paginatedTestCases = sortedTestCases.slice(startIndex, endIndex)
 
   // Update current page if it exceeds total pages
@@ -1341,7 +1341,7 @@ export function TestCaseTable({
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2">
               <span className="text-sm text-slate-600">Rows per page:</span>
-              <Select value={rowsPerPage.toString()} onValueChange={handleRowsPerPageChange}>
+              <Select value={(rowsPerPage || 10).toString()} onValueChange={handleRowsPerPageChange}>
                 <SelectTrigger className="w-20 h-8">
                   <SelectValue />
                 </SelectTrigger>
