@@ -3,6 +3,7 @@ import { TestCase } from '@/types/qa-types'
 import { generateId } from '@/lib/utils'
 import { toast } from '@/hooks/use-toast'
 import { testCaseService } from '@/lib/supabase-service'
+import { getProjectIdByName } from '@/lib/project-helper'
 
 export const useTestCases = (currentProjectId: string) => {
   const [testCases, setTestCases] = useState<TestCase[]>([])
@@ -21,8 +22,10 @@ export const useTestCases = (currentProjectId: string) => {
       
       setLoading(true)
       try {
-        console.log('📡 Calling testCaseService.getAll with projectId:', currentProjectId)
-        const data = await testCaseService.getAll(currentProjectId)
+        // Convert project name to ID if needed
+        const projectId = await getProjectIdByName(currentProjectId)
+        console.log('📡 Calling testCaseService.getAll with projectId:', projectId)
+        const data = await testCaseService.getAll(projectId)
         console.log('✅ Test cases loaded successfully:', data.length, 'cases')
         setTestCases(data)
       } catch (error) {

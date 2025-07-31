@@ -480,6 +480,7 @@ export function TestCaseTable({
   const [pastedText, setPastedText] = useState('')
   const [parsedTestCase, setParsedTestCase] = useState<Partial<TestCase> | null>(null)
   const [isAIProcessing, setIsAIProcessing] = useState(false)
+  const [viewportWidth, setViewportWidth] = useState<number | null>(null)
 
   // DnD sensors
   const sensors = useSensors(
@@ -740,11 +741,12 @@ export function TestCaseTable({
   // Handle viewport resize for responsive column widths
   useEffect(() => {
     const handleResize = () => {
-      // Force re-render when viewport changes
-      const event = new Event('resize')
-      window.dispatchEvent(event)
+      setViewportWidth(window.innerWidth)
     }
 
+    // Set initial viewport width on client side
+    setViewportWidth(window.innerWidth)
+    
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [])
@@ -1043,13 +1045,13 @@ export function TestCaseTable({
             <div className="flex items-center justify-between text-xs text-slate-600">
               <div className="flex items-center gap-4">
                 <span>📊 {paginatedTestCases.length} of {sortedTestCases.length} test cases</span>
-                <span>📱 {typeof window !== 'undefined' ? `${window.innerWidth}px` : 'Desktop'} viewport</span>
+                <span>📱 {viewportWidth ? `${viewportWidth}px` : 'Desktop'} viewport</span>
                 <span>📋 {Object.keys(tableColumns).filter(key => tableColumns[key]?.visible).length} columns visible</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">
-                  {typeof window !== 'undefined' ? 
-                    (window.innerWidth >= 1400 ? 'Large' : window.innerWidth >= 1024 ? 'Medium' : 'Small') : 
+                  {viewportWidth ? 
+                    (viewportWidth >= 1400 ? 'Large' : viewportWidth >= 1024 ? 'Medium' : 'Small') : 
                     'Desktop'} View
                 </span>
               </div>
