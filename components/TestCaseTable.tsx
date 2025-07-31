@@ -28,8 +28,7 @@ import {
   ChevronUp,
   History,
   GripVertical,
-  Sparkles,
-  Maximize2
+  Sparkles
 } from 'lucide-react'
 import { TestCase, TestCaseStatus, TestCasePriority, TestCaseCategory } from '@/types/qa-types'
 import { SavedFilter } from '@/hooks/useSearchAndFilter'
@@ -480,7 +479,7 @@ export function TestCaseTable({
   const [pastedText, setPastedText] = useState('')
   const [parsedTestCase, setParsedTestCase] = useState<Partial<TestCase> | null>(null)
   const [isAIProcessing, setIsAIProcessing] = useState(false)
-  const [viewportWidth, setViewportWidth] = useState<number | null>(null)
+
 
   // DnD sensors
   const sensors = useSensors(
@@ -738,18 +737,7 @@ export function TestCaseTable({
     }
   }, [currentPage, totalPages, setCurrentPage])
 
-  // Handle viewport resize for responsive column widths
-  useEffect(() => {
-    const handleResize = () => {
-      setViewportWidth(window.innerWidth)
-    }
 
-    // Set initial viewport width on client side
-    setViewportWidth(window.innerWidth)
-    
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [])
 
   const handleOpenStatusHistory = (testCase: TestCase) => {
     setSelectedTestCaseForHistory(testCase)
@@ -839,20 +827,6 @@ export function TestCaseTable({
             
             {/* Modern Action Buttons */}
             <div className="flex items-center gap-3">
-              {/* Full Screen View Button */}
-              <Button 
-                variant="outline" 
-                size="lg"
-                onClick={() => {
-                  const url = `${window.location.origin}/fullscreen-table?project=${encodeURIComponent(currentProject || '')}`
-                  window.open(url, '_blank')
-                }}
-                className="flex items-center gap-2.5 h-12 px-4 bg-white/80 backdrop-blur-sm border-slate-200/60 hover:border-blue-500/60 hover:bg-blue-50/50 transition-all duration-200"
-              >
-                <Maximize2 className="w-4 h-4 text-slate-600" />
-                <span className="font-medium text-slate-700">Full Screen</span>
-              </Button>
-
               {/* Drag & Drop Toggle */}
               <Button 
                 variant="outline" 
@@ -1045,13 +1019,13 @@ export function TestCaseTable({
             <div className="flex items-center justify-between text-xs text-slate-600">
               <div className="flex items-center gap-4">
                 <span>📊 {paginatedTestCases.length} of {sortedTestCases.length} test cases</span>
-                <span>📱 {viewportWidth ? `${viewportWidth}px` : 'Desktop'} viewport</span>
+                <span>📱 {typeof window !== 'undefined' ? `${window.innerWidth}px` : 'Desktop'} viewport</span>
                 <span>📋 {Object.keys(tableColumns).filter(key => tableColumns[key]?.visible).length} columns visible</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">
-                  {viewportWidth ? 
-                    (viewportWidth >= 1400 ? 'Large' : viewportWidth >= 1024 ? 'Medium' : 'Small') : 
+                  {typeof window !== 'undefined' ?
+                    (window.innerWidth >= 1400 ? 'Large' : window.innerWidth >= 1024 ? 'Medium' : 'Small') :
                     'Desktop'} View
                 </span>
               </div>
