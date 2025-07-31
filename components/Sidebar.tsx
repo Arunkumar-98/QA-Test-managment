@@ -31,7 +31,7 @@ import type {
   Project,
   TestCase
 } from "@/types/qa-types"
-import { Folder, Link, Plus, BarChart3, Globe, BookOpen, FileSpreadsheet, Target, X, Settings, Table, Share2 } from "lucide-react"
+import { Folder, Link, Plus, BarChart3, Globe, BookOpen, FileSpreadsheet, Target, X, Settings, Table, Share2, Upload, Download, Clipboard } from "lucide-react"
 import { PRDToTestCases } from './PRDToTestCases'
 
 interface QASidebarProps {
@@ -64,6 +64,12 @@ interface QASidebarProps {
   selectedSuiteId: string | null
   onAddTestCases: (testCases: Partial<TestCase>[]) => void
   onShareTestSuite: (testSuite: TestSuite) => void
+  // Test Case Actions
+  onAddTestCase: () => void
+  onFileUpload: (event: React.ChangeEvent<HTMLInputElement>) => void
+  onExportToExcel: () => void
+  isPasteDialogOpen?: boolean
+  setIsPasteDialogOpen?: (open: boolean) => void
 }
 
 export function QASidebar({
@@ -96,6 +102,12 @@ export function QASidebar({
   selectedSuiteId,
   onAddTestCases,
   onShareTestSuite,
+  // Test Case Actions
+  onAddTestCase,
+  onFileUpload,
+  onExportToExcel,
+  isPasteDialogOpen,
+  setIsPasteDialogOpen,
 }: QASidebarProps) {
   const [newSuite, setNewSuite] = useState({ name: "", description: "", tags: [] as string[], owner: "" })
   const [newDocument, setNewDocument] = useState({ title: "", url: "", type: "requirement" as const, description: "" })
@@ -315,6 +327,106 @@ export function QASidebar({
             </Button>
           </div>
             </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* Test Case Actions Section */}
+            <AccordionItem value="test-case-actions" className="border-none">
+              <AccordionTrigger className="px-6 py-3 hover:bg-slate-50/50 transition-colors">
+                <div className="flex items-center justify-between w-full pr-4">
+                  <div className="flex items-center space-x-2 min-w-0">
+                    <div className="w-5 h-5 bg-gradient-to-br from-violet-500 to-purple-600 rounded-md flex items-center justify-center flex-shrink-0">
+                      <Target className="w-3 h-3 text-white" />
+                    </div>
+                    <span className="text-xs font-semibold text-sidebar-foreground/80 uppercase tracking-wider truncate">Test Case Actions</span>
+                  </div>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="px-6 pb-3">
+                <div className="max-h-64 overflow-y-auto pr-2">
+                  <div className="flex flex-col space-y-2">
+                    {/* Add Test Case */}
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      onClick={onAddTestCase}
+                      className="w-full h-12 bg-white/80 backdrop-blur-sm border-violet-200 hover:border-violet-500 hover:bg-violet-50/50 transition-all duration-200 group justify-start"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <div className="w-6 h-6 rounded-md bg-violet-100 group-hover:bg-violet-200 flex items-center justify-center transition-colors duration-200">
+                          <Plus className="w-3.5 h-3.5 text-violet-600" />
+                        </div>
+                        <span className="text-sm font-medium text-slate-700 group-hover:text-violet-700 transition-colors duration-200">Add Test Case</span>
+                      </div>
+                    </Button>
+
+                    {/* Import */}
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      onClick={() => {
+                        const input = document.createElement('input')
+                        input.type = 'file'
+                        input.accept = '.csv,.xlsx'
+                        input.onchange = (e) => onFileUpload(e as any)
+                        input.click()
+                      }}
+                      className="w-full h-12 bg-white/80 backdrop-blur-sm border-violet-200 hover:border-violet-500 hover:bg-violet-50/50 transition-all duration-200 group justify-start"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <div className="w-6 h-6 rounded-md bg-violet-100 group-hover:bg-violet-200 flex items-center justify-center transition-colors duration-200">
+                          <Upload className="w-3.5 h-3.5 text-violet-600" />
+                        </div>
+                        <span className="text-sm font-medium text-slate-700 group-hover:text-violet-700 transition-colors duration-200">Import</span>
+                      </div>
+                    </Button>
+
+                    {/* Paste */}
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      onClick={() => setIsPasteDialogOpen?.(true)}
+                      className="w-full h-12 bg-white/80 backdrop-blur-sm border-violet-200 hover:border-violet-500 hover:bg-violet-50/50 transition-all duration-200 group justify-start"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <div className="w-6 h-6 rounded-md bg-violet-100 group-hover:bg-violet-200 flex items-center justify-center transition-colors duration-200">
+                          <Clipboard className="w-3.5 h-3.5 text-violet-600" />
+                        </div>
+                        <span className="text-sm font-medium text-slate-700 group-hover:text-violet-700 transition-colors duration-200">Paste</span>
+                      </div>
+                    </Button>
+
+                    {/* Refresh Stats */}
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      onClick={() => window.location.reload()}
+                      className="w-full h-12 bg-white/80 backdrop-blur-sm border-violet-200 hover:border-violet-500 hover:bg-violet-50/50 transition-all duration-200 group justify-start"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <div className="w-6 h-6 rounded-md bg-violet-100 group-hover:bg-violet-200 flex items-center justify-center transition-colors duration-200">
+                          <BarChart3 className="w-3.5 h-3.5 text-violet-600" />
+                        </div>
+                        <span className="text-sm font-medium text-slate-700 group-hover:text-violet-700 transition-colors duration-200">Refresh Stats</span>
+                      </div>
+                    </Button>
+
+                    {/* Export */}
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      onClick={onExportToExcel}
+                      className="w-full h-12 bg-white/80 backdrop-blur-sm border-violet-200 hover:border-violet-500 hover:bg-violet-50/50 transition-all duration-200 group justify-start"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <div className="w-6 h-6 rounded-md bg-violet-100 group-hover:bg-violet-200 flex items-center justify-center transition-colors duration-200">
+                          <Download className="w-3.5 h-3.5 text-violet-600" />
+                        </div>
+                        <span className="text-sm font-medium text-slate-700 group-hover:text-violet-700 transition-colors duration-200">Export</span>
+                      </div>
+                    </Button>
+                  </div>
+                </div>
               </AccordionContent>
             </AccordionItem>
 

@@ -1217,7 +1217,12 @@ export function QAApplication() {
               })
             }}
             onShareTestSuite={handleOpenShareTestSuite}
-
+            // Test Case Actions
+            onAddTestCase={() => setIsAddDialogOpen(true)}
+            onFileUpload={handleFileUpload}
+            onExportToExcel={handleExportToExcel}
+            isPasteDialogOpen={isEnhancedPasteDialogOpen}
+            setIsPasteDialogOpen={setIsEnhancedPasteDialogOpen}
           />
           <div className="flex flex-col h-full overflow-hidden relative">
             {/* Loading Overlay */}
@@ -1259,68 +1264,16 @@ export function QAApplication() {
                   </div>
                   
                   <div className="flex items-center space-x-3">
-                    <Button
-                      onClick={() => setIsAddDialogOpen(true)}
-                      className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-medium px-6 py-2.5 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 flex items-center space-x-2"
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="h-10 px-4 border-slate-200 hover:border-slate-300 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={refreshAllTestSuiteStatistics}
+                      title="Refresh test suite statistics"
                     >
-                      <Plus className="w-4 h-4" />
-                      <span>Add Test Case</span>
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      Refresh Stats
                     </Button>
-                    
-                    <div className="flex items-center space-x-2">
-                      <div className="relative">
-                        <input
-                          type="file"
-                          accept=".xlsx,.xls,.csv"
-                          className="hidden"
-                          onChange={handleFileUpload}
-                          id="file-upload-header"
-                        />
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="h-10 px-4 border-slate-200 hover:border-slate-300 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                          asChild
-
-                        >
-                          <label htmlFor="file-upload-header">
-                            <Upload className="w-4 h-4 mr-2" />
-                            Import
-                          </label>
-                        </Button>
-                      </div>
-                      
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="h-10 px-4 border-slate-200 hover:border-slate-300 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                        onClick={() => setIsEnhancedPasteDialogOpen(true)}
-                      >
-                        <Clipboard className="w-4 h-4 mr-2" />
-                        Paste
-                      </Button>
-                      
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="h-10 px-4 border-slate-200 hover:border-slate-300 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                        onClick={refreshAllTestSuiteStatistics}
-                        title="Refresh test suite statistics"
-                      >
-                        <RefreshCw className="w-4 h-4 mr-2" />
-                        Refresh Stats
-                      </Button>
-                      
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="h-10 px-4 border-slate-200 hover:border-slate-300 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                        onClick={handleExportToExcel}
-                      >
-                        <Download className="w-4 h-4 mr-2" />
-                        Export
-                      </Button>
-                    </div>
                   </div>
                 </div>
               </div>
