@@ -5,3 +5,4 @@
 # rowsPerPage fix deployed - Thu Jul 31 20:40:50 IST 2025
 # Hydration and project ID fixes deployed - Thu Jul 31 20:53:48 IST 2025
 # Webpack runtime error fix deployed - Thu Jul 31 21:03:29 IST 2025
+# Full screen table view reverted - Thu Jul 31 21:11:38 IST 2025
