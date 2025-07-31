@@ -28,7 +28,8 @@ import {
   ChevronUp,
   History,
   GripVertical,
-  Sparkles
+  Sparkles,
+  Maximize2
 } from 'lucide-react'
 import { TestCase, TestCaseStatus, TestCasePriority, TestCaseCategory } from '@/types/qa-types'
 import { SavedFilter } from '@/hooks/useSearchAndFilter'
@@ -836,6 +837,20 @@ export function TestCaseTable({
             
             {/* Modern Action Buttons */}
             <div className="flex items-center gap-3">
+              {/* Full Screen View Button */}
+              <Button 
+                variant="outline" 
+                size="lg"
+                onClick={() => {
+                  const url = `${window.location.origin}/fullscreen-table?project=${encodeURIComponent(currentProject || '')}`
+                  window.open(url, '_blank')
+                }}
+                className="flex items-center gap-2.5 h-12 px-4 bg-white/80 backdrop-blur-sm border-slate-200/60 hover:border-blue-500/60 hover:bg-blue-50/50 transition-all duration-200"
+              >
+                <Maximize2 className="w-4 h-4 text-slate-600" />
+                <span className="font-medium text-slate-700">Full Screen</span>
+              </Button>
+
               {/* Drag & Drop Toggle */}
               <Button 
                 variant="outline" 
