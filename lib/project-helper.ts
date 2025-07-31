@@ -1,4 +1,4 @@
-import { projectService } from './supabase-service'
+import { supabase } from './supabase'
 import { DEFAULT_PROJECT } from './constants'
 
 // Cache for project name to ID mapping
@@ -11,11 +11,16 @@ export async function getProjectIdByName(projectName: string): Promise<string> {
   }
 
   try {
-    // Get all projects
-    const projects = await projectService.getAll()
+    // Get all projects directly from Supabase
+    const { data: projects, error } = await supabase
+      .from('projects')
+      .select('*')
+      .order('created_at', { ascending: false })
+    
+    if (error) throw error
     
     // Find project by name
-    const project = projects.find(p => p.name === projectName)
+    const project = projects?.find((p: any) => p.name === projectName)
     
     if (project) {
       // Cache the result
@@ -25,10 +30,18 @@ export async function getProjectIdByName(projectName: string): Promise<string> {
     
     // If project doesn't exist and it's the default project, create it
     if (projectName === DEFAULT_PROJECT) {
-      const newProject = await projectService.create({
-        name: DEFAULT_PROJECT,
-        description: 'Default project for test cases'
-      })
+      const { data: newProject, error: createError } = await supabase
+        .from('projects')
+        .insert([{
+          name: DEFAULT_PROJECT,
+          description: 'Default project for test cases',
+          created_at: new Date(),
+          is_active: true
+        }])
+        .select()
+        .single()
+      
+      if (createError) throw createError
       
       // Cache the result
       projectCache.set(projectName, newProject.id)
