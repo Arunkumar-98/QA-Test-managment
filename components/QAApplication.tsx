@@ -1355,7 +1355,7 @@ export function QAApplication() {
             )}
 
             {/* Main Content */}
-            <div className="flex-1 flex flex-col pb-4">
+            <div className="flex-1 flex flex-col">
               {/* Test Cases Table */}
               <div className="flex-1 flex flex-col overflow-hidden">
                 <TestCaseTable
