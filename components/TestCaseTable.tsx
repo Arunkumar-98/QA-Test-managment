@@ -806,7 +806,7 @@ export function TestCaseTable({
   }
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col pb-24">
       {/* Search and Filters - Modern Professional Design */}
       <div className="bg-gradient-to-r from-slate-50 to-blue-50/30 border-b border-slate-200/60 px-6 py-6">
         <div className="flex flex-col gap-6">
@@ -1052,7 +1052,7 @@ export function TestCaseTable({
                 strategy={verticalListSortingStrategy}
               >
                 <div className="relative w-full overflow-auto border border-slate-200 rounded-lg shadow-sm" style={{ 
-                  maxHeight: 'calc(100vh - 480px)',
+                  maxHeight: 'calc(100vh - 520px)',
                   minHeight: '250px'
                 }}>
                   {/* Scroll Indicators */}
@@ -1321,7 +1321,7 @@ export function TestCaseTable({
       <div className="h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent mx-6"></div>
 
       {/* Pagination */}
-      <div className="px-6 py-6 border-t border-slate-200 bg-gradient-to-r from-slate-50/50 to-blue-50/30 shadow-sm sticky bottom-0 z-10">
+      <div className="px-6 py-6 border-t border-slate-200 bg-gradient-to-r from-slate-50/50 to-blue-50/30 shadow-sm fixed bottom-0 left-0 right-0 z-50">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2">
