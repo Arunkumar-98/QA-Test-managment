@@ -28,6 +28,15 @@ export const useSearchAndFilter = (testCases: TestCase[]) => {
 
   // Get unique values for filter options
   const filterOptions = useMemo(() => {
+    if (!testCases || testCases.length === 0) {
+      return {
+        platforms: [],
+        categories: [],
+        testers: [],
+        suites: []
+      }
+    }
+    
     const platforms = [...new Set(testCases.map(tc => tc.platform).filter(Boolean))]
     const categories = [...new Set(testCases.map(tc => tc.category).filter(Boolean))]
     const testers = [...new Set(testCases.map(tc => tc.assignedTester).filter(Boolean))]
@@ -43,6 +52,10 @@ export const useSearchAndFilter = (testCases: TestCase[]) => {
 
   // Filter test cases based on search and filters
   const filteredTestCases = useMemo(() => {
+    if (!testCases || testCases.length === 0) {
+      return []
+    }
+    
     return testCases.filter(testCase => {
       // Search query filter
       const matchesSearch = !searchQuery || 

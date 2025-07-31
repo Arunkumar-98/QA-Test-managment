@@ -63,7 +63,7 @@ function FullscreenTableContent() {
     onLoadFilter,
     onDeleteFilter,
     onClearAllFilters
-  } = useSearchAndFilter()
+  } = useSearchAndFilter(testCases)
 
   // Default table columns configuration for full-screen view
   const tableColumns = {
