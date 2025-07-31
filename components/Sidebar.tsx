@@ -220,11 +220,42 @@ export function QASidebar({
   )
 
   return (
-    <div className="h-full bg-gradient-to-b from-slate-50 to-white border-r border-slate-200/60 flex flex-col">
+    <div className="h-full bg-gradient-to-br from-slate-50 via-white to-blue-50/30 border-r border-slate-200 flex flex-col shadow-sm">
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto">
         {/* Fixed Sections */}
-        <div className="p-6 space-y-6">
+        <div className="px-4 py-6 space-y-5">
+
+          {/* Test Cases Header Section - Enhanced */}
+          <div className="bg-gradient-to-r from-white to-slate-50/50 rounded-xl border border-slate-200/60 shadow-sm p-4">
+            <div className="space-y-3">
+              <div className="flex items-center space-x-2">
+                <div className="w-2.5 h-2.5 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full shadow-sm"></div>
+                <span className="text-sm font-semibold text-slate-800">{currentProject}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-slate-600 font-medium">
+                  {testCasesCount} test case{testCasesCount !== 1 ? 's' : ''}
+                </span>
+                {testCasesCount > 0 && (
+                  <div className="flex items-center space-x-3 text-xs">
+                    <span className="flex items-center space-x-1.5 px-2 py-1 bg-green-50 rounded-full">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <span className="text-green-700 font-medium">{passedCount}</span>
+                    </span>
+                    <span className="flex items-center space-x-1.5 px-2 py-1 bg-red-50 rounded-full">
+                      <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                      <span className="text-red-700 font-medium">{failedCount}</span>
+                    </span>
+                    <span className="flex items-center space-x-1.5 px-2 py-1 bg-yellow-50 rounded-full">
+                      <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                      <span className="text-yellow-700 font-medium">{pendingCount}</span>
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
 
           {/* Projects Section */}
           <Accordion 
@@ -234,45 +265,44 @@ export function QASidebar({
           >
             {/* Projects Section */}
             <AccordionItem value="projects" className="border-none">
-              <AccordionTrigger className="px-6 py-3 hover:bg-slate-50/50 transition-colors">
-                <div className="flex items-center justify-between w-full pr-4">
-                  <div className="flex items-center space-x-2 min-w-0">
-                    <div className="w-5 h-5 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-md flex items-center justify-center flex-shrink-0">
-                      <Folder className="w-3 h-3 text-white" />
+              <AccordionTrigger className="px-4 py-3 hover:bg-slate-100/50 rounded-lg transition-all duration-200 group">
+                <div className="flex items-center justify-between w-full pr-2">
+                  <div className="flex items-center space-x-3 min-w-0">
+                    <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm group-hover:shadow-md transition-shadow">
+                      <Folder className="w-3.5 h-3.5 text-white" />
                     </div>
-                    <span className="text-xs font-semibold text-sidebar-foreground/80 uppercase tracking-wider truncate">Projects</span>
+                    <span className="text-sm font-semibold text-slate-800 truncate">Projects</span>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200 flex-shrink-0">
+                    <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-200 flex-shrink-0 text-xs font-medium">
                       {projects.length}
                     </Badge>
                   </div>
                 </div>
               </AccordionTrigger>
-              <AccordionContent className="px-6 pb-3">
+              <AccordionContent className="px-4 pb-3">
                 <div className="max-h-64 overflow-y-auto pr-2">
-                  <div className="flex flex-col space-y-2">
-                    <div className="space-y-2">
-                      {projectsWithStats.length > 0 ? (
+                  <div className="flex flex-col space-y-2.5">
+                    {projectsWithStats.length > 0 ? (
                       projectsWithStats.map((project) => (
                         <div
                           key={project.id}
-                          className={`group relative p-3 bg-white rounded-lg border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 cursor-pointer ${currentProject === project.name ? 'ring-2 ring-blue-500 border-blue-300' : ''}`}
+                          className={`group relative p-3 bg-white rounded-lg border border-slate-200 hover:border-slate-300 hover:shadow-md transition-all duration-200 cursor-pointer ${currentProject === project.name ? 'ring-2 ring-blue-500/20 border-blue-300 bg-blue-50/30' : 'hover:bg-slate-50/50'}`}
                           onClick={() => onProjectChange(project.name)}
                         >
-                          <div className="flex items-start justify-between">
-                            <div className="flex items-start space-x-3 min-w-0 flex-1">
-                              <div className="w-8 h-8 bg-gradient-to-br from-slate-100 to-slate-200 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
-                                <Folder className="w-4 h-4 text-slate-600" />
-                        </div>
-                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2.5 min-w-0 flex-1">
+                              <div className="w-6 h-6 bg-gradient-to-br from-slate-100 to-slate-200 rounded-md flex items-center justify-center flex-shrink-0">
+                                <Folder className="w-3.5 h-3.5 text-slate-600" />
+                              </div>
+                              <div className="flex-1 min-w-0">
                                 <h4 className="font-medium text-sm text-slate-900 truncate">{project.name}</h4>
-                                <p className="text-xs text-slate-500 mt-1 truncate">
+                                <p className="text-xs text-slate-500 truncate">
                                   {project.testSuiteCount} test suites
                                 </p>
-                          </div>
-                        </div>
-                            <div className="flex items-center space-x-2">
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-1">
                               {currentProject === project.name && (
                                 <div className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0"></div>
                               )}
@@ -283,12 +313,12 @@ export function QASidebar({
                                   e.stopPropagation()
                                   onRemoveProject(project.name)
                                 }}
-                                className="h-7 w-7 p-0 hover:bg-red-50 hover:text-red-600 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                                className="h-6 w-6 p-0 hover:bg-red-50 hover:text-red-600 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
                               >
-                                <X className="w-3.5 h-3.5" />
+                                <X className="w-3 h-3" />
                               </Button>
-                      </div>
-                </div>
+                            </div>
+                          </div>
                         </div>
                       ))
                     ) : (
@@ -298,10 +328,10 @@ export function QASidebar({
                         </div>
                         <h3 className="text-sm font-semibold text-slate-700 mb-1">No Projects</h3>
                         <p className="text-xs text-slate-500 mb-4 text-center">Create your first project to get started</p>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsProjectDialogOpen(true)}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setIsProjectDialogOpen(true)}
                           className="text-xs h-8 px-3 border-blue-200 text-blue-700 hover:bg-blue-50"
                         >
                           <Plus className="w-3 h-3 mr-1 flex-shrink-0" />
@@ -310,125 +340,28 @@ export function QASidebar({
                       </div>
                     )}
                   </div>
+                  
+                  {/* Add Project Button */}
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setIsProjectDialogOpen(true)}
-                    className="w-full h-10 border-dashed border-blue-300 hover:border-blue-500 hover:bg-blue-50 transition-all duration-200 group"
-            >
-              <div className="flex items-center space-x-2">
-                <div className="w-6 h-6 rounded-md bg-blue-100 group-hover:bg-blue-200 flex items-center justify-center transition-colors duration-200 flex-shrink-0">
-                  <Plus className="w-3.5 h-3.5 text-blue-600" />
-                </div>
+                    className="w-full h-9 border-dashed border-blue-300 hover:border-blue-500 hover:bg-blue-50/50 transition-all duration-200 group mt-3 rounded-lg"
+                  >
+                    <div className="flex items-center space-x-2.5">
+                      <div className="w-5 h-5 rounded-md bg-blue-100 group-hover:bg-blue-200 flex items-center justify-center transition-colors duration-200 flex-shrink-0">
+                        <Plus className="w-3 h-3 text-blue-600" />
+                      </div>
                       <span className="text-sm font-medium text-slate-700 group-hover:text-blue-700 transition-colors duration-200 truncate">
                         Add Project
-                </span>
-              </div>
-            </Button>
-          </div>
-            </div>
-              </AccordionContent>
-            </AccordionItem>
-
-            {/* Test Case Actions Section */}
-            <AccordionItem value="test-case-actions" className="border-none">
-              <AccordionTrigger className="px-6 py-3 hover:bg-slate-50/50 transition-colors">
-                <div className="flex items-center justify-between w-full pr-4">
-                  <div className="flex items-center space-x-2 min-w-0">
-                    <div className="w-5 h-5 bg-gradient-to-br from-violet-500 to-purple-600 rounded-md flex items-center justify-center flex-shrink-0">
-                      <Target className="w-3 h-3 text-white" />
+                      </span>
                     </div>
-                    <span className="text-xs font-semibold text-sidebar-foreground/80 uppercase tracking-wider truncate">Test Case Actions</span>
-                  </div>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent className="px-6 pb-3">
-                <div className="max-h-64 overflow-y-auto pr-2">
-                  <div className="flex flex-col space-y-2">
-                    {/* Add Test Case */}
-                    <Button
-                      variant="outline"
-                      size="lg"
-                      onClick={onAddTestCase}
-                      className="w-full h-12 bg-white/80 backdrop-blur-sm border-violet-200 hover:border-violet-500 hover:bg-violet-50/50 transition-all duration-200 group justify-start"
-                    >
-                      <div className="flex items-center space-x-2">
-                        <div className="w-6 h-6 rounded-md bg-violet-100 group-hover:bg-violet-200 flex items-center justify-center transition-colors duration-200">
-                          <Plus className="w-3.5 h-3.5 text-violet-600" />
-                        </div>
-                        <span className="text-sm font-medium text-slate-700 group-hover:text-violet-700 transition-colors duration-200">Add Test Case</span>
-                      </div>
-                    </Button>
-
-                    {/* Import */}
-                    <Button
-                      variant="outline"
-                      size="lg"
-                      onClick={() => {
-                        const input = document.createElement('input')
-                        input.type = 'file'
-                        input.accept = '.csv,.xlsx'
-                        input.onchange = (e) => onFileUpload(e as any)
-                        input.click()
-                      }}
-                      className="w-full h-12 bg-white/80 backdrop-blur-sm border-violet-200 hover:border-violet-500 hover:bg-violet-50/50 transition-all duration-200 group justify-start"
-                    >
-                      <div className="flex items-center space-x-2">
-                        <div className="w-6 h-6 rounded-md bg-violet-100 group-hover:bg-violet-200 flex items-center justify-center transition-colors duration-200">
-                          <Upload className="w-3.5 h-3.5 text-violet-600" />
-                        </div>
-                        <span className="text-sm font-medium text-slate-700 group-hover:text-violet-700 transition-colors duration-200">Import</span>
-                      </div>
-                    </Button>
-
-                    {/* Paste */}
-                    <Button
-                      variant="outline"
-                      size="lg"
-                      onClick={() => setIsPasteDialogOpen?.(true)}
-                      className="w-full h-12 bg-white/80 backdrop-blur-sm border-violet-200 hover:border-violet-500 hover:bg-violet-50/50 transition-all duration-200 group justify-start"
-                    >
-                      <div className="flex items-center space-x-2">
-                        <div className="w-6 h-6 rounded-md bg-violet-100 group-hover:bg-violet-200 flex items-center justify-center transition-colors duration-200">
-                          <Clipboard className="w-3.5 h-3.5 text-violet-600" />
-                        </div>
-                        <span className="text-sm font-medium text-slate-700 group-hover:text-violet-700 transition-colors duration-200">Paste</span>
-                      </div>
-                    </Button>
-
-                    {/* Refresh Stats */}
-                    <Button
-                      variant="outline"
-                      size="lg"
-                      onClick={() => window.location.reload()}
-                      className="w-full h-12 bg-white/80 backdrop-blur-sm border-violet-200 hover:border-violet-500 hover:bg-violet-50/50 transition-all duration-200 group justify-start"
-                    >
-                      <div className="flex items-center space-x-2">
-                        <div className="w-6 h-6 rounded-md bg-violet-100 group-hover:bg-violet-200 flex items-center justify-center transition-colors duration-200">
-                          <BarChart3 className="w-3.5 h-3.5 text-violet-600" />
-                        </div>
-                        <span className="text-sm font-medium text-slate-700 group-hover:text-violet-700 transition-colors duration-200">Refresh Stats</span>
-                      </div>
-                    </Button>
-
-                    {/* Export */}
-                    <Button
-                      variant="outline"
-                      size="lg"
-                      onClick={onExportToExcel}
-                      className="w-full h-12 bg-white/80 backdrop-blur-sm border-violet-200 hover:border-violet-500 hover:bg-violet-50/50 transition-all duration-200 group justify-start"
-                    >
-                      <div className="flex items-center space-x-2">
-                        <div className="w-6 h-6 rounded-md bg-violet-100 group-hover:bg-violet-200 flex items-center justify-center transition-colors duration-200">
-                          <Download className="w-3.5 h-3.5 text-violet-600" />
-                        </div>
-                        <span className="text-sm font-medium text-slate-700 group-hover:text-violet-700 transition-colors duration-200">Export</span>
-                      </div>
-                    </Button>
-                  </div>
+                  </Button>
                 </div>
               </AccordionContent>
             </AccordionItem>
+
+
 
             {/* Test Suites Section */}
             <AccordionItem value="test-suites" className="border-none">
@@ -531,21 +464,6 @@ export function QASidebar({
                       </div>
                     )}
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsAddSuiteDialogOpen(true)}
-                    className="w-full h-10 border-dashed border-emerald-300 hover:border-emerald-500 hover:bg-emerald-50 transition-all duration-200 group"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <div className="w-6 h-6 rounded-md bg-emerald-100 group-hover:bg-emerald-200 flex items-center justify-center transition-colors duration-200 flex-shrink-0">
-                        <Plus className="w-3.5 h-3.5 text-emerald-600" />
-                      </div>
-                      <span className="text-sm font-medium text-slate-700 group-hover:text-emerald-700 transition-colors duration-200 truncate">
-                        Add Test Suite
-                      </span>
-                    </div>
-                  </Button>
                 </div>
                 </div>
               </AccordionContent>
@@ -614,21 +532,6 @@ export function QASidebar({
                       </div>
                     )}
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsAddPlatformDialogOpen(true)}
-                    className="w-full h-10 border-dashed border-slate-300 hover:border-slate-500 hover:bg-slate-50 transition-all duration-200 group"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <div className="w-6 h-6 rounded-md bg-slate-100 group-hover:bg-slate-200 flex items-center justify-center transition-colors duration-200">
-                        <Plus className="w-3.5 h-3.5 text-slate-600" />
-                      </div>
-                      <span className="text-sm font-medium text-slate-700 group-hover:text-slate-700 transition-colors duration-200">
-                        Add Platform
-                      </span>
-                    </div>
-                  </Button>
                 </div>
                 </div>
               </AccordionContent>
@@ -709,21 +612,6 @@ export function QASidebar({
                       </div>
                     )}
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsAddLinkDialogOpen(true)}
-                    className="w-full h-10 border-dashed border-blue-300 hover:border-blue-500 hover:bg-blue-50 transition-all duration-200 group"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <div className="w-6 h-6 rounded-md bg-blue-100 group-hover:bg-blue-200 flex items-center justify-center transition-colors duration-200">
-                        <Plus className="w-3.5 h-3.5 text-blue-600" />
-                      </div>
-                      <span className="text-sm font-medium text-slate-700 group-hover:text-blue-700 transition-colors duration-200">
-                        Add Link
-                      </span>
-                    </div>
-                  </Button>
                 </div>
                 </div>
               </AccordionContent>
@@ -807,27 +695,13 @@ export function QASidebar({
                       </div>
                     )}
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsAddDocumentDialogOpen(true)}
-                    className="w-full h-10 border-dashed border-orange-300 hover:border-orange-500 hover:bg-orange-50 transition-all duration-200 group"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <div className="w-6 h-6 rounded-md bg-orange-100 group-hover:bg-orange-200 flex items-center justify-center transition-colors duration-200">
-                        <Plus className="w-3.5 h-3.5 text-orange-600" />
-                      </div>
-                      <span className="text-sm font-medium text-slate-700 group-hover:text-orange-700 transition-colors duration-200">
-                        Add Document
-                      </span>
-                    </div>
-                  </Button>
                 </div>
                 </div>
               </AccordionContent>
             </AccordionItem>
 
-            {/* AI Test Case Generator Section */}
+            {/* AI Test Case Generator Section - Temporarily Commented Out */}
+            {/* 
             <AccordionItem value="ai-test-case-generator" className="border-none">
               <AccordionTrigger className="px-6 py-3 hover:bg-slate-50/50 transition-colors">
                 <div className="flex items-center justify-between w-full pr-4">
@@ -851,7 +725,74 @@ export function QASidebar({
                 />
               </AccordionContent>
             </AccordionItem>
+            */}
           </Accordion>
+
+          {/* Test Case Actions - Enhanced */}
+          <div className="bg-gradient-to-r from-slate-50 to-white rounded-xl border border-slate-200/60 p-4">
+            <div className="flex flex-col space-y-3">
+              {/* Primary Action - Add Test Case */}
+              <Button
+                onClick={onAddTestCase}
+                className="w-full h-11 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold text-sm transition-all duration-200 shadow-md hover:shadow-lg rounded-lg"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add Test Case
+              </Button>
+              
+              {/* Secondary Actions - Compact Row */}
+              <div className="grid grid-cols-2 gap-2.5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const input = document.createElement('input')
+                    input.type = 'file'
+                    input.accept = '.csv,.xlsx'
+                    input.onchange = (e) => onFileUpload(e as any)
+                    input.click()
+                  }}
+                  className="h-9 text-sm font-medium border-slate-200 hover:border-blue-300 hover:bg-blue-50/50 rounded-lg transition-all duration-200"
+                >
+                  <Upload className="w-3.5 h-3.5 mr-1.5" />
+                  Import
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsPasteDialogOpen?.(true)}
+                  className="h-9 text-sm font-medium border-slate-200 hover:border-blue-300 hover:bg-blue-50/50 rounded-lg transition-all duration-200"
+                >
+                  <Clipboard className="w-3.5 h-3.5 mr-1.5" />
+                  Paste
+                </Button>
+              </div>
+              
+              {/* Tertiary Actions - Compact Row */}
+              <div className="grid grid-cols-2 gap-2.5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.location.reload()}
+                  className="h-9 text-sm font-medium border-slate-200 hover:border-blue-300 hover:bg-blue-50/50 rounded-lg transition-all duration-200"
+                >
+                  <BarChart3 className="w-3.5 h-3.5 mr-1.5" />
+                  Refresh
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onExportToExcel}
+                  className="h-9 text-sm font-medium border-slate-200 hover:border-blue-300 hover:bg-blue-50/50 rounded-lg transition-all duration-200"
+                >
+                  <Download className="w-3.5 h-3.5 mr-1.5" />
+                  Export
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

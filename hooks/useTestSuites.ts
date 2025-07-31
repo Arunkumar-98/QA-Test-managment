@@ -47,7 +47,12 @@ export const useTestSuites = (currentProjectId: string) => {
       setTestSuites(prev => prev.map(suite => suite.id === id ? updatedSuite : suite))
       return updatedSuite
     } catch (error) {
-      console.error('Failed to update test suite:', error)
+      console.error('Failed to update test suite:', {
+        id,
+        updates,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      })
       throw error
     }
   }, [])

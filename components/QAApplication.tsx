@@ -752,7 +752,11 @@ export function QAApplication() {
       
       console.log(`✅ Refreshed statistics for suite ${suiteId}: Total=${totalTests}, Passed=${passedTests}, Failed=${failedTests}, Pending=${pendingTests}`)
     } catch (error) {
-      console.error('❌ Failed to refresh test suite statistics:', error)
+      console.error('❌ Failed to refresh test suite statistics:', {
+        suiteId,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      })
     }
   }
 
@@ -1228,56 +1232,7 @@ export function QAApplication() {
             {/* Loading Overlay */}
 
             
-            {/* Project Header */}
-            <div className="bg-white border-b border-slate-200/60">
-              <div className="px-6 py-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-6">
-                    <div>
-                      <h2 className="text-3xl font-bold text-slate-900 mb-2">Test Cases</h2>
-                      <div className="flex items-center space-x-4">
-                        <div className="flex items-center space-x-2 px-3 py-1.5 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-full">
-                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                          <span className="text-sm font-semibold text-green-700">{currentProject}</span>
-                        </div>
-                        <span className="text-sm text-slate-500 font-medium">
-                          {finalTestCases.length} test case{finalTestCases.length !== 1 ? 's' : ''}
-                        </span>
-                        {finalTestCases.length > 0 && (
-                          <div className="flex items-center space-x-3 text-xs">
-                            <span className="flex items-center space-x-1">
-                              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                              <span className="text-green-700">{finalTestCases.filter(tc => tc.status === 'Pass').length} Passed</span>
-                            </span>
-                            <span className="flex items-center space-x-1">
-                              <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                              <span className="text-red-700">{finalTestCases.filter(tc => tc.status === 'Fail').length} Failed</span>
-                            </span>
-                            <span className="flex items-center space-x-1">
-                              <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                              <span className="text-yellow-700">{finalTestCases.filter(tc => tc.status === 'Pending').length} Pending</span>
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center space-x-3">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="h-10 px-4 border-slate-200 hover:border-slate-300 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                      onClick={refreshAllTestSuiteStatistics}
-                      title="Refresh test suite statistics"
-                    >
-                      <RefreshCw className="w-4 h-4 mr-2" />
-                      Refresh Stats
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
+
 
             {/* Suite Filter Banner */}
             {selectedSuiteId && (

@@ -470,7 +470,7 @@ export function TestCaseTable({
   const [isStatusHistoryOpen, setIsStatusHistoryOpen] = useState(false)
   const [selectedTestCaseForHistory, setSelectedTestCaseForHistory] = useState<TestCase | null>(null)
   const [sortedTestCases, setSortedTestCases] = useState<TestCase[]>(testCases)
-  const [isDragEnabled, setIsDragEnabled] = useState(true)
+  const [isDragEnabled, setIsDragEnabled] = useState(false)
   const [isAdvancedSearchOpen, setIsAdvancedSearchOpen] = useState(false)
   const [isSaveFilterOpen, setIsSaveFilterOpen] = useState(false)
   const [isClearAllDialogOpen, setIsClearAllDialogOpen] = useState(false)
@@ -856,64 +856,67 @@ export function TestCaseTable({
                   <ChevronDown className="w-4 h-4 text-slate-600" />
                 }
               </Button>
-            
-              {/* Save Filter */}
-              <Button 
-                variant="outline" 
-                size="lg" 
-                onClick={() => setIsSaveFilterOpen(true)}
-                className="h-12 px-4 bg-white/80 backdrop-blur-sm border-slate-200/60 hover:border-blue-500/60 hover:bg-blue-50/50 transition-all duration-200"
-              >
-                <Save className="w-4 h-4 mr-2 text-slate-600" />
-                <span className="font-medium text-slate-700">Save</span>
-            </Button>
-            
-              {/* Load Filter */}
-              <Select onValueChange={(value) => {
-                const filter = savedFilters.find(f => f.id === value)
-                if (filter) onLoadFilter(filter)
-              }}>
-                <SelectTrigger className="h-12 px-4 bg-white/80 backdrop-blur-sm border-slate-200/60 hover:border-blue-500/60 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 w-36">
-                  <Loader2 className="w-4 h-4 mr-2 text-slate-600" />
-                  <SelectValue placeholder="Load Filter" className="font-medium text-slate-700" />
-              </SelectTrigger>
-                <SelectContent className="bg-white/95 backdrop-blur-sm border-slate-200/60">
-                  {savedFilters.map((filter) => (
-                    <SelectItem key={filter.id} value={filter.id} className="hover:bg-blue-50/50">
-                      <div className="flex items-center justify-between w-full">
-                        <span className="font-medium">{filter.name}</span>
-            <Button
-              variant="ghost"
-              size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            onDeleteFilter(filter.id)
-                          }}
-                          className="h-6 w-6 p-0 ml-2 hover:bg-red-100 hover:text-red-600"
-                        >
-                          <Trash2 className="w-3 h-3" />
-            </Button>
-          </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            
-              {/* Clear All */}
-            <Button
-                variant="outline" 
-                size="lg" 
-                onClick={onClearAllFilters}
-                className="h-12 px-4 bg-white/80 backdrop-blur-sm border-slate-200/60 hover:border-red-500/60 hover:bg-red-50/50 transition-all duration-200"
-              >
-                <span className="font-medium text-slate-700">Clear All</span>
-            </Button>
             </div>
           </div>
           
           {/* Expandable Filters - Modern Grid */}
           {isFiltersExpanded && (
             <div className="bg-white/60 backdrop-blur-sm rounded-xl border border-slate-200/60 p-6 shadow-sm">
+              {/* Filter Action Buttons */}
+              <div className="flex items-center gap-3 mb-4">
+                {/* Save Filter */}
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setIsSaveFilterOpen(true)}
+                  className="h-8 px-3 bg-white/80 backdrop-blur-sm border-slate-200/60 hover:border-blue-500/60 hover:bg-blue-50/50 transition-all duration-200"
+                >
+                  <Save className="w-3.5 h-3.5 mr-1.5 text-slate-600" />
+                  <span className="text-xs font-medium text-slate-700">Save Filter</span>
+                </Button>
+                
+                {/* Load Filter */}
+                <Select onValueChange={(value) => {
+                  const filter = savedFilters.find(f => f.id === value)
+                  if (filter) onLoadFilter(filter)
+                }}>
+                  <SelectTrigger className="h-8 px-3 bg-white/80 backdrop-blur-sm border-slate-200/60 hover:border-blue-500/60 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 w-32">
+                    <Loader2 className="w-3.5 h-3.5 mr-1.5 text-slate-600" />
+                    <SelectValue placeholder="Load Filter" className="text-xs font-medium text-slate-700" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white/95 backdrop-blur-sm border-slate-200/60">
+                    {savedFilters.map((filter) => (
+                      <SelectItem key={filter.id} value={filter.id} className="hover:bg-blue-50/50">
+                        <div className="flex items-center justify-between w-full">
+                          <span className="font-medium">{filter.name}</span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              onDeleteFilter(filter.id)
+                            }}
+                            className="h-6 w-6 p-0 ml-2 hover:bg-red-100 hover:text-red-600"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                
+                {/* Clear All */}
+                <Button
+                  variant="outline" 
+                  size="sm" 
+                  onClick={onClearAllFilters}
+                  className="h-8 px-3 bg-white/80 backdrop-blur-sm border-slate-200/60 hover:border-red-500/60 hover:bg-red-50/50 transition-all duration-200"
+                >
+                  <span className="text-xs font-medium text-slate-700">Clear All</span>
+                </Button>
+              </div>
+              
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* Status Filter */}
                 <div className="space-y-2">
@@ -1014,8 +1017,8 @@ export function TestCaseTable({
       {/* Table */}
       <div className="bg-white flex-1 flex flex-col overflow-hidden">
         <div className="flex-1 flex flex-col">
-          {/* Viewport Info Bar */}
-          <div className="px-4 py-2 bg-slate-50 border-b border-slate-200">
+          {/* Viewport Info Bar - Hidden but code preserved */}
+          {/* <div className="px-4 py-2 bg-slate-50 border-b border-slate-200">
             <div className="flex items-center justify-between text-xs text-slate-600">
               <div className="flex items-center gap-4">
                 <span>📊 {paginatedTestCases.length} of {sortedTestCases.length} test cases</span>
@@ -1030,7 +1033,7 @@ export function TestCaseTable({
                 </span>
               </div>
             </div>
-          </div>
+          </div> */}
           
           <div className="w-full px-4 py-4">
             <DndContext
@@ -1043,8 +1046,8 @@ export function TestCaseTable({
                 strategy={verticalListSortingStrategy}
               >
                 <div className="relative w-full overflow-auto border border-slate-200 rounded-lg shadow-sm" style={{ 
-                  maxHeight: 'calc(100vh - 520px)',
-                  minHeight: '250px'
+                  maxHeight: 'calc(100vh - 350px)',
+                  minHeight: '500px'
                 }}>
                   {/* Scroll Indicators */}
                   <div className="absolute top-2 right-2 z-10">
@@ -1312,7 +1315,7 @@ export function TestCaseTable({
       <div className="h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent mx-6"></div>
 
       {/* Pagination */}
-      <div className="px-6 py-6 border-t border-slate-200 bg-gradient-to-r from-slate-50/50 to-blue-50/30 shadow-sm fixed bottom-0 left-0 right-0 z-50">
+      <div className="px-6 py-6 border-t border-slate-200 bg-gradient-to-r from-slate-50/50 to-blue-50/30 shadow-sm">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2">
