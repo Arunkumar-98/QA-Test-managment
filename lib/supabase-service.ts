@@ -65,19 +65,17 @@ export const testCaseService = {
 
   async create(testCase: CreateTestCaseInput): Promise<TestCase> {
     // First, get the next available position for this project
-    let position = testCase.position || 1
+    let position = 1
     
-    if (!testCase.position) {
-      const { data: existingTestCases } = await supabase
-        .from('test_cases')
-        .select('position')
-        .eq('project_id', testCase.projectId)
-        .order('position', { ascending: false })
-        .limit(1)
-      
-      if (existingTestCases && existingTestCases.length > 0) {
-        position = existingTestCases[0].position + 1
-      }
+    const { data: existingTestCases } = await supabase
+      .from('test_cases')
+      .select('position')
+      .eq('project_id', testCase.projectId)
+      .order('position', { ascending: false })
+      .limit(1)
+    
+    if (existingTestCases && existingTestCases.length > 0) {
+      position = existingTestCases[0].position + 1
     }
 
     const dbData: Omit<TestCaseDB, 'id'> = {
@@ -99,8 +97,12 @@ export const testCaseService = {
       suite_id: testCase.suiteId,
       position: position,
       created_at: new Date(),
-      updated_at: new Date(),
-      automation_script: testCase.automationScript ? {
+      updated_at: new Date()
+    }
+
+    // Only add automation_script if it exists and has data
+    if (testCase.automationScript) {
+      (dbData as any).automation_script = {
         path: testCase.automationScript.path,
         type: testCase.automationScript.type,
         command: testCase.automationScript.command,
@@ -111,7 +113,7 @@ export const testCaseService = {
         execution_time: testCase.automationScript.executionTime,
         output: testCase.automationScript.output,
         error: testCase.automationScript.error
-      } : undefined
+      }
     }
 
     console.log('📊 Database data to insert:', dbData)
@@ -159,18 +161,22 @@ export const testCaseService = {
     if (updates.suiteId !== undefined) dbUpdates.suite_id = updates.suiteId || undefined
     if (updates.position !== undefined) dbUpdates.position = updates.position
     if (updates.automationScript !== undefined) {
-      dbUpdates.automation_script = updates.automationScript ? {
-        path: updates.automationScript.path,
-        type: updates.automationScript.type,
-        command: updates.automationScript.command,
-        headless_mode: updates.automationScript.headlessMode,
-        embedded_code: updates.automationScript.embeddedCode,
-        last_run: updates.automationScript.lastRun,
-        last_result: updates.automationScript.lastResult,
-        execution_time: updates.automationScript.executionTime,
-        output: updates.automationScript.output,
-        error: updates.automationScript.error
-      } : undefined
+      if (updates.automationScript) {
+        (dbUpdates as any).automation_script = {
+          path: updates.automationScript.path,
+          type: updates.automationScript.type,
+          command: updates.automationScript.command,
+          headless_mode: updates.automationScript.headlessMode,
+          embedded_code: updates.automationScript.embeddedCode,
+          last_run: updates.automationScript.lastRun,
+          last_result: updates.automationScript.lastResult,
+          execution_time: updates.automationScript.executionTime,
+          output: updates.automationScript.output,
+          error: updates.automationScript.error
+        }
+      } else {
+        (dbUpdates as any).automation_script = null
+      }
     }
     
     // Always update the updated_at timestamp
