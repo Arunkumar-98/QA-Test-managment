@@ -57,7 +57,7 @@ export const testCaseService = {
       .from('test_cases')
       .select('*')
       .eq('project_id', projectId)
-      .order('created_at', { ascending: false })
+      .order('id', { ascending: true })
     
     if (error) throw error
     return (data || []).map(mapTestCaseFromDB)
