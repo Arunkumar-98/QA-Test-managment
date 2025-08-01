@@ -58,25 +58,48 @@ export function TestCaseDialog({
   const [isStatusHistoryOpen, setIsStatusHistoryOpen] = useState(false)
 
   useEffect(() => {
-    if (testCase) {
-      setFormData({
-        testCase: testCase.testCase,
-        description: testCase.description,
-        expectedResult: testCase.expectedResult,
-        status: testCase.status,
-        priority: testCase.priority,
-        category: testCase.category,
-        assignedTester: testCase.assignedTester,
-        executionDate: testCase.executionDate,
-        notes: testCase.notes,
-        actualResult: testCase.actualResult,
-        environment: testCase.environment,
-        prerequisites: testCase.prerequisites,
-        platform: testCase.platform,
-        stepsToReproduce: testCase.stepsToReproduce,
-        suiteId: testCase.suiteId || selectedSuiteId || ""
-      })
+    // Reset form data when modal opens/closes or test case changes
+    if (isOpen) {
+      if (testCase) {
+        setFormData({
+          testCase: testCase.testCase,
+          description: testCase.description,
+          expectedResult: testCase.expectedResult,
+          status: testCase.status,
+          priority: testCase.priority,
+          category: testCase.category,
+          assignedTester: testCase.assignedTester,
+          executionDate: testCase.executionDate,
+          notes: testCase.notes,
+          actualResult: testCase.actualResult,
+          environment: testCase.environment,
+          prerequisites: testCase.prerequisites,
+          platform: testCase.platform,
+          stepsToReproduce: testCase.stepsToReproduce,
+          suiteId: testCase.suiteId || selectedSuiteId || ""
+        })
+      } else {
+        setFormData({
+          testCase: "",
+          description: "",
+          expectedResult: "",
+          status: "Pending",
+          priority: undefined,
+          category: undefined,
+          assignedTester: "",
+          executionDate: "",
+          notes: "",
+          actualResult: "",
+          environment: "",
+          prerequisites: "",
+          platform: "",
+          stepsToReproduce: "",
+          suiteId: selectedSuiteId || ""
+        })
+      }
+      setErrors({})
     } else {
+      // Clean up state when modal closes
       setFormData({
         testCase: "",
         description: "",
@@ -92,11 +115,13 @@ export function TestCaseDialog({
         prerequisites: "",
         platform: "",
         stepsToReproduce: "",
-        suiteId: selectedSuiteId || ""
+        suiteId: ""
       })
+      setErrors({})
+      setIsSubmitting(false)
+      setIsStatusHistoryOpen(false)
     }
-    setErrors({})
-  }, [testCase, selectedSuiteId])
+  }, [isOpen, testCase, selectedSuiteId])
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}

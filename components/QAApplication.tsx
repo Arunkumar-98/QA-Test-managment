@@ -1319,7 +1319,11 @@ export function QAApplication() {
       {/* Dialogs */}
       <TestCaseDialog
         isOpen={isAddDialogOpen}
-        onClose={() => setIsAddDialogOpen(false)}
+        onClose={() => {
+          setIsAddDialogOpen(false)
+          setEditingTestCase(null)
+          setViewingTestCase(null)
+        }}
         onSubmit={handleAddTestCase}
         testCase={editingTestCase || viewingTestCase}
         isViewMode={!!viewingTestCase}
