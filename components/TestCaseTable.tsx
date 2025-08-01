@@ -480,33 +480,7 @@ export function TestCaseTable({
   const [pastedText, setPastedText] = useState('')
   const [parsedTestCase, setParsedTestCase] = useState<Partial<TestCase> | null>(null)
   const [isAIProcessing, setIsAIProcessing] = useState(false)
-  
-  // Use ref to track user order without causing re-renders
-  const userOrderRef = React.useRef<string[]>([])
-  const isInitializedRef = React.useRef(false)
 
-  // Get localStorage key for this project
-  const getStorageKey = () => `testCaseOrder_${currentProject}`
-
-  // Load user order from localStorage
-  const loadUserOrder = () => {
-    try {
-      const stored = localStorage.getItem(getStorageKey())
-      return stored ? JSON.parse(stored) : []
-    } catch (error) {
-      console.warn('Failed to load user order from localStorage:', error)
-      return []
-    }
-  }
-
-  // Save user order to localStorage
-  const saveUserOrder = (order: string[]) => {
-    try {
-      localStorage.setItem(getStorageKey(), JSON.stringify(order))
-    } catch (error) {
-      console.warn('Failed to save user order to localStorage:', error)
-    }
-  }
 
   // DnD sensors
   const sensors = useSensors(
@@ -520,48 +494,10 @@ export function TestCaseTable({
     })
   )
 
-  // Update sorted test cases when testCases prop changes, but preserve user order
+  // Update sorted test cases when testCases prop changes
   useEffect(() => {
-    if (testCases.length === 0) {
-      setSortedTestCases([])
-      userOrderRef.current = []
-      isInitializedRef.current = false
-      return
-    }
-
-    // Load user order from localStorage
-    const storedOrder = loadUserOrder()
-    
-    // If we have a user-defined order, use it to sort the test cases
-    if (storedOrder.length > 0 && isInitializedRef.current) {
-      const orderedTestCases = [...testCases].sort((a, b) => {
-        const aIndex = storedOrder.indexOf(a.id)
-        const bIndex = storedOrder.indexOf(b.id)
-        
-        // If both are in user order, sort by user order
-        if (aIndex !== -1 && bIndex !== -1) {
-          return aIndex - bIndex
-        }
-        
-        // If only one is in user order, prioritize it
-        if (aIndex !== -1) return -1
-        if (bIndex !== -1) return 1
-        
-        // If neither is in user order, maintain original order
-        return 0
-      })
-      
-      setSortedTestCases(orderedTestCases)
-      userOrderRef.current = storedOrder
-    } else {
-      // First time loading, use the original order and set up user order
-      setSortedTestCases(testCases)
-      const newOrder = testCases.map(tc => tc.id)
-      userOrderRef.current = newOrder
-      saveUserOrder(newOrder) // Save to localStorage
-      isInitializedRef.current = true
-    }
-  }, [testCases, currentProject]) // Added currentProject dependency
+    setSortedTestCases(testCases)
+  }, [testCases])
 
   // Handle drag end
   const handleDragEnd = (event: DragEndEvent) => {
@@ -574,10 +510,9 @@ export function TestCaseTable({
 
         const newOrder = arrayMove(items, oldIndex, newIndex)
         
-        // Update user order to match the new arrangement
-        const newOrderIds = newOrder.map(item => item.id)
-        userOrderRef.current = newOrderIds
-        saveUserOrder(newOrderIds) // Save to localStorage
+        // TODO: Call database reorder function here
+        // For now, just update the local state
+        // testCaseService.reorderTestCase(active.id, newIndex + 1)
         
         return newOrder
       })
@@ -591,9 +526,6 @@ export function TestCaseTable({
 
   // Reset to original order
   const resetOrder = () => {
-    const newOrder = testCases.map(tc => tc.id)
-    userOrderRef.current = newOrder
-    saveUserOrder(newOrder) // Save to localStorage
     setSortedTestCases(testCases)
     toast({
       title: "Order Reset",
@@ -742,9 +674,6 @@ export function TestCaseTable({
     const newRows = parseInt(newRowsPerPage)
     setRowsPerPage(newRows)
     setCurrentPage(1)
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('rowsPerPage', newRows.toString())
-    }
   }
 
   // Calculate optimal column widths based on content

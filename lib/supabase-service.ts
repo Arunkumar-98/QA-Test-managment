@@ -57,7 +57,7 @@ export const testCaseService = {
       .from('test_cases')
       .select('*')
       .eq('project_id', projectId)
-      .order('id', { ascending: true })
+      .order('position', { ascending: true })
     
     if (error) throw error
     return (data || []).map(mapTestCaseFromDB)
@@ -166,6 +166,42 @@ export const testCaseService = {
       .from('test_cases')
       .delete()
       .in('id', ids)
+    
+    if (error) throw error
+  },
+
+  async reorderTestCase(testCaseId: string, newPosition: number): Promise<void> {
+    const { error } = await supabase.rpc('reorder_test_cases', {
+      p_test_case_id: testCaseId,
+      p_new_position: newPosition
+    })
+    
+    if (error) throw error
+  },
+
+  async insertAtPosition(testCaseData: CreateTestCaseInput, position: number): Promise<TestCase> {
+    const { data, error } = await supabase.rpc('insert_test_case_at_position', {
+      p_test_case_data: testCaseData,
+      p_position: position
+    })
+    
+    if (error) throw error
+    
+    // Fetch the created test case
+    const { data: createdTestCase, error: fetchError } = await supabase
+      .from('test_cases')
+      .select('*')
+      .eq('id', data)
+      .single()
+    
+    if (fetchError) throw fetchError
+    return mapTestCaseFromDB(createdTestCase)
+  },
+
+  async deleteAndReorder(testCaseId: string): Promise<void> {
+    const { error } = await supabase.rpc('delete_test_case_and_reorder', {
+      p_test_case_id: testCaseId
+    })
     
     if (error) throw error
   }

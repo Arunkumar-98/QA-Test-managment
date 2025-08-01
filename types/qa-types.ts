@@ -68,6 +68,7 @@ export type TestCase = {
   stepsToReproduce: string
   projectId: string
   suiteId?: string
+  position: number
   createdAt: Date
   updatedAt: Date
   automationScript?: {
@@ -103,6 +104,7 @@ export type TestCaseDB = {
   steps_to_reproduce: string
   project_id: string
   suite_id?: string
+  position: number
   created_at: Date
   updated_at: Date
   automation_script?: {
@@ -387,6 +389,7 @@ export const mapTestCaseFromDB = (db: TestCaseDB): TestCase => ({
   stepsToReproduce: db.steps_to_reproduce,
   projectId: db.project_id,
   suiteId: db.suite_id,
+  position: db.position,
   createdAt: db.created_at instanceof Date ? db.created_at : new Date(db.created_at),
   updatedAt: db.updated_at instanceof Date ? db.updated_at : new Date(db.updated_at),
   automationScript: db.automation_script ? {
@@ -421,6 +424,7 @@ export const mapTestCaseToDB = (tc: TestCase): TestCaseDB => ({
   steps_to_reproduce: tc.stepsToReproduce,
   project_id: tc.projectId,
   suite_id: tc.suiteId,
+  position: tc.position,
   created_at: tc.createdAt,
   updated_at: tc.updatedAt,
   automation_script: tc.automationScript ? {
