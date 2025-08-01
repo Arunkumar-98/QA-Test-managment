@@ -485,6 +485,28 @@ export function TestCaseTable({
   const userOrderRef = React.useRef<string[]>([])
   const isInitializedRef = React.useRef(false)
 
+  // Get localStorage key for this project
+  const getStorageKey = () => `testCaseOrder_${currentProject}`
+
+  // Load user order from localStorage
+  const loadUserOrder = () => {
+    try {
+      const stored = localStorage.getItem(getStorageKey())
+      return stored ? JSON.parse(stored) : []
+    } catch (error) {
+      console.warn('Failed to load user order from localStorage:', error)
+      return []
+    }
+  }
+
+  // Save user order to localStorage
+  const saveUserOrder = (order: string[]) => {
+    try {
+      localStorage.setItem(getStorageKey(), JSON.stringify(order))
+    } catch (error) {
+      console.warn('Failed to save user order to localStorage:', error)
+    }
+  }
 
   // DnD sensors
   const sensors = useSensors(
@@ -507,11 +529,14 @@ export function TestCaseTable({
       return
     }
 
+    // Load user order from localStorage
+    const storedOrder = loadUserOrder()
+    
     // If we have a user-defined order, use it to sort the test cases
-    if (userOrderRef.current.length > 0 && isInitializedRef.current) {
+    if (storedOrder.length > 0 && isInitializedRef.current) {
       const orderedTestCases = [...testCases].sort((a, b) => {
-        const aIndex = userOrderRef.current.indexOf(a.id)
-        const bIndex = userOrderRef.current.indexOf(b.id)
+        const aIndex = storedOrder.indexOf(a.id)
+        const bIndex = storedOrder.indexOf(b.id)
         
         // If both are in user order, sort by user order
         if (aIndex !== -1 && bIndex !== -1) {
@@ -527,13 +552,16 @@ export function TestCaseTable({
       })
       
       setSortedTestCases(orderedTestCases)
+      userOrderRef.current = storedOrder
     } else {
       // First time loading, use the original order and set up user order
       setSortedTestCases(testCases)
-      userOrderRef.current = testCases.map(tc => tc.id)
+      const newOrder = testCases.map(tc => tc.id)
+      userOrderRef.current = newOrder
+      saveUserOrder(newOrder) // Save to localStorage
       isInitializedRef.current = true
     }
-  }, [testCases]) // Only depend on testCases
+  }, [testCases, currentProject]) // Added currentProject dependency
 
   // Handle drag end
   const handleDragEnd = (event: DragEndEvent) => {
@@ -547,7 +575,9 @@ export function TestCaseTable({
         const newOrder = arrayMove(items, oldIndex, newIndex)
         
         // Update user order to match the new arrangement
-        userOrderRef.current = newOrder.map(item => item.id)
+        const newOrderIds = newOrder.map(item => item.id)
+        userOrderRef.current = newOrderIds
+        saveUserOrder(newOrderIds) // Save to localStorage
         
         return newOrder
       })
@@ -561,7 +591,9 @@ export function TestCaseTable({
 
   // Reset to original order
   const resetOrder = () => {
-    userOrderRef.current = testCases.map(tc => tc.id)
+    const newOrder = testCases.map(tc => tc.id)
+    userOrderRef.current = newOrder
+    saveUserOrder(newOrder) // Save to localStorage
     setSortedTestCases(testCases)
     toast({
       title: "Order Reset",
