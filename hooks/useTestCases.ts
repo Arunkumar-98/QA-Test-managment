@@ -91,7 +91,13 @@ export const useTestCases = (currentProjectId: string) => {
   const updateTestCase = useCallback(async (id: string, updates: Partial<TestCase>) => {
     try {
       const updated = await testCaseService.update(id, updates)
-      setTestCases(prev => prev.map(tc => tc.id === id ? updated : tc))
+      setTestCases(prev => prev.map(tc => {
+        if (tc.id === id) {
+          // Preserve the original updated_at to prevent reordering
+          return { ...updated, updatedAt: tc.updatedAt }
+        }
+        return tc
+      }))
       toast({
         title: "Success",
         description: "Test case updated successfully",
@@ -154,7 +160,13 @@ export const useTestCases = (currentProjectId: string) => {
   const updateTestCaseStatus = useCallback(async (id: string, status: TestCase["status"]) => {
     try {
       await testCaseService.update(id, { status })
-      setTestCases(prev => prev.map(tc => tc.id === id ? { ...tc, status } : tc))
+      setTestCases(prev => prev.map(tc => {
+        if (tc.id === id) {
+          // Preserve the original updated_at to prevent reordering
+          return { ...tc, status, updatedAt: tc.updatedAt }
+        }
+        return tc
+      }))
     } catch (error) {
       console.error('Error updating test case status:', error)
       toast({
@@ -171,7 +183,13 @@ export const useTestCases = (currentProjectId: string) => {
 
     try {
       await Promise.all(selectedIds.map(id => testCaseService.update(id, { status })))
-      setTestCases(prev => prev.map(tc => selectedTestCases.has(tc.id) ? { ...tc, status } : tc))
+      setTestCases(prev => prev.map(tc => {
+        if (selectedTestCases.has(tc.id)) {
+          // Preserve the original updated_at to prevent reordering
+          return { ...tc, status, updatedAt: tc.updatedAt }
+        }
+        return tc
+      }))
       toast({
         title: "Success",
         description: `${selectedIds.length} test case(s) status updated to ${status}`,
