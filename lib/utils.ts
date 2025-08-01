@@ -12,14 +12,32 @@ export const generateId = (): string => {
   return Math.random().toString(36).substr(2, 9)
 }
 
-export const formatTimestamp = (timestamp: Date): string => {
-  return new Intl.DateTimeFormat('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  }).format(timestamp)
+export const formatTimestamp = (timestamp: Date | string | null | undefined): string => {
+  try {
+    // Handle null, undefined, or invalid values
+    if (!timestamp) {
+      return 'N/A'
+    }
+
+    // Convert string to Date if needed
+    const date = timestamp instanceof Date ? timestamp : new Date(timestamp)
+    
+    // Check if the date is valid
+    if (isNaN(date.getTime())) {
+      return 'Invalid Date'
+    }
+
+    return new Intl.DateTimeFormat('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }).format(date)
+  } catch (error) {
+    console.error('Error formatting timestamp:', error, 'Timestamp:', timestamp)
+    return 'Invalid Date'
+  }
 }
 
 export const getStatusBadgeVariant = (status: string) => {

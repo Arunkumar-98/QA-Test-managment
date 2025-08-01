@@ -28,7 +28,8 @@ import {
   ChevronUp,
   History,
   GripVertical,
-  Sparkles
+  Sparkles,
+  RefreshCw
 } from 'lucide-react'
 import { TestCase, TestCaseStatus, TestCasePriority, TestCaseCategory } from '@/types/qa-types'
 import { SavedFilter } from '@/hooks/useSearchAndFilter'
@@ -479,6 +480,10 @@ export function TestCaseTable({
   const [pastedText, setPastedText] = useState('')
   const [parsedTestCase, setParsedTestCase] = useState<Partial<TestCase> | null>(null)
   const [isAIProcessing, setIsAIProcessing] = useState(false)
+  
+  // Use ref to track user order without causing re-renders
+  const userOrderRef = React.useRef<string[]>([])
+  const isInitializedRef = React.useRef(false)
 
 
   // DnD sensors
@@ -493,10 +498,42 @@ export function TestCaseTable({
     })
   )
 
-  // Update sorted test cases when testCases prop changes
+  // Update sorted test cases when testCases prop changes, but preserve user order
   useEffect(() => {
-    setSortedTestCases(testCases)
-  }, [testCases])
+    if (testCases.length === 0) {
+      setSortedTestCases([])
+      userOrderRef.current = []
+      isInitializedRef.current = false
+      return
+    }
+
+    // If we have a user-defined order, use it to sort the test cases
+    if (userOrderRef.current.length > 0 && isInitializedRef.current) {
+      const orderedTestCases = [...testCases].sort((a, b) => {
+        const aIndex = userOrderRef.current.indexOf(a.id)
+        const bIndex = userOrderRef.current.indexOf(b.id)
+        
+        // If both are in user order, sort by user order
+        if (aIndex !== -1 && bIndex !== -1) {
+          return aIndex - bIndex
+        }
+        
+        // If only one is in user order, prioritize it
+        if (aIndex !== -1) return -1
+        if (bIndex !== -1) return 1
+        
+        // If neither is in user order, maintain original order
+        return 0
+      })
+      
+      setSortedTestCases(orderedTestCases)
+    } else {
+      // First time loading, use the original order and set up user order
+      setSortedTestCases(testCases)
+      userOrderRef.current = testCases.map(tc => tc.id)
+      isInitializedRef.current = true
+    }
+  }, [testCases]) // Only depend on testCases
 
   // Handle drag end
   const handleDragEnd = (event: DragEndEvent) => {
@@ -507,7 +544,12 @@ export function TestCaseTable({
         const oldIndex = items.findIndex((item) => item.id === active.id)
         const newIndex = items.findIndex((item) => item.id === over?.id)
 
-        return arrayMove(items, oldIndex, newIndex)
+        const newOrder = arrayMove(items, oldIndex, newIndex)
+        
+        // Update user order to match the new arrangement
+        userOrderRef.current = newOrder.map(item => item.id)
+        
+        return newOrder
       })
 
       toast({
@@ -515,6 +557,16 @@ export function TestCaseTable({
         description: "The test case order has been updated.",
       })
     }
+  }
+
+  // Reset to original order
+  const resetOrder = () => {
+    userOrderRef.current = testCases.map(tc => tc.id)
+    setSortedTestCases(testCases)
+    toast({
+      title: "Order Reset",
+      description: "Test cases have been reset to their original order.",
+    })
   }
 
   const handlePasteData = () => {
@@ -840,6 +892,18 @@ export function TestCaseTable({
               >
                 <GripVertical className="w-4 h-4" />
                 <span className="font-medium">Drag & Drop</span>
+              </Button>
+              
+              {/* Reset Order Button */}
+              <Button 
+                variant="outline" 
+                size="lg"
+                onClick={resetOrder}
+                className="flex items-center gap-2.5 h-12 px-4 bg-white/80 backdrop-blur-sm border-slate-200/60 hover:border-orange-500/60 hover:bg-orange-50/50 transition-all duration-200"
+                title="Reset test case order to original arrangement"
+              >
+                <RefreshCw className="w-4 h-4 text-slate-600" />
+                <span className="font-medium text-slate-700">Reset Order</span>
               </Button>
               
               {/* Filters Toggle */}
