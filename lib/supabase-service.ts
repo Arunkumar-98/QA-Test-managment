@@ -64,8 +64,22 @@ export const testCaseService = {
   },
 
   async create(testCase: CreateTestCaseInput): Promise<TestCase> {
-    console.log('🔍 Creating test case with data:', testCase)
+    // First, get the next available position for this project
+    let position = testCase.position || 1
     
+    if (!testCase.position) {
+      const { data: existingTestCases } = await supabase
+        .from('test_cases')
+        .select('position')
+        .eq('project_id', testCase.projectId)
+        .order('position', { ascending: false })
+        .limit(1)
+      
+      if (existingTestCases && existingTestCases.length > 0) {
+        position = existingTestCases[0].position + 1
+      }
+    }
+
     const dbData: Omit<TestCaseDB, 'id'> = {
       test_case: testCase.testCase,
       description: testCase.description,
@@ -82,9 +96,22 @@ export const testCaseService = {
       platform: testCase.platform,
       steps_to_reproduce: testCase.stepsToReproduce,
       project_id: testCase.projectId,
-      suite_id: testCase.suiteId || undefined, // Convert empty string to undefined
+      suite_id: testCase.suiteId,
+      position: position,
       created_at: new Date(),
-      updated_at: new Date()
+      updated_at: new Date(),
+      automation_script: testCase.automationScript ? {
+        path: testCase.automationScript.path,
+        type: testCase.automationScript.type,
+        command: testCase.automationScript.command,
+        headless_mode: testCase.automationScript.headlessMode,
+        embedded_code: testCase.automationScript.embeddedCode,
+        last_run: testCase.automationScript.lastRun,
+        last_result: testCase.automationScript.lastResult,
+        execution_time: testCase.automationScript.executionTime,
+        output: testCase.automationScript.output,
+        error: testCase.automationScript.error
+      } : undefined
     }
 
     console.log('📊 Database data to insert:', dbData)
@@ -96,7 +123,14 @@ export const testCaseService = {
       .single()
     
     if (error) {
-      console.error('❌ Database error creating test case:', error)
+      console.error('❌ Database error creating test case:', {
+        error,
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+        data: dbData
+      })
       throw error
     }
     
@@ -123,6 +157,7 @@ export const testCaseService = {
     if (updates.stepsToReproduce !== undefined) dbUpdates.steps_to_reproduce = updates.stepsToReproduce
     if (updates.projectId !== undefined) dbUpdates.project_id = updates.projectId
     if (updates.suiteId !== undefined) dbUpdates.suite_id = updates.suiteId || undefined
+    if (updates.position !== undefined) dbUpdates.position = updates.position
     if (updates.automationScript !== undefined) {
       dbUpdates.automation_script = updates.automationScript ? {
         path: updates.automationScript.path,
@@ -153,21 +188,20 @@ export const testCaseService = {
   },
 
   async delete(id: string): Promise<void> {
-    const { error } = await supabase
-      .from('test_cases')
-      .delete()
-      .eq('id', id)
+    // Use the position-aware delete function to maintain proper ordering
+    const { error } = await supabase.rpc('delete_test_case_and_reorder', {
+      p_test_case_id: id
+    })
     
     if (error) throw error
   },
 
   async deleteMultiple(ids: string[]): Promise<void> {
-    const { error } = await supabase
-      .from('test_cases')
-      .delete()
-      .in('id', ids)
-    
-    if (error) throw error
+    // For multiple deletions, we need to handle position reordering
+    // Delete them one by one to maintain proper ordering
+    for (const id of ids) {
+      await this.delete(id)
+    }
   },
 
   async reorderTestCase(testCaseId: string, newPosition: number): Promise<void> {

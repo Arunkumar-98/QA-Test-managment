@@ -3,6 +3,7 @@ import { TestCase } from '@/types/qa-types'
 import { generateId } from '@/lib/utils'
 import { toast } from '@/hooks/use-toast'
 import { testCaseService } from '@/lib/supabase-service'
+import { CreateTestCaseInput } from '@/types/qa-types'
 
 
 export const useTestCases = (currentProjectId: string) => {
@@ -48,7 +49,7 @@ export const useTestCases = (currentProjectId: string) => {
   }, [currentProjectId])
 
   const addTestCase = useCallback(async (testCase: Partial<TestCase> & { testCase: string; description: string; status: TestCase["status"] }) => {
-    const newTestCase: Omit<TestCase, 'id'> = {
+    const newTestCase: CreateTestCaseInput = {
       testCase: testCase.testCase,
       description: testCase.description,
       status: testCase.status,
@@ -65,8 +66,7 @@ export const useTestCases = (currentProjectId: string) => {
       stepsToReproduce: testCase.stepsToReproduce || "",
       projectId: testCase.projectId || currentProjectId,
       suiteId: testCase.suiteId,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      automationScript: testCase.automationScript
     }
 
     try {
@@ -78,7 +78,12 @@ export const useTestCases = (currentProjectId: string) => {
       })
       return created
     } catch (error) {
-      console.error('Error adding test case:', error)
+      console.error('Error adding test case:', {
+        error,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        newTestCase,
+        currentProjectId
+      })
       toast({
         title: "Error",
         description: "Failed to add test case",

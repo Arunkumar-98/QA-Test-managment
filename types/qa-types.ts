@@ -363,7 +363,7 @@ export type TestSuiteShareDB = {
 }
 
 // Utility types for database operations
-export type CreateTestCaseInput = Omit<TestCase, 'id' | 'createdAt' | 'updatedAt'>
+export type CreateTestCaseInput = Omit<TestCase, 'id' | 'createdAt' | 'updatedAt' | 'position'>
 export type CreateTestSuiteInput = Omit<TestSuite, 'id' | 'createdAt' | 'updatedAt' | 'totalTests' | 'passedTests' | 'failedTests' | 'pendingTests'>
 export type CreateDocumentInput = Omit<Document, 'id' | 'createdAt'>
 export type CreateImportantLinkInput = Omit<ImportantLink, 'id' | 'createdAt'>
