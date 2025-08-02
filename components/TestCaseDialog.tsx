@@ -203,167 +203,59 @@ export function TestCaseDialog({
           </DialogHeader>
           
           {isViewMode ? (
-            // NEW: Minimal Single Unified View Mode Layout
+            // Updated View Mode Layout to match the image design
             <div className="py-3">
-              {/* Single Unified Card - All Details */}
-              <div className="bg-white rounded-xl border border-slate-200 p-5">
-                {/* Header Section */}
-                <div className="flex items-start justify-between mb-5 pb-4 border-b border-slate-100">
+              <div className="bg-white rounded-xl border border-slate-200 p-6">
+                {/* Header with Title and Status */}
+                <div className="flex items-start justify-between mb-6 pb-4 border-b border-slate-100">
                   <div className="flex-1 pr-4">
                     <h2 className="text-xl font-bold text-slate-900 mb-2 leading-tight">{formData.testCase}</h2>
-                    <p className="text-slate-600 text-sm leading-relaxed">{formData.description}</p>
                   </div>
-                  <div className="flex flex-col items-end gap-2">
-                    <div className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusBadgeStyle(formData.status)}`}>
+                  <div className="flex items-center gap-2">
+                    <div className="px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">
                       {formData.status}
                     </div>
-                    {formData.priority && (
-                      <div className={`px-3 py-1 rounded-full text-xs font-medium border ${getPriorityBadgeStyle(formData.priority)}`}>
-                        {formData.priority}
-                      </div>
-                    )}
                   </div>
                 </div>
                 
-                {/* Quick Info Grid */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5 pb-4 border-b border-slate-100">
-                  {formData.category && (
-                    <div className="flex items-center gap-2">
-                      <Layers className="w-3 h-3 text-slate-400" />
-                      <div>
-                        <span className="text-xs font-medium text-slate-400 uppercase tracking-wide">Category</span>
-                        <p className="text-sm font-medium text-slate-900">{formData.category}</p>
-                      </div>
-                    </div>
-                  )}
-                  {formData.platform && (
-                    <div className="flex items-center gap-2">
-                      <Globe className="w-3 h-3 text-slate-400" />
-                      <div>
-                        <span className="text-xs font-medium text-slate-400 uppercase tracking-wide">Platform</span>
-                        <p className="text-sm font-medium text-slate-900">{formData.platform}</p>
-                      </div>
-                    </div>
-                  )}
-                  {formData.assignedTester && (
-                    <div className="flex items-center gap-2">
-                      <User className="w-3 h-3 text-slate-400" />
-                      <div>
-                        <span className="text-xs font-medium text-slate-400 uppercase tracking-wide">Assigned To</span>
-                        <p className="text-sm font-medium text-slate-900">{formData.assignedTester}</p>
-                      </div>
-                    </div>
-                  )}
-                  {formData.executionDate && (
-                    <div className="flex items-center gap-2">
-                      <Calendar className="w-3 h-3 text-slate-400" />
-                      <div>
-                        <span className="text-xs font-medium text-slate-400 uppercase tracking-wide">Execution Date</span>
-                        <p className="text-sm font-medium text-slate-900">{formData.executionDate}</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                {/* Description Section */}
+                {formData.description && (
+                  <div className="mb-6">
+                    <h3 className="text-base font-semibold text-slate-900 mb-3">DESCRIPTION</h3>
+                    <p className="text-slate-700 leading-relaxed">{formData.description}</p>
+                  </div>
+                )}
 
-                {/* Test Steps & Expected Result */}
-                {(formData.stepsToReproduce || formData.expectedResult) && (
-                  <div className="mb-5 pb-4 border-b border-slate-100">
-                    <h3 className="text-base font-semibold text-slate-900 mb-3 flex items-center gap-2">
-                      <div className="w-5 h-5 bg-blue-100 rounded-md flex items-center justify-center">
-                        <Target className="w-3 h-3 text-blue-600" />
-                      </div>
-                      Test Steps & Expected Result
-                    </h3>
-                    
-                    <div className="space-y-3">
-                      {formData.stepsToReproduce && (
-                        <div>
-                          <h4 className="text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
-                            <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
-                            Steps to Reproduce
-                          </h4>
-                          <div className="bg-blue-50 rounded-md p-3 text-sm text-slate-700 whitespace-pre-wrap leading-relaxed border border-blue-100">
-                            {formatTestSteps(formData.stepsToReproduce)}
+                {/* Steps to Reproduce Section */}
+                {formData.stepsToReproduce && (
+                  <div className="mb-6">
+                    <h3 className="text-base font-semibold text-slate-900 mb-3">STEPS TO REPRODUCE</h3>
+                    <div className="space-y-2">
+                      {formatTestSteps(formData.stepsToReproduce).split('\n').map((step, index) => (
+                        step.trim() && (
+                          <div key={index} className="flex items-start gap-3">
+                            <div className="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0 mt-0.5">
+                              {index + 1}
+                            </div>
+                            <p className="text-slate-700 leading-relaxed">{step.trim()}</p>
                           </div>
-                        </div>
-                      )}
-                      
-                      {formData.expectedResult && (
-                        <div>
-                          <h4 className="text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
-                            <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
-                            Expected Result
-                          </h4>
-                          <div className="bg-green-50 rounded-md p-3 text-sm text-slate-700 whitespace-pre-wrap leading-relaxed border border-green-100">
-                            {formatExpectedResult(formData.expectedResult)}
-                          </div>
-                        </div>
-                      )}
+                        )
+                      ))}
                     </div>
                   </div>
                 )}
 
-                {/* Additional Details */}
-                {(formData.prerequisites || formData.actualResult || formData.notes || formData.environment) && (
-                  <div>
-                    <h3 className="text-base font-semibold text-slate-900 mb-3 flex items-center gap-2">
-                      <div className="w-5 h-5 bg-slate-100 rounded-md flex items-center justify-center">
-                        <Info className="w-3 h-3 text-slate-600" />
-                      </div>
-                      Additional Details
-                    </h3>
-                    
-                    <div className="space-y-3">
-                      {formData.prerequisites && (
-                        <div>
-                          <h4 className="text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
-                            <Settings className="w-3 h-3 text-slate-400" />
-                            Prerequisites
-                          </h4>
-                          <div className="bg-slate-50 rounded-md p-3 text-sm text-slate-700 whitespace-pre-wrap leading-relaxed border border-slate-200">
-                            {formData.prerequisites}
-                          </div>
-                        </div>
-                      )}
-                      
-                      {formData.actualResult && (
-                        <div>
-                          <h4 className="text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
-                            <CheckCircle className="w-3 h-3 text-slate-400" />
-                            Actual Result
-                          </h4>
-                          <div className="bg-slate-50 rounded-md p-3 text-sm text-slate-700 whitespace-pre-wrap leading-relaxed border border-slate-200">
-                            {formData.actualResult}
-                          </div>
-                        </div>
-                      )}
-                      
-                      {formData.notes && (
-                        <div>
-                          <h4 className="text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
-                            <FileText className="w-3 h-3 text-slate-400" />
-                            Notes
-                          </h4>
-                          <div className="bg-slate-50 rounded-md p-3 text-sm text-slate-700 whitespace-pre-wrap leading-relaxed border border-slate-200">
-                            {formData.notes}
-                          </div>
-                        </div>
-                      )}
-                      
-                      {formData.environment && (
-                        <div>
-                          <h4 className="text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
-                            <Globe className="w-3 h-3 text-slate-400" />
-                            Environment
-                          </h4>
-                          <div className="bg-slate-50 rounded-md p-3 text-sm text-slate-700 border border-slate-200">
-                            {formData.environment}
-                          </div>
-                        </div>
-                      )}
+                {/* Expected Result Section */}
+                {formData.expectedResult && (
+                  <div className="mb-6">
+                    <h3 className="text-base font-semibold text-slate-900 mb-3">EXPECTED RESULT</h3>
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                      <p className="text-slate-700 leading-relaxed">{formatExpectedResult(formData.expectedResult)}</p>
                     </div>
                   </div>
                 )}
+
+
               </div>
             </div>
           ) : (
@@ -595,56 +487,40 @@ export function TestCaseDialog({
           )}
 
           <DialogFooter className="pt-4 border-t border-slate-200">
-            <div className="flex items-center justify-between w-full">
-              <div className="flex items-center gap-2">
-                {isViewMode && onEdit && (
-                  <Button
-                    type="button"
-                    onClick={onEdit}
-                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm"
-                  >
-                    <Edit3 className="w-4 h-4" />
-                    Edit Test Case
-                  </Button>
-                )}
-                {isViewMode && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setIsStatusHistoryOpen(true)}
-                    className="flex items-center gap-2 text-sm"
-                  >
-                    <History className="w-4 h-4" />
-                    Status History
-                  </Button>
-                )}
-              </div>
-              
-              <div className="flex items-center gap-2">
+            <div className="flex items-center justify-end gap-3 w-full">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onClose}
+                className="text-sm bg-gray-100 hover:bg-gray-200 border-gray-300"
+              >
+                Close
+              </Button>
+              {isViewMode && onEdit && (
                 <Button
                   type="button"
-                  variant="outline"
-                  onClick={onClose}
-                  className="text-sm"
+                  onClick={onEdit}
+                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm"
                 >
-                  Close
+                  <Edit3 className="w-4 h-4" />
+                  Edit Test Case
                 </Button>
-                {!isViewMode && (
-                  <Button
-                    type="submit"
-                    onClick={handleSubmit}
-                    disabled={isSubmitting}
-                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm"
-                  >
-                    {isSubmitting ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Save className="w-4 h-4" />
-                    )}
-                    {testCase ? "Update Test Case" : "Create Test Case"}
-                  </Button>
-                )}
-              </div>
+              )}
+              {!isViewMode && (
+                <Button
+                  type="submit"
+                  onClick={handleSubmit}
+                  disabled={isSubmitting}
+                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm"
+                >
+                  {isSubmitting ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4" />
+                  )}
+                  {testCase ? "Update Test Case" : "Create Test Case"}
+                </Button>
+              )}
             </div>
           </DialogFooter>
         </DialogContent>
