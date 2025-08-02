@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "./ui/dialog"
 import { TestCase, TestSuite } from "@/types/qa-types"
 import { STATUS_OPTIONS, PRIORITY_OPTIONS, PLATFORM_OPTIONS, CATEGORY_OPTIONS, ENVIRONMENT_OPTIONS } from "@/lib/constants"
-import { FileText, Save, X, Edit3, Eye, Loader2, CheckCircle, AlertCircle, History, User, Calendar, Globe, Layers, Target, Clock, Settings, Info } from "lucide-react"
+import { FileText, Save, X, Edit3, Eye, Loader2, CheckCircle, AlertCircle, History, User, Calendar, Globe, Layers, Target, Clock, Settings, Info, Bug } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 import { getStatusBadgeVariant, getStatusBadgeStyle, getPriorityBadgeVariant, getPriorityBadgeStyle, formatTestSteps, formatExpectedResult } from "@/lib/utils"
 import { StatusHistoryDialog } from './StatusHistoryDialog'
@@ -56,6 +56,21 @@ export function TestCaseDialog({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isStatusHistoryOpen, setIsStatusHistoryOpen] = useState(false)
+
+  // Status configuration function
+  const getStatusConfig = (status: string) => {
+    const configs = {
+      pending: { color: 'bg-yellow-100 text-yellow-800 border-yellow-200', icon: Clock, label: 'Pending' },
+      passed: { color: 'bg-green-100 text-green-800 border-green-200', icon: CheckCircle, label: 'Passed' },
+      failed: { color: 'bg-red-100 text-red-800 border-red-200', icon: AlertCircle, label: 'Failed' },
+      blocked: { color: 'bg-gray-100 text-gray-800 border-gray-200', icon: Bug, label: 'Blocked' },
+      'In Progress': { color: 'bg-blue-100 text-blue-800 border-blue-200', icon: Clock, label: 'In Progress' },
+      'Pass': { color: 'bg-green-100 text-green-800 border-green-200', icon: CheckCircle, label: 'Pass' },
+      'Fail': { color: 'bg-red-100 text-red-800 border-red-200', icon: AlertCircle, label: 'Fail' },
+      'Blocked': { color: 'bg-gray-100 text-gray-800 border-gray-200', icon: Bug, label: 'Blocked' }
+    };
+    return configs[status.toLowerCase() as keyof typeof configs] || configs.pending;
+  };
 
   useEffect(() => {
     // Reset form data when modal opens/closes or test case changes
@@ -203,17 +218,24 @@ export function TestCaseDialog({
           </DialogHeader>
           
           {isViewMode ? (
-            // Updated View Mode Layout to match the image design
+            // Updated View Mode Layout with improved design
             <div className="py-3">
               <div className="bg-white rounded-xl border border-slate-200 p-6">
                 {/* Header with Title and Status */}
                 <div className="flex items-start justify-between mb-6 pb-4 border-b border-slate-100">
                   <div className="flex-1 pr-4">
-                    <h2 className="text-xl font-bold text-slate-900 mb-2 leading-tight">{formData.testCase}</h2>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">
-                      {formData.status}
+                    <div className="flex items-center gap-3 mb-2">
+                      <h2 className="text-xl font-semibold text-slate-900 leading-tight">{formData.testCase}</h2>
+                      {(() => {
+                        const statusConfig = getStatusConfig(formData.status);
+                        const StatusIcon = statusConfig.icon;
+                        return (
+                          <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium border ${statusConfig.color}`}>
+                            <StatusIcon size={14} />
+                            {statusConfig.label}
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
                 </div>
@@ -221,34 +243,34 @@ export function TestCaseDialog({
                 {/* Description Section */}
                 {formData.description && (
                   <div className="mb-6">
-                    <h3 className="text-base font-semibold text-slate-900 mb-3">DESCRIPTION</h3>
-                    <p className="text-slate-700 leading-relaxed">{formData.description}</p>
+                    <h3 className="text-sm font-semibold text-slate-700 mb-2 uppercase tracking-wide">Description</h3>
+                    <p className="text-slate-600 leading-relaxed">{formData.description}</p>
                   </div>
                 )}
 
                 {/* Steps to Reproduce Section */}
                 {formData.stepsToReproduce && (
                   <div className="mb-6">
-                    <h3 className="text-base font-semibold text-slate-900 mb-3">STEPS TO REPRODUCE</h3>
-                    <div className="space-y-2">
+                    <h3 className="text-sm font-semibold text-slate-700 mb-3 uppercase tracking-wide">Steps to Reproduce</h3>
+                    <ol className="space-y-2">
                       {formatTestSteps(formData.stepsToReproduce).split('\n').map((step, index) => (
                         step.trim() && (
-                          <div key={index} className="flex items-start gap-3">
-                            <div className="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0 mt-0.5">
+                          <li key={index} className="flex gap-3">
+                            <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-sm font-medium">
                               {index + 1}
-                            </div>
-                            <p className="text-slate-700 leading-relaxed">{step.trim()}</p>
-                          </div>
+                            </span>
+                            <span className="text-slate-600 leading-relaxed">{step.trim()}</span>
+                          </li>
                         )
                       ))}
-                    </div>
+                    </ol>
                   </div>
                 )}
 
                 {/* Expected Result Section */}
                 {formData.expectedResult && (
-                  <div className="mb-6">
-                    <h3 className="text-base font-semibold text-slate-900 mb-3">EXPECTED RESULT</h3>
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-700 mb-2 uppercase tracking-wide">Expected Result</h3>
                     <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                       <p className="text-slate-700 leading-relaxed">{formatExpectedResult(formData.expectedResult)}</p>
                     </div>
@@ -486,13 +508,13 @@ export function TestCaseDialog({
             </form>
           )}
 
-          <DialogFooter className="pt-4 border-t border-slate-200">
+          <DialogFooter className="pt-4 border-t border-slate-200 bg-slate-50">
             <div className="flex items-center justify-end gap-3 w-full">
               <Button
                 type="button"
                 variant="outline"
                 onClick={onClose}
-                className="text-sm bg-gray-100 hover:bg-gray-200 border-gray-300"
+                className="text-sm text-slate-600 hover:text-slate-800 transition-colors"
               >
                 Close
               </Button>
@@ -500,7 +522,7 @@ export function TestCaseDialog({
                 <Button
                   type="button"
                   onClick={onEdit}
-                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm"
+                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors"
                 >
                   <Edit3 className="w-4 h-4" />
                   Edit Test Case
@@ -511,7 +533,7 @@ export function TestCaseDialog({
                   type="submit"
                   onClick={handleSubmit}
                   disabled={isSubmitting}
-                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm"
+                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors"
                 >
                   {isSubmitting ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
