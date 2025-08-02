@@ -15,9 +15,16 @@ export default function AuthCodeErrorPage() {
     error_description?: string
   }>({})
   const [isResending, setIsResending] = useState(false)
-  const { resendConfirmation } = useAuth()
+  const [isClient, setIsClient] = useState(false)
+  
+  // Only use auth context on client side
+  const authContext = isClient ? useAuth() : null
+  const resendConfirmation = authContext?.resendConfirmation
 
   useEffect(() => {
+    // Mark as client-side
+    setIsClient(true)
+    
     // Parse URL hash for error details
     const hash = window.location.hash
     if (hash) {
@@ -68,11 +75,15 @@ export default function AuthCodeErrorPage() {
       } catch (apiError) {
         console.log('API route failed, falling back to client method:', apiError)
         
-        // Fallback to original method
+              // Fallback to original method
+      if (resendConfirmation) {
         const { error } = await resendConfirmation(userEmail)
         if (error) {
           throw new Error(error.message || 'Failed to resend confirmation email')
         }
+      } else {
+        throw new Error('Authentication service not available')
+      }
       }
 
       toast({
