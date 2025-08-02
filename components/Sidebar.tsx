@@ -219,6 +219,10 @@ export function QASidebar({
     [projects, testSuites]
   )
 
+  // Separate regular projects from shared projects
+  const regularProjects = projectsWithStats.filter(project => !project.tags?.includes('Shared Project'))
+  const sharedProjects = projectsWithStats.filter(project => project.tags?.includes('Shared Project'))
+
   return (
     <div className="h-full bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900 border-r border-white/20 flex flex-col shadow-lg relative overflow-hidden">
       {/* Animated Background */}
@@ -282,7 +286,7 @@ export function QASidebar({
                   </div>
                   <div className="flex items-center space-x-2">
                     <Badge variant="secondary" className="bg-blue-500/20 text-blue-100 border-blue-400/30 flex-shrink-0 text-xs font-medium">
-                      {projects.length}
+                      {regularProjects.length}
                     </Badge>
                   </div>
                 </div>
@@ -290,8 +294,8 @@ export function QASidebar({
               <AccordionContent className="px-4 pb-3">
                 <div className="max-h-64 overflow-y-auto pr-2">
                   <div className="flex flex-col space-y-2.5">
-                    {projectsWithStats.length > 0 ? (
-                      projectsWithStats.map((project) => (
+                    {regularProjects.length > 0 ? (
+                      regularProjects.map((project) => (
                         <div
                           key={project.id}
                           className={`group relative p-3 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 hover:border-white/40 hover:shadow-lg transition-all duration-200 cursor-pointer ${currentProject === project.name ? 'ring-2 ring-blue-400/50 border-blue-400/50 bg-blue-500/20' : 'hover:bg-white/20'}`}
@@ -367,6 +371,70 @@ export function QASidebar({
                 </div>
               </AccordionContent>
             </AccordionItem>
+
+            {/* Shared Projects Section */}
+            {sharedProjects.length > 0 && (
+              <AccordionItem value="shared-projects" className="border-none">
+                <AccordionTrigger className="px-4 py-3 hover:bg-white/10 rounded-lg transition-all duration-200 group text-white">
+                  <div className="flex items-center justify-between w-full pr-2">
+                    <div className="flex items-center space-x-3 min-w-0">
+                      <div className="w-6 h-6 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm group-hover:shadow-md transition-shadow">
+                        <Share2 className="w-3.5 h-3.5 text-white" />
+                      </div>
+                      <span className="text-sm font-semibold text-white truncate">Shared Projects</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Badge variant="secondary" className="bg-green-500/20 text-green-100 border-green-400/30 flex-shrink-0 text-xs font-medium">
+                        {sharedProjects.length}
+                      </Badge>
+                    </div>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-3">
+                  <div className="max-h-64 overflow-y-auto pr-2">
+                    <div className="flex flex-col space-y-2.5">
+                      {sharedProjects.map((project) => (
+                        <div
+                          key={project.id}
+                          className={`group relative p-3 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 hover:border-white/40 hover:shadow-lg transition-all duration-200 cursor-pointer ${currentProject === project.name ? 'ring-2 ring-green-400/50 border-green-400/50 bg-green-400/20' : 'hover:bg-white/20'}`}
+                          onClick={() => onProjectChange(project.name)}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2.5 min-w-0 flex-1">
+                              <div className="w-6 h-6 bg-gradient-to-br from-green-500/20 to-green-600/30 rounded-md flex items-center justify-center flex-shrink-0">
+                                <Share2 className="w-3.5 h-3.5 text-green-300" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h4 className="font-medium text-sm text-white truncate">{project.name}</h4>
+                                <p className="text-xs text-green-200 truncate">
+                                  {project.testSuiteCount} test suites • Shared
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                              {currentProject === project.name && (
+                                <div className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0"></div>
+                              )}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  onRemoveProject(project.name)
+                                }}
+                                className="h-6 w-6 p-0 hover:bg-red-500/20 hover:text-red-300 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                              >
+                                <X className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            )}
 
 
 

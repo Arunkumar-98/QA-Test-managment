@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import { SharedProjectAccess, ProjectPermissions } from '@/types/qa-types'
 import { projectShareService } from '@/lib/supabase-service'
 import { projectService } from '@/lib/supabase-service'
+import { supabase } from '@/lib/supabase'
 import { TestCaseTable } from '@/components/TestCaseTable'
 import { CommentsDialog } from '@/components/CommentsDialog'
 import { TestCaseDialog } from '@/components/TestCaseDialog'
@@ -14,7 +15,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, Eye, MessageSquare, Edit, Plus, Download, Lock, AlertTriangle, CheckCircle, LogIn, User } from 'lucide-react'
+import { Loader2, Eye, MessageSquare, Edit, Plus, Download, Lock, AlertTriangle, CheckCircle, LogIn, User, Save } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { TestCase, TestCaseStatus } from '@/types/qa-types'
 import { useTestCases } from '@/hooks/useTestCases'
@@ -34,6 +35,7 @@ function SharedProjectContent() {
   const [viewingTestCase, setViewingTestCase] = useState<TestCase | null>(null)
   const [isPasteDialogOpen, setIsPasteDialogOpen] = useState(false)
   const [showLoginPrompt, setShowLoginPrompt] = useState(false)
+  const [isSavingProject, setIsSavingProject] = useState(false)
   
   const { toast } = useToast()
 
@@ -218,6 +220,51 @@ function SharedProjectContent() {
     }
   }
 
+  const handleSaveToMyProjects = async () => {
+    if (!user) {
+      setShowLoginPrompt(true)
+      return
+    }
+
+    setIsSavingProject(true)
+    try {
+      const response = await fetch('/api/save-shared-project', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+        },
+        body: JSON.stringify({ token })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to save project')
+      }
+
+      toast({
+        title: "Project Saved!",
+        description: "The project has been saved to your account with the 'Shared Project' tag.",
+      })
+
+      // Redirect to the main app after a short delay
+      setTimeout(() => {
+        window.location.href = '/'
+      }, 2000)
+
+    } catch (error) {
+      console.error('Error saving project:', error)
+      toast({
+        title: "Error Saving Project",
+        description: error instanceof Error ? error.message : "Failed to save project to your account.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSavingProject(false)
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
@@ -280,6 +327,25 @@ function SharedProjectContent() {
                 <CheckCircle className="w-4 h-4 mr-2" />
                 Shared Access
               </Badge>
+              {user && (
+                <Button 
+                  onClick={handleSaveToMyProjects}
+                  disabled={isSavingProject}
+                  className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-medium shadow-lg"
+                >
+                  {isSavingProject ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4 mr-2" />
+                      Save to My Projects
+                    </>
+                  )}
+                </Button>
+              )}
               {!user ? (
                 <Button 
                   onClick={() => window.location.href = '/'}

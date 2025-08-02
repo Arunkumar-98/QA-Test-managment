@@ -262,6 +262,7 @@ export type Project = {
   description?: string
   createdAt?: Date
   isActive?: boolean
+  tags?: string[]
 }
 
 // Database version of Project (snake_case)
@@ -272,6 +273,7 @@ export type ProjectDB = {
   created_at?: Date
   is_active?: boolean
   user_id?: string
+  tags?: string[]
 }
 
 export type ProjectShare = {
@@ -549,7 +551,8 @@ export const mapProjectFromDB = (db: ProjectDB): Project => ({
   name: db.name,
   description: db.description,
   createdAt: db.created_at,
-  isActive: db.is_active
+  isActive: db.is_active,
+  tags: db.tags || []
 })
 
 export const mapProjectToDB = (project: Project): ProjectDB => ({
@@ -557,7 +560,8 @@ export const mapProjectToDB = (project: Project): ProjectDB => ({
   name: project.name,
   description: project.description,
   created_at: project.createdAt,
-  is_active: project.isActive
+  is_active: project.isActive,
+  tags: project.tags
 })
 
 export const mapProjectShareFromDB = (db: ProjectShareDB): ProjectShare => ({
