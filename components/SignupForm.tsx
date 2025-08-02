@@ -138,7 +138,7 @@ export function SignupForm({ onSwitchToLogin, onSignupSuccess }: SignupFormProps
                 placeholder="Enter your full name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="pl-10 h-11 bg-white/10 border-white/20 text-white placeholder-white/90 focus:border-blue-400 focus:ring-blue-400/20 backdrop-blur-sm"
+                className="pl-10 h-11 bg-white/10 border-white/20 text-white placeholder-white focus:border-blue-400 focus:ring-blue-400/20"
                 disabled={isLoading}
               />
             </div>
@@ -156,7 +156,7 @@ export function SignupForm({ onSwitchToLogin, onSignupSuccess }: SignupFormProps
                 placeholder="Enter your email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="pl-10 h-11 bg-white/10 border-white/20 text-white placeholder-white/90 focus:border-blue-400 focus:ring-blue-400/20 backdrop-blur-sm"
+                className="pl-10 h-11 bg-white/10 border-white/20 text-white placeholder-white focus:border-blue-400 focus:ring-blue-400/20"
                 disabled={isLoading}
               />
             </div>
@@ -174,7 +174,7 @@ export function SignupForm({ onSwitchToLogin, onSignupSuccess }: SignupFormProps
                 placeholder="Create a strong password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="pl-10 pr-10 h-11 bg-white/10 border-white/20 text-white placeholder-white/90 focus:border-blue-400 focus:ring-blue-400/20 backdrop-blur-sm"
+                className="pl-10 pr-10 h-11 bg-white/10 border-white/20 text-white placeholder-white focus:border-blue-400 focus:ring-blue-400/20"
                 disabled={isLoading}
               />
               <button
@@ -203,7 +203,7 @@ export function SignupForm({ onSwitchToLogin, onSignupSuccess }: SignupFormProps
                 placeholder="Confirm your password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="pl-10 pr-10 h-11 bg-white/10 border-white/20 text-white placeholder-white/90 focus:border-blue-400 focus:ring-blue-400/20 backdrop-blur-sm"
+                className="pl-10 pr-10 h-11 bg-white/10 border-white/20 text-white placeholder-white focus:border-blue-400 focus:ring-blue-400/20"
                 disabled={isLoading}
               />
               <button

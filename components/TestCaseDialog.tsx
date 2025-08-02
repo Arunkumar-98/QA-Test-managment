@@ -233,7 +233,7 @@ export function TestCaseDialog({
                           <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium border ${statusConfig.color}`}>
                             <StatusIcon size={14} />
                             {statusConfig.label}
-                          </div>
+                  </div>
                         );
                       })()}
                     </div>
@@ -245,9 +245,9 @@ export function TestCaseDialog({
                   <div className="mb-6">
                     <h3 className="text-sm font-semibold text-slate-700 mb-2 uppercase tracking-wide">Description</h3>
                     <p className="text-slate-600 leading-relaxed">{formData.description}</p>
-                  </div>
-                )}
-
+                        </div>
+                      )}
+                      
                 {/* Steps to Reproduce Section */}
                 {formData.stepsToReproduce && (
                   <div className="mb-6">
@@ -518,31 +518,31 @@ export function TestCaseDialog({
               >
                 Close
               </Button>
-              {isViewMode && onEdit && (
-                <Button
-                  type="button"
-                  onClick={onEdit}
+                {isViewMode && onEdit && (
+                  <Button
+                    type="button"
+                    onClick={onEdit}
                   className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors"
-                >
-                  <Edit3 className="w-4 h-4" />
-                  Edit Test Case
-                </Button>
-              )}
+                  >
+                    <Edit3 className="w-4 h-4" />
+                    Edit Test Case
+                  </Button>
+                )}
               {!isViewMode && (
-                <Button
-                  type="submit"
-                  onClick={handleSubmit}
-                  disabled={isSubmitting}
+                  <Button
+                    type="submit"
+                    onClick={handleSubmit}
+                    disabled={isSubmitting}
                   className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors"
-                >
-                  {isSubmitting ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Save className="w-4 h-4" />
-                  )}
-                  {testCase ? "Update Test Case" : "Create Test Case"}
-                </Button>
-              )}
+                  >
+                    {isSubmitting ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Save className="w-4 h-4" />
+                    )}
+                    {testCase ? "Update Test Case" : "Create Test Case"}
+                  </Button>
+                )}
             </div>
           </DialogFooter>
         </DialogContent>
