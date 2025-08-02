@@ -98,6 +98,7 @@ export type TestCaseDB = {
   execution_date: string
   notes: string
   actual_result: string
+  user_id?: string
   environment: string
   prerequisites: string
   platform: string
@@ -160,6 +161,7 @@ export type TestSuiteDB = {
   tags: string[]
   owner: string
   is_active: boolean
+  user_id?: string
 }
 
 export type Comment = {
@@ -269,6 +271,7 @@ export type ProjectDB = {
   description?: string
   created_at?: Date
   is_active?: boolean
+  user_id?: string
 }
 
 export type ProjectShare = {

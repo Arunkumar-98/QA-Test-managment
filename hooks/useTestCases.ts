@@ -10,6 +10,7 @@ export const useTestCases = (currentProjectId: string) => {
   const [testCases, setTestCases] = useState<TestCase[]>([])
   const [selectedTestCases, setSelectedTestCases] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(false)
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
   // Load test cases from Supabase on mount and when project changes
   useEffect(() => {
@@ -119,6 +120,7 @@ export const useTestCases = (currentProjectId: string) => {
 
   const removeTestCase = useCallback(async (id: string) => {
     try {
+      console.log('🗑️ Removing single test case:', id)
       await testCaseService.delete(id)
       setTestCases(prev => prev.filter(tc => tc.id !== id))
       setSelectedTestCases(prev => {
@@ -131,7 +133,12 @@ export const useTestCases = (currentProjectId: string) => {
         description: "Test case removed successfully",
       })
     } catch (error) {
-      console.error('Error removing test case:', error)
+      console.error('Error removing test case:', {
+        error,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        errorStack: error instanceof Error ? error.stack : undefined,
+        testCaseId: id
+      })
       toast({
         title: "Error",
         description: "Failed to remove test case",
@@ -144,6 +151,7 @@ export const useTestCases = (currentProjectId: string) => {
     const selectedIds = Array.from(selectedTestCases)
     if (selectedIds.length === 0) return
 
+    setDeleteLoading(true)
     try {
       await testCaseService.deleteMultiple(selectedIds)
       setTestCases(prev => prev.filter(tc => !selectedTestCases.has(tc.id)))
@@ -153,12 +161,21 @@ export const useTestCases = (currentProjectId: string) => {
         description: `${selectedIds.length} test case(s) removed successfully`,
       })
     } catch (error) {
-      console.error('Error removing selected test cases:', error)
+      console.error('Error removing selected test cases:', {
+        error,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        errorStack: error instanceof Error ? error.stack : undefined,
+        selectedIds,
+        selectedIdsLength: selectedIds.length
+      })
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
       toast({
         title: "Error",
-        description: "Failed to remove selected test cases",
+        description: `Failed to remove selected test cases: ${errorMessage}`,
         variant: "destructive",
       })
+    } finally {
+      setDeleteLoading(false)
     }
   }, [selectedTestCases])
 
@@ -249,6 +266,7 @@ export const useTestCases = (currentProjectId: string) => {
 
     try {
       const allIds = testCases.map(tc => tc.id)
+      console.log('🗑️ Clearing all test cases:', { count: allIds.length, ids: allIds })
       await testCaseService.deleteMultiple(allIds)
       setTestCases([])
       setSelectedTestCases(new Set())
@@ -257,7 +275,12 @@ export const useTestCases = (currentProjectId: string) => {
         description: "All test cases cleared successfully",
       })
     } catch (error) {
-      console.error('Error clearing all test cases:', error)
+      console.error('Error clearing all test cases:', {
+        error,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        errorStack: error instanceof Error ? error.stack : undefined,
+        testCaseCount: testCases.length
+      })
       toast({
         title: "Error",
         description: "Failed to clear all test cases",
@@ -274,6 +297,7 @@ export const useTestCases = (currentProjectId: string) => {
     testCases,
     selectedTestCases,
     loading,
+    deleteLoading,
     addTestCase,
     updateTestCase,
     removeTestCase,

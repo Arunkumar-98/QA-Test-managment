@@ -44,34 +44,16 @@ function SharedProjectContent() {
         setIsLoading(true)
         setError('')
 
-        // Get share details
-        const share = await projectShareService.getShareByToken(token)
-        if (!share) {
-          setError('This share link is invalid or has expired.')
+        // Get shared project data from API (bypasses RLS)
+        const response = await fetch(`/api/shared/${token}`)
+        const data = await response.json()
+
+        if (!response.ok) {
+          setError(data.error || 'Failed to load the shared project.')
           return
         }
 
-        // Check if share is expired
-        if (share.expiresAt && new Date() > share.expiresAt) {
-          setError('This share link has expired.')
-          return
-        }
-
-        // Check if max views exceeded
-        if (share.maxViews && share.currentViews >= share.maxViews) {
-          setError('This share link has reached its maximum number of views.')
-          return
-        }
-
-        // Get project details
-        const project = await projectService.getById(share.projectId)
-        if (!project) {
-          setError('The shared project could not be found.')
-          return
-        }
-
-        // Increment view count
-        await projectShareService.incrementViews(share.id)
+        const { share, project } = data
 
         setSharedAccess({
           project,
@@ -418,6 +400,7 @@ function SharedProjectContent() {
             if (testCase) handleRemoveTestCase(testCase)
           } : () => {}}
           onRemoveSelectedTestCases={() => {}}
+        deleteLoading={false}
           onUpdateTestCaseStatus={() => {}}
           onBulkUpdateStatus={() => {}}
           onToggleTestCaseSelection={() => {}}

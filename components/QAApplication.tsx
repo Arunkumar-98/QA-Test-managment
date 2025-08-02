@@ -17,6 +17,10 @@ import { PRDToTestCases } from './PRDToTestCases'
 import { ImportPreviewDialog } from './ImportPreviewDialog'
 import { EnhancedPasteDialog } from './EnhancedPasteDialog'
 import { ShareTestSuiteDialog } from './ShareTestSuiteDialog'
+import { WelcomeProjectModal } from './WelcomeProjectModal'
+import { EmptyState } from './EmptyState'
+import { ActionGuard } from './ActionGuard'
+import { FullScreenWelcome } from './FullScreenWelcome'
 import { 
   TestCase, TestCaseStatus, TestSuite, Document, ImportantLink, Project,
   CreateDocumentInput, CreateImportantLinkInput
@@ -73,6 +77,9 @@ export function QAApplication() {
   const [isImportPreviewDialogOpen, setIsImportPreviewDialogOpen] = useState(false)
   const [isEnhancedPasteDialogOpen, setIsEnhancedPasteDialogOpen] = useState(false)
   const [importRawData, setImportRawData] = useState<any[]>([])
+  const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(false)
+  const [isCreatingProject, setIsCreatingProject] = useState(false)
+  const [pendingAction, setPendingAction] = useState<string | null>(null)
 
   
   // Selected test case for dialogs
@@ -129,20 +136,21 @@ export function QAApplication() {
   }, [])
 
   // Core state management
-  const {
-    testCases,
-    selectedTestCases,
+    const { 
+    testCases, 
+    selectedTestCases, 
     loading: testCasesLoading,
-    addTestCase,
-    updateTestCase,
-    removeTestCase,
-    removeSelectedTestCases,
-    updateTestCaseStatus,
-    bulkUpdateStatus,
-    toggleTestCaseSelection,
-    toggleSelectAll,
+    deleteLoading,
+    addTestCase, 
+    updateTestCase, 
+    removeTestCase, 
+    removeSelectedTestCases, 
+    updateTestCaseStatus, 
+    bulkUpdateStatus, 
+    toggleTestCaseSelection, 
+    toggleSelectAll, 
     clearAllTestCases,
-    setTestCases
+    setTestCases 
   } = useTestCases(currentProjectId)
 
   const {
@@ -264,23 +272,12 @@ export function QAApplication() {
         setCurrentProjectId(defaultProject.id)
         setCurrentProject(defaultProject.name)
       } else if (projectsData.length === 0) {
-
-        // Create a default project if none exist
+        // No projects exist - full screen welcome will be shown in main content
+        console.log('📝 No projects found - showing full screen welcome')
         
-        try {
-          const defaultProject = await projectService.create({
-            name: DEFAULT_PROJECT,
-            description: 'Default project'
-          })
-          
-          setProjects([defaultProject])
-          setCurrentProjectId(defaultProject.id)
-          setCurrentProject(defaultProject.name)
-        } catch (createError) {
-          console.error('❌ Failed to create default project:', createError)
-        }
-      } else {
-
+        // Clear current project state
+        setCurrentProjectId('')
+        setCurrentProject('')
       }
     } catch (error) {
       console.error('❌ Failed to load projects from Supabase:', error)
@@ -347,38 +344,40 @@ export function QAApplication() {
 
   // Project management
   const handleAddProject = async (projectName: string) => {
-    // Validate project name
-    if (!projectName.trim()) {
-      toast({
-        title: "Invalid Project Name",
-        description: "Project name cannot be empty.",
-        variant: "destructive",
-      })
-      return
-    }
+    setIsCreatingProject(true)
     
-    // Check for invalid project names (UUIDs, timestamps, etc.)
-    if (/^\d{13,}$/.test(projectName.trim()) || projectName.trim().length > 50) {
-      toast({
-        title: "Invalid Project Name",
-        description: "Project name appears to be invalid. Please use a descriptive name.",
-        variant: "destructive",
-      })
-      return
-    }
-    
-    const projectExists = projects.some(p => p.name.toLowerCase() === projectName.toLowerCase())
-    
-    if (projectExists) {
-      toast({
-        title: "Project Already Exists",
-        description: `A project with the name "${projectName}" already exists.`,
-        variant: "destructive",
-      })
-      return
-    }
-
     try {
+      // Validate project name
+      if (!projectName.trim()) {
+        toast({
+          title: "Invalid Project Name",
+          description: "Project name cannot be empty.",
+          variant: "destructive",
+        })
+        return
+      }
+    
+      // Check for invalid project names (UUIDs, timestamps, etc.)
+      if (/^\d{13,}$/.test(projectName.trim()) || projectName.trim().length > 50) {
+        toast({
+          title: "Invalid Project Name",
+          description: "Project name appears to be invalid. Please use a descriptive name.",
+          variant: "destructive",
+        })
+        return
+      }
+    
+      const projectExists = projects.some(p => p.name.toLowerCase() === projectName.toLowerCase())
+    
+      if (projectExists) {
+        toast({
+          title: "Project Already Exists",
+          description: `A project with the name "${projectName}" already exists.`,
+          variant: "destructive",
+        })
+        return
+      }
+
       console.log('Attempting to create project:', projectName)
       
       // Save to Supabase - only send required fields, let database handle defaults
@@ -389,12 +388,22 @@ export function QAApplication() {
       
       console.log('Project created successfully:', newProject)
       
+      // If this is the first project, automatically select it
+      if (projects.length === 0) {
+        setCurrentProjectId(newProject.id)
+        setCurrentProject(newProject.name)
+        
+        // Save to localStorage
+        localStorage.setItem('selectedProjectId', newProject.id)
+        localStorage.setItem('selectedProjectName', newProject.name)
+      }
+      
       // Reload projects from Supabase
       await loadProjectsFromSupabase()
       
       toast({
         title: "Project Added",
-        description: `Project "${projectName}" has been added.`,
+        description: `Project "${projectName}" has been added${projects.length === 0 ? ' and selected' : ''}.`,
       })
     } catch (error) {
       console.error('Failed to add project:', error)
@@ -421,14 +430,17 @@ export function QAApplication() {
         description: `Failed to add project to database: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: "destructive",
       })
+    } finally {
+      setIsCreatingProject(false)
     }
   }
 
   const handleRemoveProject = async (projectName: string) => {
-    if (projectName === DEFAULT_PROJECT) {
+    // Check if this is the last project
+    if (projects.length === 1) {
       toast({
-        title: "Cannot Remove",
-        description: "Cannot remove the default project.",
+        title: "Cannot Remove Last Project",
+        description: "You must have at least one project. Please create a new project before removing this one.",
         variant: "destructive"
       })
       return
@@ -713,6 +725,16 @@ export function QAApplication() {
 
   // Test case management
   const handleAddTestCase = async (testCase: Partial<TestCase> & { testCase: string; description: string; status: TestCaseStatus }) => {
+    if (!currentProjectId) {
+      // Show toast message since full screen welcome is already visible
+      toast({
+        title: "No Project Selected",
+        description: "Please create a project first to add test cases.",
+        variant: "destructive",
+      })
+      return
+    }
+    
     try {
       const savedTestCase = await addTestCase({
         ...testCase,
@@ -796,10 +818,9 @@ export function QAApplication() {
     
     // Validate that we have a current project ID
     if (!currentProjectId) {
-      console.error('❌ No current project ID available for import')
       toast({
-        title: "Import Failed",
-        description: "No project selected. Please select a project before importing test cases.",
+        title: "No Project Selected",
+        description: "Please create a project first to import test cases.",
         variant: "destructive",
       })
       return
@@ -808,33 +829,47 @@ export function QAApplication() {
     // Save each test case to the database
     const savedTestCases: TestCase[] = []
     const failedTestCases: string[] = []
+    
+    // Show progress toast
+    toast({
+      title: "Importing Test Cases",
+      description: `Processing ${testCases.length} test cases...`,
+    })
 
-    // Use Promise.allSettled to handle all async operations properly
-    const results = await Promise.allSettled(
-      testCases.map(async (testCaseData, index) => {
-        try {
-  
-          
-          // Ensure required fields are present and associate with selected suite
-          const testCaseToAdd = {
-            ...testCaseData,
-            testCase: testCaseData.testCase || `Imported Test Case ${Date.now()}`,
-            description: testCaseData.description || '',
-            status: testCaseData.status || 'Pending',
-            projectId: currentProjectId, // Ensure projectId is set
-            suiteId: selectedSuiteId || testCaseData.suiteId // Associate with selected suite
-          } as Partial<TestCase> & { testCase: string; description: string; status: TestCaseStatus }
-          
-          
-          const savedTestCase = await addTestCase(testCaseToAdd)
-          
-          return { success: true, testCase: savedTestCase, originalName: testCaseData.testCase }
-        } catch (error) {
-          console.error(`❌ Failed to save test case ${index + 1}:`, testCaseData.testCase, error)
-          return { success: false, error, originalName: testCaseData.testCase || 'Unknown' }
+    // Process test cases sequentially to avoid race conditions
+    // This ensures reliable position assignment even if atomic function fails
+    const results = []
+    for (let index = 0; index < testCases.length; index++) {
+      const testCaseData = testCases[index]
+      try {
+        console.log(`📝 Processing test case ${index + 1}/${testCases.length}: ${testCaseData.testCase}`)
+        
+        // Ensure required fields are present and associate with selected suite
+        const testCaseToAdd = {
+          ...testCaseData,
+          testCase: testCaseData.testCase || `Imported Test Case ${Date.now()}`,
+          description: testCaseData.description || '',
+          status: testCaseData.status || 'Pending',
+          projectId: currentProjectId, // Ensure projectId is set
+          suiteId: selectedSuiteId || testCaseData.suiteId // Associate with selected suite
+        } as Partial<TestCase> & { testCase: string; description: string; status: TestCaseStatus }
+        
+        const savedTestCase = await addTestCase(testCaseToAdd)
+        
+        results.push({ status: 'fulfilled', value: { success: true, testCase: savedTestCase, originalName: testCaseData.testCase } })
+        
+        // Update progress toast every 5 test cases
+        if ((index + 1) % 5 === 0 || index === testCases.length - 1) {
+          toast({
+            title: "Import Progress",
+            description: `Processed ${index + 1}/${testCases.length} test cases...`,
+          })
         }
-      })
-    )
+      } catch (error) {
+        console.error(`❌ Failed to save test case ${index + 1}:`, testCaseData.testCase, error)
+        results.push({ status: 'rejected', reason: error, value: { success: false, error, originalName: testCaseData.testCase || 'Unknown' } })
+      }
+    }
 
     // Process results
     results.forEach((result) => {
@@ -1027,6 +1062,14 @@ export function QAApplication() {
   )
 
   const handleOpenShareProject = () => {
+    if (!currentProjectId || !currentProject) {
+      toast({
+        title: "No Project Selected",
+        description: "Please select a project first before sharing.",
+        variant: "destructive",
+      })
+      return
+    }
     setIsShareProjectDialogOpen(true)
   }
 
@@ -1067,7 +1110,7 @@ export function QAApplication() {
         )}
 
         {/* Header */}
-        <div className="bg-white/90 backdrop-blur-sm border-b border-slate-200/60 shadow-sm relative z-50">
+        <div className="bg-gradient-to-r from-slate-900 via-blue-900 to-purple-900 border-b border-white/20 shadow-lg relative z-50">
           <div className="w-full px-6 lg:px-8 xl:px-12">
             <div className="flex items-center justify-between h-20">
               <div className="flex items-center space-x-6">
@@ -1078,18 +1121,23 @@ export function QAApplication() {
                     </svg>
                   </div>
                   <div>
-                    <h1 className="text-2xl font-bold text-slate-900">QA Management</h1>
-                    <p className="text-sm text-slate-500 font-medium">Professional Test Case Management</p>
+                    <h1 className="text-2xl font-bold text-white">QA Management</h1>
+                    <p className="text-sm text-blue-200 font-medium">Professional Test Case Management</p>
                   </div>
                 </div>
                 
-                <div className="h-8 w-px bg-slate-300"></div>
+                <div className="h-8 w-px bg-white/20"></div>
                 
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setIsShareProjectDialogOpen(true)}
-                  className="flex items-center space-x-2 h-10 px-5 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-all duration-200 shadow-sm"
+                  onClick={handleOpenShareProject}
+                  disabled={!currentProjectId || !currentProject}
+                  className={`flex items-center space-x-2 h-10 px-5 border-white/20 transition-all duration-200 shadow-sm ${
+                    currentProjectId && currentProject 
+                      ? 'bg-white/10 hover:bg-white/20 hover:border-white/40 text-white' 
+                      : 'bg-white/5 text-white/50 cursor-not-allowed'
+                  }`}
                 >
                   <Share2 className="w-4 h-4" />
                   <span className="text-sm font-medium">Share Project</span>
@@ -1097,13 +1145,13 @@ export function QAApplication() {
               </div>
               
               <div className="flex items-center space-x-6">
-                <div className="flex items-center space-x-4 px-5 py-3 bg-gradient-to-r from-slate-50 to-blue-50/30 rounded-2xl border border-slate-200/60 shadow-sm">
+                <div className="flex items-center space-x-4 px-5 py-3 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 shadow-lg">
                   <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center shadow-md">
                     <User className="w-5 h-5 text-white" />
                   </div>
                   <div className="text-left">
-                    <p className="text-sm font-semibold text-slate-900">{user?.user_metadata?.name || user?.email || 'User'}</p>
-                    <p className="text-xs text-slate-500 font-medium">Logged in</p>
+                    <p className="text-sm font-semibold text-white">{user?.user_metadata?.name || user?.email || 'User'}</p>
+                    <p className="text-xs text-green-200 font-medium">Logged in</p>
                   </div>
                 </div>
                 
@@ -1112,54 +1160,54 @@ export function QAApplication() {
                     variant="ghost"
                     size="sm"
                     onClick={() => setShowUserMenu(!showUserMenu)}
-                    className="h-10 w-10 p-0 hover:bg-slate-100/80 rounded-xl transition-all duration-200"
+                    className="h-10 w-10 p-0 hover:bg-white/10 rounded-xl transition-all duration-200"
                   >
-                    <Settings className="w-5 h-5 text-slate-600" />
+                    <Settings className="w-5 h-5 text-white" />
                   </Button>
                   
                   {showUserMenu && (
-                    <div className="absolute right-0 top-full mt-2 w-64 bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-slate-200/60 py-2 z-[60]">
-                      <div className="px-4 py-2 border-b border-slate-100">
-                        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Account</p>
+                    <div className="absolute right-0 top-full mt-2 w-64 bg-slate-900/95 backdrop-blur-sm rounded-xl shadow-lg border border-white/20 py-2 z-[60]">
+                      <div className="px-4 py-2 border-b border-white/10">
+                        <p className="text-xs font-medium text-blue-200 uppercase tracking-wide">Account</p>
                       </div>
                       
                       <button
                         onClick={() => setIsProjectSettingsOpen(true)}
-                        className="w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center space-x-3 transition-colors"
+                        className="w-full px-4 py-3 text-left text-sm text-white hover:bg-white/10 flex items-center space-x-3 transition-colors"
                       >
-                        <Folder className="w-4 h-4 text-slate-500" />
+                        <Folder className="w-4 h-4 text-blue-300" />
                         <span className="font-medium">Project Settings</span>
                       </button>
                       
                       <button
                         onClick={() => setIsTableSettingsOpen(true)}
-                        className="w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center space-x-3 transition-colors"
+                        className="w-full px-4 py-3 text-left text-sm text-white hover:bg-white/10 flex items-center space-x-3 transition-colors"
                       >
-                        <Table className="w-4 h-4 text-slate-500" />
+                        <Table className="w-4 h-4 text-blue-300" />
                         <span className="font-medium">Table Settings</span>
                       </button>
                       
-                      <div className="px-4 py-2 border-t border-slate-100">
-                        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Debug</p>
+                      <div className="px-4 py-2 border-t border-white/10">
+                        <p className="text-xs font-medium text-blue-200 uppercase tracking-wide">Debug</p>
                       </div>
                       
                       <button
                         onClick={handleFixDatabase}
-                        className="w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center space-x-3 transition-colors"
+                        className="w-full px-4 py-3 text-left text-sm text-white hover:bg-white/10 flex items-center space-x-3 transition-colors"
                       >
-                        <Settings className="w-4 h-4 text-slate-500" />
+                        <Settings className="w-4 h-4 text-blue-300" />
                         <span className="font-medium">Fix Database RLS</span>
                       </button>
                       
-                      <div className="px-4 py-2 border-t border-slate-100">
-                        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">User</p>
+                      <div className="px-4 py-2 border-t border-white/10">
+                        <p className="text-xs font-medium text-blue-200 uppercase tracking-wide">User</p>
                       </div>
                       
                       <button
                         onClick={signOut}
-                        className="w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center space-x-3 transition-colors"
+                        className="w-full px-4 py-3 text-left text-sm text-white hover:bg-white/10 flex items-center space-x-3 transition-colors"
                       >
-                        <LogOut className="w-4 h-4 text-slate-500" />
+                        <LogOut className="w-4 h-4 text-blue-300" />
                         <span className="font-medium">Sign out</span>
                       </button>
                     </div>
@@ -1264,9 +1312,18 @@ export function QAApplication() {
 
             {/* Main Content */}
             <div className="flex-1 flex flex-col">
-              {/* Test Cases Table */}
-              <div className="flex-1 flex flex-col overflow-hidden">
-                <TestCaseTable
+              {/* Show Full Screen Welcome if no projects */}
+              {projects.length === 0 ? (
+                <FullScreenWelcome 
+                  onCreateProject={handleAddProject}
+                  isLoading={isCreatingProject}
+                  onSignOut={signOut}
+                  user={user}
+                />
+              ) : (
+                /* Test Cases Table */
+                <div className="flex-1 flex flex-col overflow-hidden">
+                  <TestCaseTable
                   testCases={finalTestCases}
                   selectedTestCases={selectedTestCases}
                   searchQuery={searchQuery}
@@ -1292,6 +1349,7 @@ export function QAApplication() {
                   onViewTestCase={handleViewTestCase}
                   onRemoveTestCase={removeTestCase}
                   onRemoveSelectedTestCases={removeSelectedTestCases}
+        deleteLoading={deleteLoading}
                   onUpdateTestCaseStatus={updateTestCaseStatus}
                   onBulkUpdateStatus={bulkUpdateStatus}
                   onToggleTestCaseSelection={toggleTestCaseSelection}
@@ -1310,7 +1368,8 @@ export function QAApplication() {
                   isPasteDialogOpen={isPasteDialogOpen}
                   setIsPasteDialogOpen={setIsPasteDialogOpen}
                 />
-              </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -1656,6 +1715,8 @@ export function QAApplication() {
         currentProject={currentProject}
         selectedSuiteId={selectedSuiteId || undefined}
       />
+
+
     </>
   )
 } 

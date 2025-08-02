@@ -64,21 +64,10 @@ export const testCaseService = {
   },
 
   async create(testCase: CreateTestCaseInput): Promise<TestCase> {
-    // First, get the next available position for this project
-    let position = 1
+    // Use a database function to atomically get the next position and insert
+    // This prevents race conditions where multiple test cases could get the same position
     
-    const { data: existingTestCases } = await supabase
-      .from('test_cases')
-      .select('position')
-      .eq('project_id', testCase.projectId)
-      .order('position', { ascending: false })
-      .limit(1)
-    
-    if (existingTestCases && existingTestCases.length > 0) {
-      position = existingTestCases[0].position + 1
-    }
-
-    const dbData: Omit<TestCaseDB, 'id'> = {
+    const dbData = {
       test_case: testCase.testCase,
       description: testCase.description,
       expected_result: testCase.expectedResult,
@@ -94,8 +83,7 @@ export const testCaseService = {
       platform: testCase.platform,
       steps_to_reproduce: testCase.stepsToReproduce,
       project_id: testCase.projectId,
-      suite_id: testCase.suiteId,
-      position: position,
+      suite_id: testCase.suiteId || undefined, // Convert empty string to undefined
       created_at: new Date(),
       updated_at: new Date()
     }
@@ -118,26 +106,94 @@ export const testCaseService = {
 
     console.log('📊 Database data to insert:', dbData)
 
-    const { data, error } = await supabase
-      .from('test_cases')
-      .insert([dbData])
-      .select()
-      .single()
-    
-    if (error) {
-      console.error('❌ Database error creating test case:', {
-        error,
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-        code: error.code,
-        data: dbData
+    // Try to use the atomic database function first
+    try {
+      console.log('🚀 Attempting to use atomic function with data:', dbData)
+      const { data, error } = await supabase.rpc('insert_test_case_with_next_position', {
+        p_test_case_data: dbData
       })
-      throw error
+      
+      if (error) {
+        console.error('❌ Atomic function error:', error)
+        throw error // This will trigger the fallback
+      }
+      
+      console.log('✅ Test case created successfully using atomic function:', data)
+      return mapTestCaseFromDB(data)
+    } catch (atomicError) {
+      console.error('❌ Atomic function failed, error details:', {
+        message: atomicError instanceof Error ? atomicError.message : String(atomicError),
+        code: (atomicError as any)?.code,
+        details: (atomicError as any)?.details
+      })
+      console.log('🔄 Falling back to manual position assignment...')
+      
+      // Fallback: Manual position assignment with retry logic
+      let retries = 10 // Increased retries
+      let baseDelay = 50 // Start with shorter delay
+      
+      while (retries > 0) {
+        try {
+          // Get the current max position with a more reliable query
+          const { data: maxPositionResult, error: queryError } = await supabase
+            .from('test_cases')
+            .select('position')
+            .eq('project_id', testCase.projectId)
+            .order('position', { ascending: false })
+            .limit(1)
+          
+          if (queryError) throw queryError
+          
+          let position = 1
+          if (maxPositionResult && maxPositionResult.length > 0) {
+            position = maxPositionResult[0].position + 1
+          }
+
+          // Add position to the data
+          const dbDataWithPosition = {
+            ...dbData,
+            position: position
+          }
+
+          console.log(`🔄 Attempting to insert with position ${position} (${retries} retries left)`)
+
+          // Try to insert with the calculated position
+          const { data, error } = await supabase
+            .from('test_cases')
+            .insert([dbDataWithPosition])
+            .select()
+            .single()
+          
+          if (error) {
+            // If it's a constraint violation, retry with a different position
+            if (error.code === '23505' && error.message.includes('unique_position_per_project')) {
+              console.log(`❌ Position ${position} already taken, retrying... (${retries} retries left)`)
+              retries--
+              if (retries > 0) {
+                // Exponential backoff with jitter
+                const delay = baseDelay * Math.pow(2, 10 - retries) + Math.random() * 50
+                await new Promise(resolve => setTimeout(resolve, delay))
+                position += Math.floor(Math.random() * 3) + 1 // Random increment 1-3
+                continue
+              }
+            }
+            throw error
+          }
+          
+          console.log('✅ Test case created successfully with manual position assignment:', data)
+          return mapTestCaseFromDB(data)
+        } catch (fallbackError) {
+          console.error('❌ Error in fallback position assignment:', fallbackError)
+          if (retries <= 1) {
+            throw fallbackError
+          }
+          retries--
+          await new Promise(resolve => setTimeout(resolve, baseDelay))
+        }
+      }
+      
+      throw new Error('Failed to create test case after multiple retries')
     }
-    
-    console.log('✅ Test case created successfully:', data)
-    return mapTestCaseFromDB(data)
   },
 
   async update(id: string, updates: Partial<TestCase>): Promise<TestCase> {
@@ -194,19 +250,181 @@ export const testCaseService = {
   },
 
   async delete(id: string): Promise<void> {
-    // Use the position-aware delete function to maintain proper ordering
-    const { error } = await supabase.rpc('delete_test_case_and_reorder', {
-      p_test_case_id: id
-    })
+    console.log('🗑️ Attempting to delete test case:', id)
     
-    if (error) throw error
+    try {
+      // Try to use the position-aware delete function first
+      const { error } = await supabase.rpc('delete_test_case_and_reorder', {
+        p_test_case_id: id
+      })
+      
+      if (error) {
+        console.warn('⚠️ Atomic delete function failed, falling back to manual delete:', error.message)
+        throw error // This will trigger the fallback
+      }
+      
+      console.log('✅ Test case deleted successfully using atomic function:', id)
+      return
+    } catch (atomicError) {
+      console.log('🔄 Falling back to manual delete with position reordering...')
+      
+      // Fallback: Manual delete with position reordering
+      try {
+        // First, get the test case details to know its position and project
+        const { data: testCase, error: fetchError } = await supabase
+          .from('test_cases')
+          .select('position, project_id')
+          .eq('id', id)
+          .single()
+        
+        if (fetchError) {
+          console.error('❌ Failed to fetch test case for deletion:', fetchError)
+          throw fetchError
+        }
+        
+        if (!testCase) {
+          console.error('❌ Test case not found for deletion:', id)
+          throw new Error('Test case not found')
+        }
+        
+        console.log('📊 Test case details for deletion:', testCase)
+        
+        // Delete the test case
+        const { error: deleteError } = await supabase
+          .from('test_cases')
+          .delete()
+          .eq('id', id)
+        
+        if (deleteError) {
+          console.error('❌ Failed to delete test case:', deleteError)
+          throw deleteError
+        }
+        
+        // Reorder remaining test cases in the same project
+        // Get all test cases that need position adjustment
+        const { data: testCasesToUpdate, error: fetchUpdateError } = await supabase
+          .from('test_cases')
+          .select('id, position')
+          .eq('project_id', testCase.project_id)
+          .gte('position', testCase.position + 1)
+          .order('position', { ascending: true })
+        
+        if (fetchUpdateError) {
+          console.warn('⚠️ Failed to fetch test cases for position update:', fetchUpdateError)
+        } else if (testCasesToUpdate && testCasesToUpdate.length > 0) {
+          // Update positions one by one to avoid conflicts
+          for (const tc of testCasesToUpdate) {
+            const { error: updateError } = await supabase
+              .from('test_cases')
+              .update({ position: tc.position - 1 })
+              .eq('id', tc.id)
+            
+            if (updateError) {
+              console.warn(`⚠️ Failed to update position for test case ${tc.id}:`, updateError)
+            }
+          }
+        }
+        
+        console.log('✅ Test case deleted successfully with manual fallback:', id)
+      } catch (fallbackError) {
+        console.error('❌ Manual delete fallback also failed:', fallbackError)
+        throw fallbackError
+      }
+    }
   },
 
   async deleteMultiple(ids: string[]): Promise<void> {
-    // For multiple deletions, we need to handle position reordering
-    // Delete them one by one to maintain proper ordering
-    for (const id of ids) {
-      await this.delete(id)
+    // For multiple deletions, we need to handle position reordering properly
+    console.log('🗑️ Starting bulk deletion of test cases:', { ids, count: ids.length })
+    
+    if (ids.length === 0) return
+    
+    try {
+      // Get all test cases to be deleted with their positions
+      const { data: testCasesToDelete, error: fetchError } = await supabase
+        .from('test_cases')
+        .select('id, position, project_id')
+        .in('id', ids)
+        .order('position', { ascending: true })
+      
+      if (fetchError) {
+        console.error('❌ Failed to fetch test cases for deletion:', fetchError)
+        throw fetchError
+      }
+      
+      if (!testCasesToDelete || testCasesToDelete.length === 0) {
+        console.warn('⚠️ No test cases found to delete')
+        return
+      }
+      
+      // Group by project to handle position reordering properly
+      const testCasesByProject = testCasesToDelete.reduce((acc, tc) => {
+        if (!acc[tc.project_id]) {
+          acc[tc.project_id] = []
+        }
+        acc[tc.project_id].push(tc)
+        return acc
+      }, {} as Record<string, typeof testCasesToDelete>)
+      
+      // Delete test cases and handle position reordering for each project
+      for (const [projectId, projectTestCases] of Object.entries(testCasesByProject)) {
+        console.log(`🗑️ Processing project ${projectId} with ${projectTestCases.length} test cases to delete`)
+        
+        // Delete test cases in reverse position order to minimize position conflicts
+        const sortedTestCases = [...projectTestCases].sort((a, b) => b.position - a.position)
+        
+        for (const testCase of sortedTestCases) {
+          try {
+            console.log(`🗑️ Deleting test case ${testCase.id} at position ${testCase.position}`)
+            
+            // Delete the test case
+            const { error: deleteError } = await supabase
+              .from('test_cases')
+              .delete()
+              .eq('id', testCase.id)
+            
+            if (deleteError) {
+              console.error(`❌ Failed to delete test case ${testCase.id}:`, deleteError)
+              throw deleteError
+            }
+            
+            // Update positions of remaining test cases in this project
+            // Get all test cases that need position adjustment
+            const { data: testCasesToUpdate, error: fetchUpdateError } = await supabase
+              .from('test_cases')
+              .select('id, position')
+              .eq('project_id', projectId)
+              .gt('position', testCase.position)
+              .order('position', { ascending: true })
+            
+            if (fetchUpdateError) {
+              console.warn(`⚠️ Failed to fetch test cases for position update:`, fetchUpdateError)
+            } else if (testCasesToUpdate && testCasesToUpdate.length > 0) {
+              // Update positions one by one to avoid conflicts
+              for (const tc of testCasesToUpdate) {
+                const { error: updateError } = await supabase
+                  .from('test_cases')
+                  .update({ position: tc.position - 1 })
+                  .eq('id', tc.id)
+                
+                if (updateError) {
+                  console.warn(`⚠️ Failed to update position for test case ${tc.id}:`, updateError)
+                }
+              }
+            }
+            
+            console.log(`✅ Successfully deleted test case ${testCase.id}`)
+          } catch (error) {
+            console.error(`❌ Failed to delete test case ${testCase.id}:`, error)
+            throw error
+          }
+        }
+      }
+      
+      console.log('✅ Bulk deletion completed successfully')
+    } catch (error) {
+      console.error('❌ Bulk deletion failed:', error)
+      throw error
     }
   },
 
@@ -239,11 +457,8 @@ export const testCaseService = {
   },
 
   async deleteAndReorder(testCaseId: string): Promise<void> {
-    const { error } = await supabase.rpc('delete_test_case_and_reorder', {
-      p_test_case_id: testCaseId
-    })
-    
-    if (error) throw error
+    // This is just an alias for the delete method now
+    await this.delete(testCaseId)
   }
 }
 
@@ -432,11 +647,10 @@ export const importantLinkService = {
 
 // Platforms
 export const platformService = {
-  async getAll(projectId: string): Promise<Platform[]> {
+  async getAll(projectId?: string): Promise<Platform[]> {
     const { data, error } = await supabase
       .from('platforms')
       .select('*')
-      .eq('project_id', projectId)
       .order('created_at', { ascending: false })
     
     if (error) throw error
@@ -444,10 +658,9 @@ export const platformService = {
   },
 
   async create(platform: CreatePlatformInput): Promise<Platform> {
-    const dbData: Omit<PlatformDB, 'id'> = {
+    const dbData = {
       name: platform.name,
       description: platform.description,
-      project_id: platform.projectId,
       created_at: new Date()
     }
 
@@ -474,21 +687,58 @@ export const platformService = {
 // Projects
 export const projectService = {
   async getAll(): Promise<Project[]> {
+    // Get only projects belonging to the current user
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (!user) {
+      console.log('❌ No authenticated user found')
+      return []
+    }
+    
     const { data, error } = await supabase
       .from('projects')
       .select('*')
+      .eq('user_id', user.id)
       .order('created_at', { ascending: false })
     
-    if (error) throw error
-    return (data || []).map(mapProjectFromDB)
+    if (error) {
+      console.error('❌ Error fetching projects:', error)
+      throw error
+    }
+    
+    console.log('📊 Projects fetched:', data?.length || 0, 'projects')
+    if (data && data.length > 0) {
+      console.log('📋 Project details:', data.map(p => ({ id: p.id, name: p.name, user_id: p.user_id })))
+    }
+    
+    // Transform to include team collaboration fields (when available)
+    return (data || []).map((row: any) => ({
+      id: row.id,
+      name: row.name,
+      description: row.description,
+      createdAt: row.created_at,
+      isActive: row.is_active,
+      userId: row.user_id,
+      isOwner: true, // For now, assume user owns all projects they can see
+      sharedBy: null, // Will be populated when team collaboration is working
+      permissionLevel: 'admin' // Will be populated when team collaboration is working
+    }))
   },
 
   async create(project: CreateProjectInput): Promise<Project> {
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (!user) {
+      console.log('❌ No authenticated user found')
+      throw new Error('User not authenticated')
+    }
+    
     const dbData: Omit<ProjectDB, 'id'> = {
       name: project.name,
       description: project.description,
       created_at: new Date(),
-      is_active: true
+      is_active: true,
+      user_id: user.id
     }
 
     const { data, error } = await supabase
@@ -502,19 +752,35 @@ export const projectService = {
   },
 
   async delete(id: string): Promise<void> {
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (!user) {
+      console.log('❌ No authenticated user found')
+      throw new Error('User not authenticated')
+    }
+    
     const { error } = await supabase
       .from('projects')
       .delete()
       .eq('id', id)
+      .eq('user_id', user.id)
     
     if (error) throw error
   },
 
   async getById(id: string): Promise<Project | null> {
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (!user) {
+      console.log('❌ No authenticated user found')
+      return null
+    }
+    
     const { data, error } = await supabase
       .from('projects')
       .select('*')
       .eq('id', id)
+      .eq('user_id', user.id)
       .single()
     
     if (error) {
@@ -523,6 +789,74 @@ export const projectService = {
     }
     
     return mapProjectFromDB(data)
+  },
+
+  // Team collaboration methods
+  async shareProject(projectId: string, userEmail: string, permissionLevel: 'view' | 'edit' | 'admin' = 'view'): Promise<any> {
+    const { data, error } = await supabase.rpc('share_project_with_user', {
+      p_project_id: projectId,
+      p_target_user_email: userEmail,
+      p_permission_level: permissionLevel
+    })
+    
+    if (error) throw error
+    return data
+  },
+
+  async removeUserFromProject(projectId: string, userEmail: string): Promise<any> {
+    const { data, error } = await supabase.rpc('remove_user_from_project', {
+      p_project_id: projectId,
+      p_target_user_email: userEmail
+    })
+    
+    if (error) throw error
+    return data
+  },
+
+  async getProjectMembers(projectId: string): Promise<any[]> {
+    const { data, error } = await supabase
+      .from('project_members')
+      .select(`
+        *,
+        user:user_id(email),
+        owner:owner_id(email)
+      `)
+      .eq('project_id', projectId)
+    
+    if (error) throw error
+    return data || []
+  },
+
+  async getProjectActivity(projectId: string, limit: number = 50): Promise<any[]> {
+    const { data, error } = await supabase
+      .from('project_activity_log')
+      .select(`
+        *,
+        user:user_id(email)
+      `)
+      .eq('project_id', projectId)
+      .order('timestamp', { ascending: false })
+      .limit(limit)
+    
+    if (error) throw error
+    return data || []
+  },
+
+  async logActivity(projectId: string, actionType: string, entityType: string, entityId?: string, oldValues?: any, newValues?: any, description?: string): Promise<void> {
+    const { error } = await supabase.rpc('log_project_activity', {
+      p_project_id: projectId,
+      p_action_type: actionType,
+      p_entity_type: entityType,
+      p_entity_id: entityId,
+      p_old_values: oldValues,
+      p_new_values: newValues,
+      p_description: description
+    })
+    
+    if (error) {
+      console.error('Failed to log activity:', error)
+      // Don't throw error for logging failures
+    }
   }
 }
 

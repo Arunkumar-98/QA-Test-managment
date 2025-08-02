@@ -23,6 +23,9 @@ export function EmailConfirmation({ email, onSwitchToLogin, onResendEmail }: Ema
         <CardDescription className="text-center text-slate-600">
           We've sent a confirmation link to <span className="font-medium">{email}</span>
         </CardDescription>
+        <div className="text-center text-sm text-slate-500 mt-2">
+          Welcome to QA Management! 🎉
+        </div>
       </CardHeader>
       <CardContent>
         <div className="space-y-6">
@@ -44,8 +47,20 @@ export function EmailConfirmation({ email, onSwitchToLogin, onResendEmail }: Ema
             <h3 className="text-sm font-medium text-blue-800 mb-2">What to do next:</h3>
             <ul className="text-sm text-blue-700 space-y-1">
               <li>• Check your email inbox (and spam folder)</li>
-              <li>• Click the "Confirm Email Address" button</li>
+              <li>• Click the "Confirm your mail" button in the email</li>
               <li>• Return here to sign in to your account</li>
+              <li>• Start creating your first project and test cases</li>
+            </ul>
+          </div>
+
+          {/* Features Preview */}
+          <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg p-4">
+            <h3 className="text-sm font-medium text-purple-800 mb-2">What you'll get:</h3>
+            <ul className="text-sm text-purple-700 space-y-1">
+              <li>• Create and manage test cases</li>
+              <li>• Share projects with your team</li>
+              <li>• Track testing progress and history</li>
+              <li>• Collaborate with team members</li>
             </ul>
           </div>
 

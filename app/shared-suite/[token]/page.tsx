@@ -501,6 +501,7 @@ function SharedTestSuiteContent() {
               }
             }}
             onRemoveSelectedTestCases={() => {}}
+        deleteLoading={false}
             onUpdateTestCaseStatus={() => {}}
             onBulkUpdateStatus={() => {}}
             onToggleTestCaseSelection={() => {}}

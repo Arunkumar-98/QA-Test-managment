@@ -12,10 +12,10 @@ import { useToast } from '@/hooks/use-toast'
 
 interface SignupFormProps {
   onSwitchToLogin: () => void
-  onEmailSent: (email: string) => void
+  onSignupSuccess?: (email: string) => void
 }
 
-export function SignupForm({ onSwitchToLogin, onEmailSent }: SignupFormProps) {
+export function SignupForm({ onSwitchToLogin, onSignupSuccess }: SignupFormProps) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -37,12 +37,28 @@ export function SignupForm({ onSwitchToLogin, onEmailSent }: SignupFormProps) {
       setError('Please enter your email address')
       return false
     }
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      setError('Please enter a valid email address')
+      return false
+    }
     if (!password) {
       setError('Please enter a password')
       return false
     }
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters long')
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters long')
+      return false
+    }
+    // Password strength validation
+    const hasUpperCase = /[A-Z]/.test(password)
+    const hasLowerCase = /[a-z]/.test(password)
+    const hasNumbers = /\d/.test(password)
+    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password)
+    
+    if (!hasUpperCase || !hasLowerCase || !hasNumbers) {
+      setError('Password must contain uppercase, lowercase, and numbers')
       return false
     }
     if (password !== confirmPassword) {
@@ -69,10 +85,18 @@ export function SignupForm({ onSwitchToLogin, onEmailSent }: SignupFormProps) {
         setError(error.message)
       } else {
         toast({
-          title: "Account created!",
-          description: "Please check your email to verify your account.",
+          title: "Account created successfully! 🎉",
+          description: "You can now sign in with your email and password.",
         })
-        onEmailSent(email)
+        // Clear form
+        setName('')
+        setEmail('')
+        setPassword('')
+        setConfirmPassword('')
+        // Call success callback if provided
+        if (onSignupSuccess) {
+          onSignupSuccess(email)
+        }
       }
     } catch (err) {
       setError('An unexpected error occurred')
@@ -91,7 +115,7 @@ export function SignupForm({ onSwitchToLogin, onEmailSent }: SignupFormProps) {
         </div>
         <CardTitle className="text-2xl font-bold text-center text-slate-900">Create account</CardTitle>
         <CardDescription className="text-center text-slate-600">
-          Sign up for QA Management to get started
+          Create your account and start managing test cases immediately
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -147,7 +171,7 @@ export function SignupForm({ onSwitchToLogin, onEmailSent }: SignupFormProps) {
               <Input
                 id="password"
                 type={showPassword ? 'text' : 'password'}
-                placeholder="Create a password"
+                placeholder="Create a strong password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="pl-10 pr-10 h-11 bg-white border-slate-200 focus:border-blue-500 focus:ring-blue-500/20"
@@ -161,6 +185,9 @@ export function SignupForm({ onSwitchToLogin, onEmailSent }: SignupFormProps) {
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
+            </div>
+            <div className="text-xs text-slate-500">
+              Must be at least 8 characters with uppercase, lowercase, and numbers
             </div>
           </div>
 

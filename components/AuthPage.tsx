@@ -4,9 +4,9 @@ import { useState } from 'react'
 import { LoginForm } from './LoginForm'
 import { SignupForm } from './SignupForm'
 import { ForgotPasswordForm } from './ForgotPasswordForm'
-import { EmailConfirmation } from './EmailConfirmation'
 
-type AuthMode = 'login' | 'signup' | 'forgot-password' | 'email-confirmation'
+
+type AuthMode = 'login' | 'signup' | 'forgot-password'
 
 export function AuthPage() {
   const [authMode, setAuthMode] = useState<AuthMode>('login')
@@ -25,9 +25,9 @@ export function AuthPage() {
         return (
           <SignupForm 
             onSwitchToLogin={() => setAuthMode('login')}
-            onEmailSent={(email) => {
-              setPendingEmail(email)
-              setAuthMode('email-confirmation')
+            onSignupSuccess={(email) => {
+              // After successful signup, switch to login
+              setAuthMode('login')
             }}
           />
         )
@@ -36,17 +36,12 @@ export function AuthPage() {
           <ForgotPasswordForm 
             onSwitchToLogin={() => setAuthMode('login')}
             onEmailSent={(email) => {
+              // For password reset, we still need email confirmation
               setPendingEmail(email)
-              setAuthMode('email-confirmation')
+              // You can add a simple success message here instead
+              alert('Password reset email sent! Please check your inbox.')
+              setAuthMode('login')
             }}
-          />
-        )
-      case 'email-confirmation':
-        return (
-          <EmailConfirmation 
-            email={pendingEmail}
-            onSwitchToLogin={() => setAuthMode('login')}
-            onResendEmail={() => setAuthMode('signup')}
           />
         )
       default:

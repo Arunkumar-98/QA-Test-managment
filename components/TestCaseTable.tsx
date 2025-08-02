@@ -419,6 +419,7 @@ interface TestCaseTableProps {
   currentProject: string
   isPasteDialogOpen?: boolean
   setIsPasteDialogOpen?: (open: boolean) => void
+  deleteLoading?: boolean
 }
 
 export function TestCaseTable({
@@ -464,7 +465,8 @@ export function TestCaseTable({
   onAddTestCaseFromPaste,
   currentProject,
   isPasteDialogOpen,
-  setIsPasteDialogOpen
+  setIsPasteDialogOpen,
+  deleteLoading
 }: TestCaseTableProps) {
   const [isFiltersExpanded, setIsFiltersExpanded] = useState(false)
   const { toast } = useToast()
@@ -1087,65 +1089,65 @@ export function TestCaseTable({
                     width: 'max-content'
                   }}>
                 <TableHeader>
-                        <TableRow className="bg-slate-50 border-b-2 border-slate-300 sticky top-0 z-20">
-                          <TableHead className="p-2 lg:p-4 border-r border-slate-200 bg-slate-50" style={{ width: `${columnWidths.checkbox}px` }}>
+                        <TableRow className="bg-gradient-to-r from-slate-900 via-blue-900 to-purple-900 border-b-2 border-white/20 sticky top-0 z-20">
+                          <TableHead className="p-2 lg:p-4 border-r border-white/20 bg-transparent" style={{ width: `${columnWidths.checkbox}px` }}>
                       <Checkbox
                         checked={selectedTestCases.size === paginatedTestCases.length && paginatedTestCases.length > 0}
                         onCheckedChange={() => onToggleSelectAll(paginatedTestCases)}
                       />
                     </TableHead>
                           {isDragEnabled && (
-                            <TableHead className="font-semibold text-slate-700 p-4 border-r border-slate-200 bg-slate-50" style={{ width: `${columnWidths.dragHandle}px` }}>
+                            <TableHead className="font-semibold text-white p-4 border-r border-white/20 bg-transparent" style={{ width: `${columnWidths.dragHandle}px` }}>
                               <div className="flex items-center gap-2">
-                                <GripVertical className="w-4 h-4 text-slate-500" />
+                                <GripVertical className="w-4 h-4 text-white" />
                                 <span className="text-xs">Drag</span>
                               </div>
                             </TableHead>
                           )}
                     {tableColumns.id?.visible && (
-                            <TableHead className="font-semibold text-slate-700 p-4 border-r border-slate-200 bg-slate-50" style={{ width: `${columnWidths.id}px` }}>#</TableHead>
+                            <TableHead className="font-semibold text-white p-4 border-r border-white/20 bg-transparent" style={{ width: `${columnWidths.id}px` }}>#</TableHead>
                     )}
                     {tableColumns.testCase?.visible && (
-                            <TableHead className="font-semibold text-slate-700 p-4 border-r border-slate-200 bg-slate-50" style={{ width: `${columnWidths.testCase}px` }}>Test Case</TableHead>
+                            <TableHead className="font-semibold text-white p-4 border-r border-white/20 bg-transparent" style={{ width: `${columnWidths.testCase}px` }}>Test Case</TableHead>
                     )}
                     {tableColumns.description?.visible && (
-                            <TableHead className="font-semibold text-slate-700 p-4 border-r border-slate-200 bg-slate-50" style={{ width: `${columnWidths.description}px` }}>Description</TableHead>
+                            <TableHead className="font-semibold text-white p-4 border-r border-white/20 bg-transparent" style={{ width: `${columnWidths.description}px` }}>Description</TableHead>
                     )}
                     {tableColumns.status?.visible && (
-                            <TableHead className="font-semibold text-slate-700 p-4 border-r border-slate-200 bg-slate-50" style={{ width: `${columnWidths.status}px` }}>Status</TableHead>
+                            <TableHead className="font-semibold text-white p-4 border-r border-white/20 bg-transparent" style={{ width: `${columnWidths.status}px` }}>Status</TableHead>
                           )}
                           {tableColumns.priority?.visible && (
-                            <TableHead className="font-semibold text-slate-700 p-4 border-r border-slate-200 bg-slate-50" style={{ width: `${columnWidths.priority}px` }}>Priority</TableHead>
+                            <TableHead className="font-semibold text-white p-4 border-r border-white/20 bg-transparent" style={{ width: `${columnWidths.priority}px` }}>Priority</TableHead>
                     )}
                     {tableColumns.category?.visible && (
-                            <TableHead className="font-semibold text-slate-700 p-4 border-r border-slate-200 bg-slate-50" style={{ width: `${columnWidths.category}px` }}>Category</TableHead>
+                            <TableHead className="font-semibold text-white p-4 border-r border-white/20 bg-transparent" style={{ width: `${columnWidths.category}px` }}>Category</TableHead>
                     )}
                     {tableColumns.platform?.visible && (
-                            <TableHead className="font-semibold text-slate-700 p-4 border-r border-slate-200 bg-slate-50" style={{ width: `${columnWidths.platform}px` }}>Platform</TableHead>
+                            <TableHead className="font-semibold text-white p-4 border-r border-white/20 bg-transparent" style={{ width: `${columnWidths.platform}px` }}>Platform</TableHead>
                     )}
                     {tableColumns.suite?.visible && (
-                            <TableHead className="font-semibold text-slate-700 p-4 border-r border-slate-200 bg-slate-50" style={{ width: `${columnWidths.suite}px` }}>Suite</TableHead>
+                            <TableHead className="font-semibold text-white p-4 border-r border-white/20 bg-transparent" style={{ width: `${columnWidths.suite}px` }}>Suite</TableHead>
                     )}
                     {tableColumns.date?.visible && (
-                            <TableHead className="font-semibold text-slate-700 p-4 border-r border-slate-200 bg-slate-50" style={{ width: `${columnWidths.date}px` }}>Date</TableHead>
+                            <TableHead className="font-semibold text-white p-4 border-r border-white/20 bg-transparent" style={{ width: `${columnWidths.date}px` }}>Date</TableHead>
                     )}
                     {tableColumns.stepsToReproduce?.visible && (
-                            <TableHead className="font-semibold text-slate-700 p-4 border-r border-slate-200 bg-slate-50" style={{ width: `${columnWidths.stepsToReproduce}px` }}>Steps to Reproduce</TableHead>
+                            <TableHead className="font-semibold text-white p-4 border-r border-white/20 bg-transparent" style={{ width: `${columnWidths.stepsToReproduce}px` }}>Steps to Reproduce</TableHead>
                     )}
                           {tableColumns.expectedResult?.visible && (
-                            <TableHead className="font-semibold text-slate-700 p-4 border-r border-slate-200 bg-slate-50" style={{ width: `${columnWidths.expectedResult}px` }}>Expected Result</TableHead>
+                            <TableHead className="font-semibold text-white p-4 border-r border-white/20 bg-transparent" style={{ width: `${columnWidths.expectedResult}px` }}>Expected Result</TableHead>
                     )}
                     {tableColumns.environment?.visible && (
-                            <TableHead className="font-semibold text-slate-700 p-4 border-r border-slate-200 bg-slate-50" style={{ width: `${columnWidths.environment}px` }}>Environment</TableHead>
+                            <TableHead className="font-semibold text-white p-4 border-r border-white/20 bg-transparent" style={{ width: `${columnWidths.environment}px` }}>Environment</TableHead>
                     )}
                     {tableColumns.prerequisites?.visible && (
-                            <TableHead className="font-semibold text-slate-700 p-4 border-r border-slate-200 bg-slate-50" style={{ width: `${columnWidths.prerequisites}px` }}>Prerequisites</TableHead>
+                            <TableHead className="font-semibold text-white p-4 border-r border-white/20 bg-transparent" style={{ width: `${columnWidths.prerequisites}px` }}>Prerequisites</TableHead>
                     )}
                     {tableColumns.automation?.visible && (
-                            <TableHead className="font-semibold text-slate-700 p-4 border-r border-slate-200 bg-slate-50" style={{ width: `${columnWidths.automation}px` }}>Automation</TableHead>
+                            <TableHead className="font-semibold text-white p-4 border-r border-white/20 bg-transparent" style={{ width: `${columnWidths.automation}px` }}>Automation</TableHead>
                     )}
                     {tableColumns.actions?.visible && (
-                            <TableHead className="font-semibold text-slate-700 p-4 border-r border-slate-200 bg-slate-50" style={{ width: `${columnWidths.actions}px` }}>Actions</TableHead>
+                            <TableHead className="font-semibold text-white p-4 border-r border-white/20 bg-transparent" style={{ width: `${columnWidths.actions}px` }}>Actions</TableHead>
                     )}
                   </TableRow>
                 </TableHeader>
@@ -1194,9 +1196,19 @@ export function TestCaseTable({
                                   size="sm"
                               onClick={() => setIsBulkDeleteDialogOpen(true)}
                               className="bg-red-600 hover:bg-red-700"
+                              disabled={deleteLoading}
                             >
-                              <Trash2 className="w-4 h-4 mr-2" />
-                              Delete {selectedTestCases.size} Test Case{selectedTestCases.size !== 1 ? 's' : ''}
+                              {deleteLoading ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                  Deleting...
+                                </>
+                              ) : (
+                                <>
+                                  <Trash2 className="w-4 h-4 mr-2" />
+                                  Delete {selectedTestCases.size} Test Case{selectedTestCases.size !== 1 ? 's' : ''}
+                                </>
+                              )}
                               </Button>
                           </div>
                             </div>
@@ -1268,9 +1280,19 @@ export function TestCaseTable({
                   size="sm"
                   onClick={() => setIsBulkDeleteDialogOpen(true)}
                   className="bg-red-600 hover:bg-red-700"
+                  disabled={deleteLoading}
                 >
-                  <Trash2 className="w-4 h-4 mr-1" />
-                  Delete
+                  {deleteLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-4 h-4 mr-1" />
+                      Delete
+                    </>
+                  )}
                 </Button>
               </div>
             </div>
@@ -1483,8 +1505,18 @@ export function TestCaseTable({
                 onRemoveSelectedTestCases()
                 setIsBulkDeleteDialogOpen(false)
               }}
+              disabled={deleteLoading}
             >
-              Delete {selectedTestCases.size} Test Case{selectedTestCases.size !== 1 ? 's' : ''}
+              {deleteLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  Delete {selectedTestCases.size} Test Case{selectedTestCases.size !== 1 ? 's' : ''}
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

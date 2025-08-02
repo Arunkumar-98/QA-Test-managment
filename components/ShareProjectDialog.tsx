@@ -100,6 +100,18 @@ export function ShareProjectDialog({ isOpen, onClose, projectId, projectName, on
     setIsLoading(true)
     setError('')
 
+    // Validate required fields
+    if (!projectId || !projectName) {
+      setError('Project ID and Project Name are required')
+      toast({
+        title: "Error Sharing Project",
+        description: "Project information is missing. Please select a project first.",
+        variant: "destructive",
+      })
+      setIsLoading(false)
+      return
+    }
+
     try {
       const options: any = {}
       
