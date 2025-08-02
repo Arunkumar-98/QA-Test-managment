@@ -50,7 +50,7 @@ export function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-r from-slate-900 via-blue-900 to-purple-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Logo and Brand */}
         <div className="text-center mb-8">
@@ -59,8 +59,8 @@ export function AuthPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <h1 className="text-4xl font-bold text-slate-900 mb-3">QA Management</h1>
-          <p className="text-slate-600 text-lg">Professional test case management for teams</p>
+          <h1 className="text-4xl font-bold text-white mb-3">QA Management</h1>
+          <p className="text-white/80 text-lg">Professional test case management for teams</p>
         </div>
 
         {/* Auth Form */}
@@ -68,7 +68,7 @@ export function AuthPage() {
 
         {/* Footer */}
         <div className="mt-8 text-center">
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-white/60">
             Secure authentication powered by Supabase
           </p>
         </div>
