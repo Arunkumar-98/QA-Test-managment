@@ -80,6 +80,7 @@ export function QAApplication() {
   const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(false)
   const [isCreatingProject, setIsCreatingProject] = useState(false)
   const [pendingAction, setPendingAction] = useState<string | null>(null)
+  const [projectsLoading, setProjectsLoading] = useState(true)
 
   
   // Selected test case for dialogs
@@ -260,6 +261,7 @@ export function QAApplication() {
   // Load projects from Supabase
   const loadProjectsFromSupabase = async () => {
     try {
+      setProjectsLoading(true)
   
       const projectsData = await projectService.getAll()
       
@@ -291,6 +293,8 @@ export function QAApplication() {
         description: `Failed to load projects from database: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: "destructive",
       })
+    } finally {
+      setProjectsLoading(false)
     }
   }
 
@@ -1312,8 +1316,15 @@ export function QAApplication() {
 
             {/* Main Content */}
             <div className="flex-1 flex flex-col">
-              {/* Show Full Screen Welcome if no projects */}
-              {projects.length === 0 ? (
+              {/* Show loading state while projects are being fetched */}
+              {projectsLoading ? (
+                <div className="flex-1 flex items-center justify-center">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p className="text-slate-600">Loading your projects...</p>
+                  </div>
+                </div>
+              ) : projects.length === 0 ? (
                 <FullScreenWelcome 
                   onCreateProject={handleAddProject}
                   isLoading={isCreatingProject}
