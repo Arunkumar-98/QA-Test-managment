@@ -31,6 +31,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null)
       // Clear any stored session data
       if (typeof window !== 'undefined') {
+        localStorage.removeItem('qa-management-auth-token')
+        sessionStorage.removeItem('qa-management-auth-token')
+        // Also clear any legacy tokens
         localStorage.removeItem('supabase.auth.token')
         sessionStorage.removeItem('supabase.auth.token')
       }
