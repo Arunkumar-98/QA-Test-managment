@@ -59,29 +59,29 @@ export function ForgotPasswordForm({ onSwitchToLogin, onEmailSent }: ForgotPassw
 
   if (success) {
     return (
-      <Card className="w-full max-w-md mx-auto">
+      <Card className="w-full max-w-md mx-auto bg-white/10 backdrop-blur-lg border-white/20 shadow-2xl">
         <CardHeader className="space-y-1">
           <div className="flex items-center justify-center mb-4">
             <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center">
               <CheckCircle className="w-6 h-6 text-white" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold text-center text-slate-900">Check your email</CardTitle>
-          <CardDescription className="text-center text-slate-600">
+          <CardTitle className="text-2xl font-bold text-center text-white">Check your email</CardTitle>
+          <CardDescription className="text-center text-white/80">
             We've sent password reset instructions to {email}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <p className="text-sm text-blue-800">
+            <div className="bg-blue-500/20 border border-blue-400/30 rounded-lg p-4">
+              <p className="text-sm text-blue-200">
                 Didn't receive the email? Check your spam folder or try again.
               </p>
             </div>
             
             <Button
               onClick={handleSubmit}
-              className="w-full h-11 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-medium"
+              className="w-full h-11 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-medium shadow-lg"
               disabled={isLoading}
             >
               {isLoading ? (
@@ -100,15 +100,15 @@ export function ForgotPasswordForm({ onSwitchToLogin, onEmailSent }: ForgotPassw
   }
 
   return (
-    <Card className="w-full max-w-md mx-auto">
+    <Card className="w-full max-w-md mx-auto bg-white/10 backdrop-blur-lg border-white/20 shadow-2xl">
       <CardHeader className="space-y-1">
         <div className="flex items-center justify-center mb-4">
           <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl flex items-center justify-center">
             <Mail className="w-6 h-6 text-white" />
           </div>
         </div>
-        <CardTitle className="text-2xl font-bold text-center text-slate-900">Reset password</CardTitle>
-        <CardDescription className="text-center text-slate-600">
+        <CardTitle className="text-2xl font-bold text-center text-white">Reset password</CardTitle>
+        <CardDescription className="text-center text-white/80">
           Enter your email address and we'll send you a link to reset your password
         </CardDescription>
       </CardHeader>
@@ -121,18 +121,18 @@ export function ForgotPasswordForm({ onSwitchToLogin, onEmailSent }: ForgotPassw
           )}
           
           <div className="space-y-2">
-            <Label htmlFor="email" className="text-sm font-medium text-slate-700">
+            <Label htmlFor="email" className="text-sm font-medium text-white/90">
               Email address
             </Label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-white/60" />
               <Input
                 id="email"
                 type="email"
                 placeholder="Enter your email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="pl-10 h-11 bg-white border-slate-200 focus:border-blue-500 focus:ring-blue-500/20"
+                className="pl-10 h-11 bg-white/10 border-white/20 text-white placeholder-white/90 focus:border-blue-400 focus:ring-blue-400/20 backdrop-blur-sm"
                 disabled={isLoading}
               />
             </div>
@@ -140,7 +140,7 @@ export function ForgotPasswordForm({ onSwitchToLogin, onEmailSent }: ForgotPassw
 
           <Button
             type="submit"
-            className="w-full h-11 bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white font-medium"
+            className="w-full h-11 bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white font-medium shadow-lg"
             disabled={isLoading}
           >
             {isLoading ? (
@@ -157,7 +157,7 @@ export function ForgotPasswordForm({ onSwitchToLogin, onEmailSent }: ForgotPassw
         <div className="mt-6 text-center">
           <button
             onClick={onSwitchToLogin}
-            className="inline-flex items-center text-sm text-slate-600 hover:text-slate-800 transition-colors"
+            className="inline-flex items-center text-sm text-white/80 hover:text-white transition-colors"
             disabled={isLoading}
           >
             <ArrowLeft className="w-4 h-4 mr-1" />
