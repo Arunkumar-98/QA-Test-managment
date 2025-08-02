@@ -220,8 +220,8 @@ export function QASidebar({
   )
 
   // Separate regular projects from shared projects
-  const regularProjects = projectsWithStats.filter(project => !project.tags?.includes('Shared Project'))
-  const sharedProjects = projectsWithStats.filter(project => project.tags?.includes('Shared Project'))
+  const regularProjects = projectsWithStats.filter(project => !project.tags || !project.tags.includes('Shared Project'))
+  const sharedProjects = projectsWithStats.filter(project => project.tags && project.tags.includes('Shared Project'))
 
   return (
     <div className="h-full bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900 border-r border-white/20 flex flex-col shadow-lg relative overflow-hidden">

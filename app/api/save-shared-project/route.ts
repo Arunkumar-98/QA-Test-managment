@@ -98,25 +98,42 @@ export async function POST(request: NextRequest) {
     }
 
     // Create new project for the user
-    const newProjectData = {
+    // Try with tags first, fallback to without tags if column doesn't exist
+    let newProjectData: any = {
       name: `${originalProject.name} (Shared Copy)`,
       description: originalProject.description || `Shared copy of ${originalProject.name}`,
       created_at: new Date(),
       is_active: true,
-      user_id: user.id,
-      tags: ['Shared Project'] // Add the shared project tag
+      user_id: user.id
     }
 
-    const { data: newProject, error: createProjectError } = await supabase
+    console.log('Creating project with data:', newProjectData)
+
+    let { data: newProject, error: createProjectError } = await supabase
       .from('projects')
       .insert([newProjectData])
       .select()
       .single()
 
+    // If the first attempt fails due to missing tags column, try without tags
+    if (createProjectError && createProjectError.message.includes('tags')) {
+      console.log('Tags column not found, trying without tags')
+      delete newProjectData.tags
+      
+      const { data: newProjectWithoutTags, error: createProjectError2 } = await supabase
+        .from('projects')
+        .insert([newProjectData])
+        .select()
+        .single()
+      
+      newProject = newProjectWithoutTags
+      createProjectError = createProjectError2
+    }
+
     if (createProjectError) {
       console.error('Error creating project:', createProjectError)
       return NextResponse.json(
-        { error: 'Failed to create project' },
+        { error: `Failed to create project: ${createProjectError.message}` },
         { status: 500 }
       )
     }
