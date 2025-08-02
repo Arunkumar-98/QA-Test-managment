@@ -51,47 +51,17 @@ function SharedTestSuiteContent() {
         setIsLoading(true)
         setError('')
 
-        // Get share details
+        // Get share details from server-side API
         console.log('🔍 Getting share details for token:', token)
-        const share = await testSuiteShareService.getShareByToken(token)
-        console.log('🔍 Share details:', share)
-        if (!share) {
-          setError('This share link is invalid or has expired.')
+        const response = await fetch(`/api/shared-suite/${token}`)
+        const data = await response.json()
+        
+        if (!response.ok) {
+          setError(data.error || 'Failed to load the shared test suite.')
           return
         }
 
-        // Check if share is expired
-        if (share.expiresAt && new Date() > share.expiresAt) {
-          setError('This share link has expired.')
-          return
-        }
-
-        // Check if max views exceeded
-        if (share.maxViews && share.currentViews >= share.maxViews) {
-          setError('This share link has reached its maximum number of views.')
-          return
-        }
-
-        // Get project details
-        console.log('🔍 Getting project details for ID:', share.projectId)
-        const project = await projectService.getById(share.projectId)
-        console.log('🔍 Project details:', project)
-        if (!project) {
-          setError('The shared project could not be found.')
-          return
-        }
-
-        // Get test suite details
-        console.log('🔍 Getting test suite details for ID:', share.testSuiteId)
-        const testSuite = await testSuiteService.getById(share.testSuiteId)
-        console.log('🔍 Test suite details:', testSuite)
-        if (!testSuite) {
-          setError('The shared test suite could not be found.')
-          return
-        }
-
-        // Increment view count
-        await testSuiteShareService.incrementViews(share.id)
+        const { share, project, testSuite } = data
 
         setSharedAccess({
           testSuite,
