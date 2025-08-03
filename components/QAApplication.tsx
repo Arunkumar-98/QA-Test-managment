@@ -1159,16 +1159,6 @@ export function QAApplication() {
               </div>
               
               <div className="flex items-center space-x-6">
-                <div className="flex items-center space-x-4 px-5 py-3 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 shadow-lg">
-                  <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center shadow-md">
-                    <User className="w-5 h-5 text-white" />
-                  </div>
-                  <div className="text-left">
-                    <p className="text-sm font-semibold text-white">{user?.user_metadata?.name || user?.email || 'User'}</p>
-                    <p className="text-xs text-green-200 font-medium">Logged in</p>
-                  </div>
-                </div>
-                
                 <div className="relative" ref={userMenuRef}>
                   <Button
                     variant="ghost"
