@@ -1187,12 +1187,6 @@ export function QAApplication() {
                             <p className="text-xs text-blue-200 truncate">
                               {user?.email || 'No email'}
                             </p>
-                            {/* Debug info - remove after testing */}
-                            {process.env.NODE_ENV === 'development' && (
-                              <p className="text-xs text-red-300 mt-1">
-                                Debug: {JSON.stringify(user?.user_metadata)}
-                              </p>
-                            )}
                           </div>
                         </div>
                       </div>
