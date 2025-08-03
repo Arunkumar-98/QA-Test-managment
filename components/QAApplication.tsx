@@ -1129,11 +1129,11 @@ export function QAApplication() {
             <div className="flex items-center justify-between h-20">
               <div className="flex items-center space-x-6">
                 <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg overflow-hidden">
+                  <div className="w-12 h-12 flex items-center justify-center">
                     <img 
                       src="/favicon.png" 
                       alt="QA Management" 
-                      className="w-8 h-8 object-contain"
+                      className="w-12 h-12 object-contain"
                       onError={(e) => {
                         // Fallback to favicon.ico if png fails
                         const target = e.target as HTMLImageElement;
