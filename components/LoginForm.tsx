@@ -58,10 +58,19 @@ export function LoginForm({ onSwitchToSignup, onSwitchToForgotPassword }: LoginF
     <Card className="w-full max-w-md mx-auto bg-white/10 backdrop-blur-lg border-white/20 shadow-2xl">
       <CardHeader className="space-y-1">
         <div className="flex items-center justify-center mb-4">
-          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center">
-            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
+          <div className="w-12 h-12 flex items-center justify-center">
+            <img 
+              src="/favicon.png" 
+              alt="QA Management" 
+              className="w-12 h-12 object-contain"
+              onError={(e) => {
+                // Fallback to favicon.ico if png fails
+                const target = e.target as HTMLImageElement;
+                if (target.src.includes('favicon.png')) {
+                  target.src = '/favicon.ico';
+                }
+              }}
+            />
           </div>
         </div>
         <CardTitle className="text-2xl font-bold text-center text-white">Welcome back</CardTitle>

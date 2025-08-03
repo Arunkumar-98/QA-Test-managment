@@ -129,10 +129,19 @@ export default function AuthCodeErrorPage() {
       <div className="w-full max-w-md">
         {/* Logo and Brand */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-3xl mb-6 shadow-xl">
-            <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
+          <div className="inline-flex items-center justify-center w-20 h-20 mb-6">
+            <img 
+              src="/favicon.png" 
+              alt="QA Management" 
+              className="w-20 h-20 object-contain"
+              onError={(e) => {
+                // Fallback to favicon.ico if png fails
+                const target = e.target as HTMLImageElement;
+                if (target.src.includes('favicon.png')) {
+                  target.src = '/favicon.ico';
+                }
+              }}
+            />
           </div>
           <h1 className="text-4xl font-bold text-slate-900 mb-3">QA Management</h1>
         </div>
