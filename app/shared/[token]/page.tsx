@@ -220,7 +220,7 @@ function SharedProjectContent() {
     }
   }
 
-  const handleSaveToMyProjects = async () => {
+  const handleAddToMyProjects = async () => {
     if (!user) {
       setShowLoginPrompt(true)
       return
@@ -228,7 +228,7 @@ function SharedProjectContent() {
 
     setIsSavingProject(true)
     try {
-      const response = await fetch('/api/save-shared-project', {
+      const response = await fetch('/api/add-to-my-projects', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -240,12 +240,12 @@ function SharedProjectContent() {
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to save project')
+        throw new Error(data.error || 'Failed to add project')
       }
 
       toast({
-        title: "Project Saved!",
-        description: "The project has been saved to your account with the 'Shared Project' tag.",
+        title: "Project Added!",
+        description: "The project has been added to your shared projects. You will see live updates from the original project.",
       })
 
       // Redirect to the main app after a short delay
@@ -254,10 +254,10 @@ function SharedProjectContent() {
       }, 2000)
 
     } catch (error) {
-      console.error('Error saving project:', error)
+      console.error('Error adding project:', error)
       toast({
-        title: "Error Saving Project",
-        description: error instanceof Error ? error.message : "Failed to save project to your account.",
+        title: "Error Adding Project",
+        description: error instanceof Error ? error.message : "Failed to add project to your shared projects.",
         variant: "destructive",
       })
     } finally {
@@ -329,19 +329,19 @@ function SharedProjectContent() {
               </Badge>
               {user && (
                 <Button 
-                  onClick={handleSaveToMyProjects}
+                  onClick={handleAddToMyProjects}
                   disabled={isSavingProject}
-                  className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-medium shadow-lg"
+                  className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-medium shadow-lg"
                 >
                   {isSavingProject ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Saving...
+                      Adding...
                     </>
                   ) : (
                     <>
-                      <Save className="w-4 h-4 mr-2" />
-                      Save to My Projects
+                      <Share2 className="w-4 h-4 mr-2" />
+                      Add to My Projects
                     </>
                   )}
                 </Button>

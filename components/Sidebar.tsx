@@ -29,7 +29,8 @@ import type {
   ImportantLink, 
   CreateImportantLinkInput, 
   Project,
-  TestCase
+  TestCase,
+  SharedProjectReference
 } from "@/types/qa-types"
 import { Folder, Link, Plus, BarChart3, Globe, BookOpen, FileSpreadsheet, Target, X, Settings, Table, Share2, Upload, Download, Clipboard } from "lucide-react"
 import { PRDToTestCases } from './PRDToTestCases'
@@ -47,6 +48,7 @@ interface QASidebarProps {
   currentProjectId: string
   onProjectChange: (projectName: string) => Promise<void>
   projects: Project[]
+  sharedProjectReferences?: SharedProjectReference[]
   onAddProject: (projectName: string) => Promise<void>
   onRemoveProject: (projectName: string) => Promise<void>
   documents: Document[]
@@ -85,6 +87,7 @@ export function QASidebar({
   currentProjectId,
   onProjectChange,
   projects,
+  sharedProjectReferences = [],
   onAddProject,
   onRemoveProject,
   documents,
@@ -221,7 +224,17 @@ export function QASidebar({
 
   // Separate regular projects from shared projects
   const regularProjects = projectsWithStats.filter(project => !project.tags || !project.tags.includes('Shared Project'))
-  const sharedProjects = projectsWithStats.filter(project => project.tags && project.tags.includes('Shared Project'))
+  
+  // Create shared projects from references (Live Sync)
+  const sharedProjects = sharedProjectReferences.map(ref => ({
+    id: ref.originalProjectId,
+    name: ref.originalProjectName,
+    testSuiteCount: testSuites.filter((suite) => suite.projectId === ref.originalProjectId).length,
+    isShared: true,
+    shareToken: ref.shareToken,
+    permissions: ref.permissions,
+    lastSyncedAt: ref.lastSyncedAt
+  }))
 
   return (
     <div className="h-full bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900 border-r border-white/20 flex flex-col shadow-lg relative overflow-hidden">
@@ -407,7 +420,7 @@ export function QASidebar({
                               <div className="flex-1 min-w-0">
                                 <h4 className="font-medium text-sm text-white truncate">{project.name}</h4>
                                 <p className="text-xs text-green-200 truncate">
-                                  {project.testSuiteCount} test suites • Shared
+                                  {project.testSuiteCount} test suites • Live Sync
                                 </p>
                               </div>
                             </div>

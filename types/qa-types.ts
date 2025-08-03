@@ -333,6 +333,30 @@ export type SharedProjectAccess = {
   userEmail?: string
 }
 
+export type SharedProjectReference = {
+  id: string
+  userId: string
+  originalProjectId: string
+  originalProjectName: string
+  shareToken: string
+  permissions: ProjectPermissions
+  createdAt: Date
+  isActive: boolean
+  lastSyncedAt: Date
+}
+
+export type SharedProjectReferenceDB = {
+  id: string
+  user_id: string
+  original_project_id: string
+  original_project_name: string
+  share_token: string
+  permissions: ProjectPermissions
+  created_at: Date
+  is_active: boolean
+  last_synced_at: Date
+}
+
 // Database version of ProjectShare (snake_case)
 export type ProjectShareDB = {
   id: string
@@ -696,4 +720,28 @@ export const mapStatusHistoryToDB = (sh: StatusHistory): StatusHistoryDB => ({
     error: sh.metadata.error,
     ...sh.metadata
   } : undefined
+})
+
+export const mapSharedProjectReferenceFromDB = (db: SharedProjectReferenceDB): SharedProjectReference => ({
+  id: db.id,
+  userId: db.user_id,
+  originalProjectId: db.original_project_id,
+  originalProjectName: db.original_project_name,
+  shareToken: db.share_token,
+  permissions: db.permissions,
+  createdAt: db.created_at,
+  isActive: db.is_active,
+  lastSyncedAt: db.last_synced_at
+})
+
+export const mapSharedProjectReferenceToDB = (ref: SharedProjectReference): SharedProjectReferenceDB => ({
+  id: ref.id,
+  user_id: ref.userId,
+  original_project_id: ref.originalProjectId,
+  original_project_name: ref.originalProjectName,
+  share_token: ref.shareToken,
+  permissions: ref.permissions,
+  created_at: ref.createdAt,
+  is_active: ref.isActive,
+  last_synced_at: ref.lastSyncedAt
 }) 

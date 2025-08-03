@@ -23,7 +23,7 @@ import { ActionGuard } from './ActionGuard'
 import { FullScreenWelcome } from './FullScreenWelcome'
 import { 
   TestCase, TestCaseStatus, TestSuite, Document, ImportantLink, Project,
-  CreateDocumentInput, CreateImportantLinkInput
+  CreateDocumentInput, CreateImportantLinkInput, SharedProjectReference
 } from "@/types/qa-types"
 import type { Comment } from "@/types/qa-types"
 import { DEFAULT_PROJECT, PLATFORM_OPTIONS } from "@/lib/constants"
@@ -31,7 +31,7 @@ import { getSuiteStatistics, mapImportedDataToTestCase, validateImportedTestCase
 import { toast } from "@/hooks/use-toast"
 import * as XLSX from "xlsx"
 
-import { projectService, documentService, importantLinkService, platformService, commentService } from "@/lib/supabase-service"
+import { projectService, documentService, importantLinkService, platformService, commentService, sharedProjectReferenceService } from "@/lib/supabase-service"
 import {
   Dialog,
   DialogContent,
@@ -60,6 +60,7 @@ export function QAApplication() {
   const [currentProjectId, setCurrentProjectId] = useState<string>('')
   const [platforms, setPlatforms] = useState<string[]>([...PLATFORM_OPTIONS])
   const [projects, setProjects] = useState<Project[]>([])
+  const [sharedProjectReferences, setSharedProjectReferences] = useState<SharedProjectReference[]>([])
   const [importantLinks, setImportantLinks] = useState<ImportantLink[]>([])
   const [documents, setDocuments] = useState<Document[]>([])
   const [editingTestCase, setEditingTestCase] = useState<TestCase | null>(null)
@@ -266,6 +267,15 @@ export function QAApplication() {
       const projectsData = await projectService.getAll()
       
       setProjects(projectsData)
+      
+      // Load shared project references
+      try {
+        const sharedRefs = await sharedProjectReferenceService.getAll()
+        setSharedProjectReferences(sharedRefs)
+      } catch (error) {
+        console.error('Error loading shared project references:', error)
+        // Don't show error toast for this as it might be expected if table doesn't exist yet
+      }
       
       // Only set current project if none is currently selected
       if (projectsData.length > 0 && (!currentProjectId || !currentProject)) {
@@ -1228,6 +1238,7 @@ export function QAApplication() {
             currentProject={currentProject}
             currentProjectId={currentProjectId}
             projects={projects}
+            sharedProjectReferences={sharedProjectReferences}
             platforms={platforms}
             importantLinks={importantLinks}
             documents={documents}

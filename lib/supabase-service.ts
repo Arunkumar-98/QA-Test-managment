@@ -28,6 +28,8 @@ import {
   TestSuiteShare,
   TestSuiteShareDB,
   TestSuitePermissions,
+  SharedProjectReference,
+  SharedProjectReferenceDB,
   mapTestCaseFromDB, 
   mapTestCaseToDB, 
   mapTestSuiteFromDB, 
@@ -47,7 +49,9 @@ import {
   mapProjectShareFromDB, 
   mapProjectShareToDB,
   mapTestSuiteShareFromDB,
-  mapTestSuiteShareToDB
+  mapTestSuiteShareToDB,
+  mapSharedProjectReferenceFromDB,
+  mapSharedProjectReferenceToDB
 } from '@/types/qa-types'
 
 // Test Cases
@@ -1236,6 +1240,105 @@ export const statusHistoryService = {
       .from('status_history')
       .delete()
       .eq('test_case_id', testCaseId)
+    
+    if (error) throw error
+  }
+}
+
+// Shared Project References Service (Live Sync)
+export const sharedProjectReferenceService = {
+  async getAll(): Promise<SharedProjectReference[]> {
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (!user) {
+      throw new Error('User not authenticated')
+    }
+    
+    const { data, error } = await supabase
+      .from('shared_project_references')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
+    
+    if (error) throw error
+    return (data || []).map(mapSharedProjectReferenceFromDB)
+  },
+
+  async getById(id: string): Promise<SharedProjectReference | null> {
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (!user) {
+      throw new Error('User not authenticated')
+    }
+    
+    const { data, error } = await supabase
+      .from('shared_project_references')
+      .select('*')
+      .eq('id', id)
+      .eq('user_id', user.id)
+      .single()
+    
+    if (error) {
+      if (error.code === 'PGRST116') return null
+      throw error
+    }
+    
+    return mapSharedProjectReferenceFromDB(data)
+  },
+
+  async create(reference: Omit<SharedProjectReference, 'id' | 'createdAt' | 'lastSyncedAt'>): Promise<SharedProjectReference> {
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (!user) {
+      throw new Error('User not authenticated')
+    }
+    
+    const dbData = mapSharedProjectReferenceToDB({
+      ...reference,
+      id: '',
+      createdAt: new Date(),
+      lastSyncedAt: new Date()
+    })
+    
+    const { data, error } = await supabase
+      .from('shared_project_references')
+      .insert([dbData])
+      .select()
+      .single()
+    
+    if (error) throw error
+    return mapSharedProjectReferenceFromDB(data)
+  },
+
+  async delete(id: string): Promise<void> {
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (!user) {
+      throw new Error('User not authenticated')
+    }
+    
+    const { error } = await supabase
+      .from('shared_project_references')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', user.id)
+    
+    if (error) throw error
+  },
+
+  async updateLastSynced(id: string): Promise<void> {
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (!user) {
+      throw new Error('User not authenticated')
+    }
+    
+    const { error } = await supabase
+      .from('shared_project_references')
+      .update({ last_synced_at: new Date() })
+      .eq('id', id)
+      .eq('user_id', user.id)
     
     if (error) throw error
   }
