@@ -419,7 +419,7 @@ export function QAApplication() {
       
       toast({
         title: "Project Added",
-        description: `Project "${projectName}" has been added${projects.length === 0 ? ' and selected' : ''}.`,
+        description: `Project "${projectName}" has been added${projects.length === 0 ? ' and selected' : ''}.`
       })
     } catch (error) {
       console.error('Failed to add project:', error)
