@@ -1182,26 +1182,6 @@ export function QAApplication() {
                   {showUserMenu && (
                     <div className="absolute right-0 top-full mt-2 w-64 bg-slate-900/95 backdrop-blur-sm rounded-xl shadow-lg border border-white/20 py-2 z-[60]">
                       <div className="px-4 py-2 border-b border-white/10">
-                        <p className="text-xs font-medium text-blue-200 uppercase tracking-wide">Settings</p>
-                      </div>
-                      
-                      <button
-                        onClick={() => setIsProjectSettingsOpen(true)}
-                        className="w-full px-4 py-3 text-left text-sm text-white hover:bg-white/10 flex items-center space-x-3 transition-colors"
-                      >
-                        <Folder className="w-4 h-4 text-blue-300" />
-                        <span className="font-medium">Project Settings</span>
-                      </button>
-                      
-                      <button
-                        onClick={() => setIsTableSettingsOpen(true)}
-                        className="w-full px-4 py-3 text-left text-sm text-white hover:bg-white/10 flex items-center space-x-3 transition-colors"
-                      >
-                        <Table className="w-4 h-4 text-blue-300" />
-                        <span className="font-medium">Table Settings</span>
-                      </button>
-                      
-                      <div className="px-4 py-2 border-t border-white/10">
                         <p className="text-xs font-medium text-blue-200 uppercase tracking-wide">User Profile</p>
                       </div>
                       
@@ -1222,7 +1202,27 @@ export function QAApplication() {
                       </div>
                       
                       <div className="px-4 py-2 border-t border-white/10">
-                        <p className="text-xs font-medium text-blue-200 uppercase tracking-wide">Debug</p>
+                        <p className="text-xs font-medium text-blue-200 uppercase tracking-wide">Settings</p>
+                      </div>
+                      
+                      <button
+                        onClick={() => setIsProjectSettingsOpen(true)}
+                        className="w-full px-4 py-3 text-left text-sm text-white hover:bg-white/10 flex items-center space-x-3 transition-colors"
+                      >
+                        <Folder className="w-4 h-4 text-blue-300" />
+                        <span className="font-medium">Project Settings</span>
+                      </button>
+                      
+                      <button
+                        onClick={() => setIsTableSettingsOpen(true)}
+                        className="w-full px-4 py-3 text-left text-sm text-white hover:bg-white/10 flex items-center space-x-3 transition-colors"
+                      >
+                        <Table className="w-4 h-4 text-blue-300" />
+                        <span className="font-medium">Table Settings</span>
+                      </button>
+                      
+                      <div className="px-4 py-2 border-t border-white/10">
+                        <p className="text-xs font-medium text-blue-200 uppercase tracking-wide">Other</p>
                       </div>
                       
                       <button
@@ -1232,10 +1232,6 @@ export function QAApplication() {
                         <Settings className="w-4 h-4 text-blue-300" />
                         <span className="font-medium">Fix Database RLS</span>
                       </button>
-                      
-                      <div className="px-4 py-2 border-t border-white/10">
-                        <p className="text-xs font-medium text-blue-200 uppercase tracking-wide">Account</p>
-                      </div>
                       
                       <button
                         onClick={signOut}
