@@ -32,7 +32,7 @@ import type {
   TestCase,
   SharedProjectReference
 } from "@/types/qa-types"
-import { Folder, Link, Plus, BarChart3, Globe, BookOpen, FileSpreadsheet, Target, X, Settings, Table, Share2, Upload, Download, Clipboard } from "lucide-react"
+import { Folder, Link, Plus, BarChart3, Globe, BookOpen, FileSpreadsheet, Target, X, Settings, Table, Share2, Upload, Download, Clipboard, FileText } from "lucide-react"
 import { PRDToTestCases } from './PRDToTestCases'
 
 interface QASidebarProps {
@@ -70,6 +70,7 @@ interface QASidebarProps {
   onAddTestCase: () => void
   onFileUpload: (event: React.ChangeEvent<HTMLInputElement>) => void
   onExportToExcel: () => void
+  onOpenNotes: () => void
   isPasteDialogOpen?: boolean
   setIsPasteDialogOpen?: (open: boolean) => void
 }
@@ -109,6 +110,7 @@ export function QASidebar({
   onAddTestCase,
   onFileUpload,
   onExportToExcel,
+  onOpenNotes,
   isPasteDialogOpen,
   setIsPasteDialogOpen,
 }: QASidebarProps) {
@@ -879,6 +881,17 @@ export function QASidebar({
                   Export
                 </Button>
               </div>
+              
+              {/* Notes Action */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onOpenNotes}
+                className="w-full h-9 text-sm font-medium border-green-400/50 bg-green-500/20 hover:border-green-400 hover:bg-green-500/30 rounded-lg transition-all duration-200 text-white hover:text-white !text-white"
+              >
+                <FileText className="w-3.5 h-3.5 mr-1.5" />
+                Notes
+              </Button>
             </div>
           </div>
         </div>

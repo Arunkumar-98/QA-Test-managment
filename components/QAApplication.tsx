@@ -17,6 +17,7 @@ import { PRDToTestCases } from './PRDToTestCases'
 import { ImportPreviewDialog } from './ImportPreviewDialog'
 import { EnhancedPasteDialog } from './EnhancedPasteDialog'
 import { ShareTestSuiteDialog } from './ShareTestSuiteDialog'
+import { NotesDialog } from './NotesDialog'
 import { WelcomeProjectModal } from './WelcomeProjectModal'
 import { EmptyState } from './EmptyState'
 import { ActionGuard } from './ActionGuard'
@@ -82,6 +83,7 @@ export function QAApplication() {
   const [isCreatingProject, setIsCreatingProject] = useState(false)
   const [pendingAction, setPendingAction] = useState<string | null>(null)
   const [projectsLoading, setProjectsLoading] = useState(true)
+  const [isNotesDialogOpen, setIsNotesDialogOpen] = useState(false)
 
   
   // Selected test case for dialogs
@@ -1100,6 +1102,10 @@ export function QAApplication() {
     setIsShareTestSuiteDialogOpen(true)
   }
 
+  const handleOpenNotes = () => {
+    setIsNotesDialogOpen(true)
+  }
+
   return (
     <>
       <div className="min-h-screen bg-slate-50">
@@ -1303,6 +1309,7 @@ export function QAApplication() {
             onAddTestCase={() => setIsAddDialogOpen(true)}
             onFileUpload={handleFileUpload}
             onExportToExcel={handleExportToExcel}
+            onOpenNotes={handleOpenNotes}
             isPasteDialogOpen={isEnhancedPasteDialogOpen}
             setIsPasteDialogOpen={setIsEnhancedPasteDialogOpen}
           />
@@ -1496,6 +1503,14 @@ export function QAApplication() {
           }}
         />
       )}
+
+      {/* Notes Dialog */}
+      <NotesDialog
+        isOpen={isNotesDialogOpen}
+        onClose={() => setIsNotesDialogOpen(false)}
+        projectId={currentProjectId}
+        projectName={currentProject}
+      />
 
       {/* Table Settings Dialog */}
       <Dialog open={isTableSettingsOpen} onOpenChange={setIsTableSettingsOpen}>
