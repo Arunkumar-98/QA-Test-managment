@@ -95,6 +95,16 @@ export function NotesDialog({ isOpen, onClose, projectId, projectName }: NotesDi
   }, [notes, searchTerm])
 
   const loadNotes = async () => {
+    if (!projectId || projectId.trim() === '') {
+      toast({
+        title: "Error",
+        description: "No project selected. Please select a project first.",
+        variant: "destructive",
+      })
+      onClose()
+      return
+    }
+
     try {
       setIsLoading(true)
       const loadedNotes = await noteService.getAll(projectId)
@@ -139,6 +149,15 @@ export function NotesDialog({ isOpen, onClose, projectId, projectName }: NotesDi
   }
 
   const handleSaveNote = async () => {
+    if (!projectId || projectId.trim() === '') {
+      toast({
+        title: "Validation Error",
+        description: "No project selected. Please select a project first.",
+        variant: "destructive",
+      })
+      return
+    }
+
     if (!title.trim()) {
       toast({
         title: "Validation Error",

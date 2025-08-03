@@ -1103,6 +1103,14 @@ export function QAApplication() {
   }
 
   const handleOpenNotes = () => {
+    if (!currentProjectId || currentProjectId.trim() === '') {
+      toast({
+        title: "No Project Selected",
+        description: "Please select a project first before opening notes.",
+        variant: "destructive",
+      })
+      return
+    }
     setIsNotesDialogOpen(true)
   }
 

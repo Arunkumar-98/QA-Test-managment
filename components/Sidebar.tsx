@@ -887,7 +887,12 @@ export function QASidebar({
                 variant="outline"
                 size="sm"
                 onClick={onOpenNotes}
-                className="w-full h-9 text-sm font-medium border-green-400/50 bg-green-500/20 hover:border-green-400 hover:bg-green-500/30 rounded-lg transition-all duration-200 text-white hover:text-white !text-white"
+                disabled={!currentProjectId || currentProjectId.trim() === ''}
+                className={`w-full h-9 text-sm font-medium rounded-lg transition-all duration-200 ${
+                  currentProjectId && currentProjectId.trim() !== ''
+                    ? 'border-green-400/50 bg-green-500/20 hover:border-green-400 hover:bg-green-500/30 text-white hover:text-white !text-white'
+                    : 'border-gray-400/30 bg-gray-500/10 text-gray-400 cursor-not-allowed'
+                }`}
               >
                 <FileText className="w-3.5 h-3.5 mr-1.5" />
                 Notes
