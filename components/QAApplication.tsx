@@ -1129,10 +1129,19 @@ export function QAApplication() {
             <div className="flex items-center justify-between h-20">
               <div className="flex items-center space-x-6">
                 <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
-                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
+                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg overflow-hidden">
+                    <img 
+                      src="/favicon.png" 
+                      alt="QA Management" 
+                      className="w-8 h-8 object-contain"
+                      onError={(e) => {
+                        // Fallback to favicon.ico if png fails
+                        const target = e.target as HTMLImageElement;
+                        if (target.src.includes('favicon.png')) {
+                          target.src = '/favicon.ico';
+                        }
+                      }}
+                    />
                   </div>
                   <div>
                     <h1 className="text-2xl font-bold text-white">QA Management</h1>
