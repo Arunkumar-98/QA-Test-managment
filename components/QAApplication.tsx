@@ -1182,11 +1182,17 @@ export function QAApplication() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-white truncate">
-                              {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'}
+                              {user?.user_metadata?.name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'}
                             </p>
                             <p className="text-xs text-blue-200 truncate">
                               {user?.email || 'No email'}
                             </p>
+                            {/* Debug info - remove after testing */}
+                            {process.env.NODE_ENV === 'development' && (
+                              <p className="text-xs text-red-300 mt-1">
+                                Debug: {JSON.stringify(user?.user_metadata)}
+                              </p>
+                            )}
                           </div>
                         </div>
                       </div>

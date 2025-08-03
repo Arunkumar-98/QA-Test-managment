@@ -120,7 +120,7 @@ export function FullScreenWelcome({ onCreateProject, isLoading = false, onSignOu
             </div>
             <div className="text-left">
               <p className="text-sm font-semibold text-white">
-                {user?.user_metadata?.name || user?.email || 'User'}
+                                            {user?.user_metadata?.name || user?.user_metadata?.full_name || user?.email || 'User'}
               </p>
               <p className="text-xs text-blue-100">Logged in</p>
             </div>
