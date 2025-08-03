@@ -45,7 +45,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
-import { Settings, Eye, Trash2, LogOut, User, Share2, Plus, Upload, Clipboard, Download, X, Folder, Table, FileText, Share, RefreshCw } from "lucide-react"
+import { Settings, Eye, Trash2, LogOut, User, Share2, Plus, Upload, Clipboard, Download, X, Folder, Table, FileText, Share, RefreshCw, Mail } from "lucide-react"
 import { useAuth } from "./AuthProvider"
 
 export function QAApplication() {
@@ -1182,7 +1182,7 @@ export function QAApplication() {
                   {showUserMenu && (
                     <div className="absolute right-0 top-full mt-2 w-64 bg-slate-900/95 backdrop-blur-sm rounded-xl shadow-lg border border-white/20 py-2 z-[60]">
                       <div className="px-4 py-2 border-b border-white/10">
-                        <p className="text-xs font-medium text-blue-200 uppercase tracking-wide">Account</p>
+                        <p className="text-xs font-medium text-blue-200 uppercase tracking-wide">Settings</p>
                       </div>
                       
                       <button
@@ -1202,6 +1202,26 @@ export function QAApplication() {
                       </button>
                       
                       <div className="px-4 py-2 border-t border-white/10">
+                        <p className="text-xs font-medium text-blue-200 uppercase tracking-wide">User Profile</p>
+                      </div>
+                      
+                      <div className="px-4 py-3">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                            <User className="w-4 h-4 text-white" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-white truncate">
+                              {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'}
+                            </p>
+                            <p className="text-xs text-blue-200 truncate">
+                              {user?.email || 'No email'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="px-4 py-2 border-t border-white/10">
                         <p className="text-xs font-medium text-blue-200 uppercase tracking-wide">Debug</p>
                       </div>
                       
@@ -1214,7 +1234,7 @@ export function QAApplication() {
                       </button>
                       
                       <div className="px-4 py-2 border-t border-white/10">
-                        <p className="text-xs font-medium text-blue-200 uppercase tracking-wide">User</p>
+                        <p className="text-xs font-medium text-blue-200 uppercase tracking-wide">Account</p>
                       </div>
                       
                       <button
