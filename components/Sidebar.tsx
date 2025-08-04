@@ -71,6 +71,7 @@ interface QASidebarProps {
   onFileUpload: (event: React.ChangeEvent<HTMLInputElement>) => void
   onExportToExcel: () => void
   onOpenNotes: () => void
+  onOpenProjectMembers: () => void
   isPasteDialogOpen?: boolean
   setIsPasteDialogOpen?: (open: boolean) => void
 }
@@ -111,6 +112,7 @@ export function QASidebar({
   onFileUpload,
   onExportToExcel,
   onOpenNotes,
+  onOpenProjectMembers,
   isPasteDialogOpen,
   setIsPasteDialogOpen,
 }: QASidebarProps) {
@@ -896,6 +898,22 @@ export function QASidebar({
               >
                 <FileText className="w-3.5 h-3.5 mr-1.5" />
                 Notes
+              </Button>
+              
+              {/* Manage Members Action */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onOpenProjectMembers}
+                disabled={!currentProjectId || currentProjectId.trim() === ''}
+                className={`w-full h-9 text-sm font-medium rounded-lg transition-all duration-200 ${
+                  currentProjectId && currentProjectId.trim() !== ''
+                    ? 'border-purple-400/50 bg-purple-500/20 hover:border-purple-400 hover:bg-purple-500/30 text-white hover:text-white !text-white'
+                    : 'border-gray-400/30 bg-gray-500/10 text-gray-400 cursor-not-allowed'
+                }`}
+              >
+                <Users className="w-3.5 h-3.5 mr-1.5" />
+                Members
               </Button>
             </div>
           </div>

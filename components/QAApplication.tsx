@@ -18,6 +18,7 @@ import { ImportPreviewDialog } from './ImportPreviewDialog'
 import { EnhancedPasteDialog } from './EnhancedPasteDialog'
 import { ShareTestSuiteDialog } from './ShareTestSuiteDialog'
 import { NotesDialog } from './NotesDialog'
+import { ProjectMembersDialog } from './ProjectMembersDialog'
 import { WelcomeProjectModal } from './WelcomeProjectModal'
 import { EmptyState } from './EmptyState'
 import { ActionGuard } from './ActionGuard'
@@ -84,6 +85,7 @@ export function QAApplication() {
   const [pendingAction, setPendingAction] = useState<string | null>(null)
   const [projectsLoading, setProjectsLoading] = useState(true)
   const [isNotesDialogOpen, setIsNotesDialogOpen] = useState(false)
+  const [isProjectMembersDialogOpen, setIsProjectMembersDialogOpen] = useState(false)
 
   
   // Selected test case for dialogs
@@ -1114,6 +1116,10 @@ export function QAApplication() {
     setIsNotesDialogOpen(true)
   }
 
+  const handleOpenProjectMembers = () => {
+    setIsProjectMembersDialogOpen(true)
+  }
+
   return (
     <>
       <div className="min-h-screen bg-slate-50">
@@ -1318,6 +1324,7 @@ export function QAApplication() {
             onFileUpload={handleFileUpload}
             onExportToExcel={handleExportToExcel}
             onOpenNotes={handleOpenNotes}
+            onOpenProjectMembers={handleOpenProjectMembers}
             isPasteDialogOpen={isEnhancedPasteDialogOpen}
             setIsPasteDialogOpen={setIsEnhancedPasteDialogOpen}
           />
@@ -1518,6 +1525,20 @@ export function QAApplication() {
         onClose={() => setIsNotesDialogOpen(false)}
         projectId={currentProjectId}
         projectName={currentProject}
+      />
+
+      {/* Project Members Dialog */}
+      <ProjectMembersDialog
+        isOpen={isProjectMembersDialogOpen}
+        onClose={() => setIsProjectMembersDialogOpen(false)}
+        project={{
+          id: currentProjectId,
+          name: currentProject,
+          userRole: 'owner', // This will need to be fetched from the membership service
+          isOwner: true,
+          memberCount: 1,
+          isMultiUser: true
+        }}
       />
 
       {/* Table Settings Dialog */}
