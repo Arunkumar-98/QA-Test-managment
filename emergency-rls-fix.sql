@@ -14,10 +14,10 @@ ALTER TABLE documents DISABLE ROW LEVEL SECURITY;
 ALTER TABLE important_links DISABLE ROW LEVEL SECURITY;
 
 -- =====================================================
--- STEP 2: DROP ALL EXISTING POLICIES
+-- STEP 2: DROP ALL EXISTING POLICIES (COMPREHENSIVE)
 -- =====================================================
 
--- Drop ALL policies from projects
+-- Drop ALL possible policies from projects
 DROP POLICY IF EXISTS "Users can view their own projects" ON projects;
 DROP POLICY IF EXISTS "Users can insert their own projects" ON projects;
 DROP POLICY IF EXISTS "Users can update their own projects" ON projects;
@@ -25,33 +25,40 @@ DROP POLICY IF EXISTS "Users can delete their own projects" ON projects;
 DROP POLICY IF EXISTS "Project owners and admins can update projects" ON projects;
 DROP POLICY IF EXISTS "Project owners and admins can delete projects" ON projects;
 DROP POLICY IF EXISTS "Project owners can delete projects" ON projects;
+DROP POLICY IF EXISTS "Users can view project memberships they're part of" ON projects;
+DROP POLICY IF EXISTS "Project owners and admins can manage memberships" ON projects;
+DROP POLICY IF EXISTS "Users can view memberships of projects they own" ON projects;
+DROP POLICY IF EXISTS "Project owners can manage memberships" ON projects;
 
--- Drop ALL policies from project_memberships
+-- Drop ALL possible policies from project_memberships
 DROP POLICY IF EXISTS "Users can view project memberships they're part of" ON project_memberships;
 DROP POLICY IF EXISTS "Project owners and admins can manage memberships" ON project_memberships;
 DROP POLICY IF EXISTS "Users can view their own memberships" ON project_memberships;
 DROP POLICY IF EXISTS "Users can view memberships of projects they own" ON project_memberships;
 DROP POLICY IF EXISTS "Project owners can manage memberships" ON project_memberships;
+DROP POLICY IF EXISTS "Users can insert their own memberships" ON project_memberships;
+DROP POLICY IF EXISTS "Users can update their own memberships" ON project_memberships;
+DROP POLICY IF EXISTS "Users can delete their own memberships" ON project_memberships;
 
--- Drop ALL policies from test_cases
+-- Drop ALL possible policies from test_cases
 DROP POLICY IF EXISTS "Users can view test cases in their projects" ON test_cases;
 DROP POLICY IF EXISTS "Users can insert test cases in their projects" ON test_cases;
 DROP POLICY IF EXISTS "Users can update test cases in their projects" ON test_cases;
 DROP POLICY IF EXISTS "Users can delete test cases in their projects" ON test_cases;
 
--- Drop ALL policies from test_suites
+-- Drop ALL possible policies from test_suites
 DROP POLICY IF EXISTS "Users can view test suites in their projects" ON test_suites;
 DROP POLICY IF EXISTS "Users can insert test suites in their projects" ON test_suites;
 DROP POLICY IF EXISTS "Users can update test suites in their projects" ON test_suites;
 DROP POLICY IF EXISTS "Users can delete test suites in their projects" ON test_suites;
 
--- Drop ALL policies from documents
+-- Drop ALL possible policies from documents
 DROP POLICY IF EXISTS "Users can view documents in their projects" ON documents;
 DROP POLICY IF EXISTS "Users can insert documents in their projects" ON documents;
 DROP POLICY IF EXISTS "Users can update documents in their projects" ON documents;
 DROP POLICY IF EXISTS "Users can delete documents in their projects" ON documents;
 
--- Drop ALL policies from important_links
+-- Drop ALL possible policies from important_links
 DROP POLICY IF EXISTS "Users can view important links in their projects" ON important_links;
 DROP POLICY IF EXISTS "Users can insert important links in their projects" ON important_links;
 DROP POLICY IF EXISTS "Users can update important links in their projects" ON important_links;
