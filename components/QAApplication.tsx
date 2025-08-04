@@ -322,6 +322,12 @@ export function QAApplication() {
     console.log('🔄 Loading project data for projectId:', currentProjectId)
     
     const loadProjectData = async () => {
+      // Don't load data if no project is selected
+      if (!currentProjectId || currentProjectId.trim() === '') {
+        console.log('⏭️ Skipping project data load - no project selected')
+        return
+      }
+
       try {
         // Load platforms, documents, and important links for current project
         const [platformsData, documentsData, linksData] = await Promise.all([
@@ -1534,7 +1540,7 @@ export function QAApplication() {
         project={{
           id: currentProjectId,
           name: currentProject,
-          userRole: 'owner', // This will need to be fetched from the membership service
+          userRole: 'owner', // TODO: Fetch actual role from membership service
           isOwner: true,
           memberCount: 1,
           isMultiUser: true
