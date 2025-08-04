@@ -33,6 +33,12 @@ import {
   Note,
   NoteDB,
   CreateNoteInput,
+  ProjectMembership,
+  ProjectMembershipDB,
+  CreateProjectMembershipInput,
+  ProjectWithMembership,
+  ProjectRole,
+  MembershipStatus,
   mapTestCaseFromDB, 
   mapTestCaseToDB, 
   mapTestSuiteFromDB, 
@@ -56,7 +62,9 @@ import {
   mapSharedProjectReferenceFromDB,
   mapSharedProjectReferenceToDB,
   mapNoteFromDB,
-  mapNoteToDB
+  mapNoteToDB,
+  mapProjectMembershipFromDB,
+  mapProjectMembershipToDB
 } from '@/types/qa-types'
 
 // Test Cases
@@ -1465,5 +1473,225 @@ export const noteService = {
     }
 
     return this.update(id, { isPinned: !note.isPinned })
+  }
+}
+
+// Project Membership Service
+export const projectMembershipService = {
+  async getAllForUser(): Promise<ProjectWithMembership[]> {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      throw new Error('User not authenticated')
+    }
+
+    const { data, error } = await supabase
+      .rpc('get_user_projects', { user_uuid: user.id })
+    
+    if (error) throw error
+    
+    return (data || []).map(row => ({
+      id: row.project_id,
+      name: row.project_name,
+      description: row.project_description,
+      userRole: row.user_role,
+      isOwner: row.is_owner,
+      memberCount: row.member_count,
+      isMultiUser: true,
+      createdAt: row.created_at
+    }))
+  },
+
+  async getProjectMembers(projectId: string): Promise<ProjectMembership[]> {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      throw new Error('User not authenticated')
+    }
+
+    const { data, error } = await supabase
+      .from('project_memberships')
+      .select('*')
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: false })
+    
+    if (error) throw error
+    return (data || []).map(mapProjectMembershipFromDB)
+  },
+
+  async inviteUser(projectId: string, userEmail: string, role: ProjectRole): Promise<ProjectMembership> {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      throw new Error('User not authenticated')
+    }
+
+    // First, get the user by email
+    const { data: userData, error: userError } = await supabase.auth.admin.listUsers()
+    if (userError) throw userError
+
+    const invitedUser = userData.users.find(u => u.email === userEmail)
+    if (!invitedUser) {
+      throw new Error('User not found with that email address')
+    }
+
+    // Check if user is already a member
+    const { data: existingMembership } = await supabase
+      .from('project_memberships')
+      .select('id')
+      .eq('project_id', projectId)
+      .eq('user_id', invitedUser.id)
+      .single()
+
+    if (existingMembership) {
+      throw new Error('User is already a member of this project')
+    }
+
+    // Create membership
+    const membershipData = mapProjectMembershipToDB({
+      id: '',
+      projectId,
+      userId: invitedUser.id,
+      role,
+      invitedBy: user.id,
+      invitedAt: new Date(),
+      status: 'pending',
+      createdAt: new Date(),
+      updatedAt: new Date()
+    })
+
+    const { data, error } = await supabase
+      .from('project_memberships')
+      .insert([membershipData])
+      .select()
+      .single()
+    
+    if (error) throw error
+    return mapProjectMembershipFromDB(data)
+  },
+
+  async acceptInvitation(membershipId: string): Promise<ProjectMembership> {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      throw new Error('User not authenticated')
+    }
+
+    const { data, error } = await supabase
+      .from('project_memberships')
+      .update({ 
+        status: 'accepted',
+        accepted_at: new Date(),
+        updated_at: new Date()
+      })
+      .eq('id', membershipId)
+      .eq('user_id', user.id)
+      .select()
+      .single()
+    
+    if (error) throw error
+    return mapProjectMembershipFromDB(data)
+  },
+
+  async declineInvitation(membershipId: string): Promise<void> {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      throw new Error('User not authenticated')
+    }
+
+    const { error } = await supabase
+      .from('project_memberships')
+      .update({ 
+        status: 'declined',
+        updated_at: new Date()
+      })
+      .eq('id', membershipId)
+      .eq('user_id', user.id)
+    
+    if (error) throw error
+  },
+
+  async updateUserRole(projectId: string, userId: string, newRole: ProjectRole): Promise<ProjectMembership> {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      throw new Error('User not authenticated')
+    }
+
+    const { data, error } = await supabase
+      .from('project_memberships')
+      .update({ 
+        role: newRole,
+        updated_at: new Date()
+      })
+      .eq('project_id', projectId)
+      .eq('user_id', userId)
+      .select()
+      .single()
+    
+    if (error) throw error
+    return mapProjectMembershipFromDB(data)
+  },
+
+  async removeUser(projectId: string, userId: string): Promise<void> {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      throw new Error('User not authenticated')
+    }
+
+    const { error } = await supabase
+      .from('project_memberships')
+      .delete()
+      .eq('project_id', projectId)
+      .eq('user_id', userId)
+    
+    if (error) throw error
+  },
+
+  async getPendingInvitations(): Promise<ProjectInvitation[]> {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      throw new Error('User not authenticated')
+    }
+
+    const { data, error } = await supabase
+      .from('project_memberships')
+      .select(`
+        id,
+        project_id,
+        role,
+        invited_at,
+        status,
+        projects!inner(name),
+        auth.users!invited_by(email)
+      `)
+      .eq('user_id', user.id)
+      .eq('status', 'pending')
+      .order('invited_at', { ascending: false })
+    
+    if (error) throw error
+    
+    return (data || []).map(row => ({
+      id: row.id,
+      projectId: row.project_id,
+      projectName: row.projects.name,
+      invitedBy: row.invited_by,
+      invitedByEmail: row.auth?.users?.email || 'Unknown',
+      role: row.role,
+      invitedAt: row.invited_at,
+      status: row.status
+    }))
+  },
+
+  async hasPermission(projectId: string, requiredRole: ProjectRole): Promise<boolean> {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      return false
+    }
+
+    const { data, error } = await supabase
+      .rpc('has_project_permission', {
+        project_uuid: projectId,
+        user_uuid: user.id,
+        required_role: requiredRole
+      })
+    
+    if (error) return false
+    return data || false
   }
 } 

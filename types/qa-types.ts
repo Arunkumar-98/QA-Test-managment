@@ -799,4 +799,87 @@ export const mapNoteToDB = (note: Note): NoteDB => ({
   is_pinned: note.isPinned,
   tags: note.tags || [],
   color: note.color
+})
+
+// Multi-User Project Types
+export type ProjectRole = 'owner' | 'admin' | 'editor' | 'viewer'
+export type MembershipStatus = 'pending' | 'accepted' | 'declined'
+
+export type ProjectMembership = {
+  id: string
+  projectId: string
+  userId: string
+  role: ProjectRole
+  invitedBy?: string
+  invitedAt: Date
+  acceptedAt?: Date
+  status: MembershipStatus
+  createdAt: Date
+  updatedAt: Date
+}
+
+export type ProjectMembershipDB = {
+  id: string
+  project_id: string
+  user_id: string
+  role: ProjectRole
+  invited_by?: string
+  invited_at: Date
+  accepted_at?: Date
+  status: MembershipStatus
+  created_at: Date
+  updated_at: Date
+}
+
+export type CreateProjectMembershipInput = Omit<ProjectMembership, 'id' | 'createdAt' | 'updatedAt'>
+
+export type ProjectWithMembership = {
+  id: string
+  name: string
+  description?: string
+  createdAt?: Date
+  isActive?: boolean
+  tags?: string[]
+  userRole: ProjectRole
+  isOwner: boolean
+  memberCount: number
+  isMultiUser: boolean
+  createdBy?: string
+}
+
+export type ProjectInvitation = {
+  id: string
+  projectId: string
+  projectName: string
+  invitedBy: string
+  invitedByEmail: string
+  role: ProjectRole
+  invitedAt: Date
+  status: MembershipStatus
+}
+
+export const mapProjectMembershipFromDB = (db: ProjectMembershipDB): ProjectMembership => ({
+  id: db.id,
+  projectId: db.project_id,
+  userId: db.user_id,
+  role: db.role,
+  invitedBy: db.invited_by,
+  invitedAt: db.invited_at,
+  acceptedAt: db.accepted_at,
+  status: db.status,
+  createdAt: db.created_at,
+  updatedAt: db.updated_at
+})
+
+export const mapProjectMembershipToDB = (membership: ProjectMembership): ProjectMembershipDB => ({
+  id: membership.id,
+  project_id: membership.projectId,
+  user_id: membership.userId,
+  role: membership.role,
+  invited_by: membership.invitedBy,
+  invited_at: membership.invitedAt,
+  accepted_at: membership.acceptedAt,
+  status: membership.status,
+  created_at: membership.createdAt,
+  updated_at: membership.updatedAt
 }) 
