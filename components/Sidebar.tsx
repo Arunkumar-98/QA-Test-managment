@@ -32,7 +32,7 @@ import type {
   TestCase,
   SharedProjectReference
 } from "@/types/qa-types"
-import { Folder, Link, Plus, BarChart3, Globe, BookOpen, FileSpreadsheet, Target, X, Settings, Table, Share2, Upload, Download, Clipboard, FileText } from "lucide-react"
+import { Folder, Link, Plus, BarChart3, Globe, BookOpen, FileSpreadsheet, Target, X, Settings, Table, Share2, Upload, Download, Clipboard, FileText, Users } from "lucide-react"
 import { PRDToTestCases } from './PRDToTestCases'
 
 interface QASidebarProps {
