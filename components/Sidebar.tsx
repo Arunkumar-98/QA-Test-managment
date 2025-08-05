@@ -555,6 +555,21 @@ export function QASidebar({
                         </Button>
                       </div>
                     )}
+                    
+                    {/* Add Suite button when there are existing test suites */}
+                    {testSuitesWithStats.length > 0 && (
+                      <div className="pt-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setIsAddSuiteDialogOpen(true)}
+                          className="w-full text-xs h-8 px-3 border-emerald-400/50 text-emerald-200 hover:bg-emerald-500/20 hover:border-emerald-400"
+                        >
+                          <Plus className="w-3 h-3 mr-1 flex-shrink-0" />
+                          Add Suite
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </div>
                 </div>
