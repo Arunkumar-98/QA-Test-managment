@@ -461,16 +461,6 @@ export function QAApplication() {
   }
 
   const handleRemoveProject = async (projectName: string) => {
-    // Check if this is the last project
-    if (projects.length === 1) {
-      toast({
-        title: "Cannot Remove Last Project",
-        description: "You must have at least one project. Please create a new project before removing this one.",
-        variant: "destructive"
-      })
-      return
-    }
-    
     try {
       // Get project ID from projects list
       const projectToDelete = projects.find(p => p.name === projectName)
@@ -485,28 +475,43 @@ export function QAApplication() {
         // Get remaining projects before reloading
         const remainingProjects = projects.filter(p => p.name !== projectName)
         
-        // If we're deleting the current project, select a new one first
-        if (isDeletingCurrentProject && remainingProjects.length > 0) {
-          const newCurrentProject = remainingProjects[0]
-          setCurrentProjectId(newCurrentProject.id)
-          setCurrentProject(newCurrentProject.name)
-          
-          // Clear localStorage for the deleted project
-          localStorage.removeItem('selectedProjectId')
-          localStorage.removeItem('selectedProjectName')
-          
-          // Set new project in localStorage
-          localStorage.setItem('selectedProjectId', newCurrentProject.id)
-          localStorage.setItem('selectedProjectName', newCurrentProject.name)
+        // If we're deleting the current project, handle the transition
+        if (isDeletingCurrentProject) {
+          if (remainingProjects.length > 0) {
+            // Select a new project if there are remaining projects
+            const newCurrentProject = remainingProjects[0]
+            setCurrentProjectId(newCurrentProject.id)
+            setCurrentProject(newCurrentProject.name)
+            
+            // Update localStorage
+            localStorage.setItem('selectedProjectId', newCurrentProject.id)
+            localStorage.setItem('selectedProjectName', newCurrentProject.name)
+          } else {
+            // No projects left - clear current project state
+            setCurrentProjectId('')
+            setCurrentProject('')
+            
+            // Clear localStorage
+            localStorage.removeItem('selectedProjectId')
+            localStorage.removeItem('selectedProjectName')
+          }
         }
         
         // Reload projects from Supabase
         await loadProjectsFromSupabase()
         
-        toast({
-          title: "Project Removed",
-          description: `Project "${projectName}" has been removed.`,
-        })
+        // Show appropriate message based on remaining projects
+        if (remainingProjects.length === 0) {
+          toast({
+            title: "Last Project Removed",
+            description: `Project "${projectName}" has been removed. Create a new project to get started.`,
+          })
+        } else {
+          toast({
+            title: "Project Removed",
+            description: `Project "${projectName}" has been removed.`,
+          })
+        }
       } else {
         toast({
           title: "Project Not Found",
