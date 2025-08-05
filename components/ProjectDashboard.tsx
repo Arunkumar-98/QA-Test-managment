@@ -88,8 +88,8 @@ export function ProjectDashboard({
 
   // Calculate metrics
   useEffect(() => {
-    const passed = testCases.filter(tc => tc.status === 'Passed').length
-    const failed = testCases.filter(tc => tc.status === 'Failed').length
+    const passed = testCases.filter(tc => tc.status === 'Pass').length
+    const failed = testCases.filter(tc => tc.status === 'Fail').length
     const pending = testCases.filter(tc => tc.status === 'Pending').length
     const blocked = testCases.filter(tc => tc.status === 'Blocked').length
     const total = testCases.length
@@ -187,349 +187,464 @@ export function ProjectDashboard({
   }
 
   return (
-    <div className="space-y-6 p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">{project.name} Dashboard</h1>
-          <p className="text-gray-600 mt-1">Project overview and analytics</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+      <div className="space-y-8 p-8">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-slate-900 via-blue-900 to-purple-900 bg-clip-text text-transparent">
+              {project.name} Dashboard
+            </h1>
+            <p className="text-slate-600 mt-2 text-lg">Project overview and analytics</p>
+          </div>
+          <div className="flex items-center space-x-3">
+            <Button 
+              variant="outline" 
+              onClick={onExportData}
+              className="bg-white/80 backdrop-blur-sm border-slate-200 hover:bg-white hover:border-slate-300 shadow-sm"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Export
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={onOpenSettings}
+              className="bg-white/80 backdrop-blur-sm border-slate-200 hover:bg-white hover:border-slate-300 shadow-sm"
+            >
+              <Settings className="w-4 h-4 mr-2" />
+              Settings
+            </Button>
+          </div>
         </div>
-        <div className="flex items-center space-x-3">
-          <Button variant="outline" onClick={onExportData}>
-            <Download className="w-4 h-4 mr-2" />
-            Export
-          </Button>
-          <Button variant="outline" onClick={onOpenSettings}>
-            <Settings className="w-4 h-4 mr-2" />
-            Settings
-          </Button>
-        </div>
-      </div>
 
-      {/* Summary Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Test Cases</p>
-                <p className="text-2xl font-bold text-gray-900">{metrics.totalTestCases}</p>
-                <p className="text-xs text-gray-500 mt-1">
-                  <span className="text-green-600 flex items-center">
+        {/* Summary Metrics */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-blue-100 text-sm font-medium">Total Test Cases</p>
+                  <p className="text-3xl font-bold text-white">{metrics.totalTestCases}</p>
+                  <p className="text-blue-200 text-xs mt-2 flex items-center">
                     <ArrowUpRight className="w-3 h-3 mr-1" />
                     +{metrics.weeklyActivity} this week
-                  </span>
-                </p>
+                  </p>
+                </div>
+                <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                  <FileText className="w-7 h-7 text-white" />
+                </div>
               </div>
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <FileText className="w-6 h-6 text-blue-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Pass Rate</p>
-                <p className="text-2xl font-bold text-gray-900">{metrics.passRate}%</p>
-                <p className="text-xs text-gray-500 mt-1">
-                  <span className="text-green-600 flex items-center">
+          <Card className="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-emerald-100 text-sm font-medium">Pass Rate</p>
+                  <p className="text-3xl font-bold text-white">{metrics.passRate}%</p>
+                  <p className="text-emerald-200 text-xs mt-2 flex items-center">
                     <ArrowUpRight className="w-3 h-3 mr-1" />
                     +5% vs last month
-                  </span>
-                </p>
+                  </p>
+                </div>
+                <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                  <CheckCircle className="w-7 h-7 text-white" />
+                </div>
               </div>
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <CheckCircle className="w-6 h-6 text-green-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Test Suites</p>
-                <p className="text-2xl font-bold text-gray-900">{metrics.totalTestSuites}</p>
-                <p className="text-xs text-gray-500 mt-1">
-                  {metrics.completedSuites} active suites
-                </p>
+          <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-purple-100 text-sm font-medium">Test Suites</p>
+                  <p className="text-3xl font-bold text-white">{metrics.totalTestSuites}</p>
+                  <p className="text-purple-200 text-xs mt-2">
+                    {metrics.completedSuites} active suites
+                  </p>
+                </div>
+                <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                  <Target className="w-7 h-7 text-white" />
+                </div>
               </div>
-              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                <Target className="w-6 h-6 text-purple-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Failed Tests</p>
-                <p className="text-2xl font-bold text-gray-900">{metrics.failedTestCases}</p>
-                <p className="text-xs text-gray-500 mt-1">
-                  <span className="text-red-600 flex items-center">
-                    <ArrowDownRight className="w-3 h-3 mr-1" />
-                    {metrics.failedTestCases > 0 ? 'Needs attention' : 'All good'}
-                  </span>
-                </p>
+          <Card className="bg-gradient-to-br from-red-500 to-red-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-red-100 text-sm font-medium">Failed Tests</p>
+                  <p className="text-3xl font-bold text-white">{metrics.failedTestCases}</p>
+                  <p className="text-red-200 text-xs mt-2 flex items-center">
+                    {metrics.failedTestCases > 0 ? (
+                      <>
+                        <ArrowDownRight className="w-3 h-3 mr-1" />
+                        Needs attention
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="w-3 h-3 mr-1" />
+                        All good
+                      </>
+                    )}
+                  </p>
+                </div>
+                <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                  <XCircle className="w-7 h-7 text-white" />
+                </div>
               </div>
-              <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
-                <XCircle className="w-6 h-6 text-red-600" />
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Main Dashboard Content */}
+        <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-white/20 shadow-xl">
+          <Tabs defaultValue="overview" className="p-6">
+            <TabsList className="grid w-full grid-cols-4 bg-slate-100/50 p-1 rounded-xl">
+              <TabsTrigger value="overview" className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-lg">
+                Overview
+              </TabsTrigger>
+              <TabsTrigger value="analytics" className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-lg">
+                Analytics
+              </TabsTrigger>
+              <TabsTrigger value="activity" className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-lg">
+                Activity
+              </TabsTrigger>
+              <TabsTrigger value="reports" className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-lg">
+                Reports
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="overview" className="space-y-8 mt-8">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Status Distribution */}
+                <Card className="bg-white/60 backdrop-blur-sm border-0 shadow-lg">
+                  <CardHeader className="pb-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
+                        <BarChart3 className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-slate-900">Status Distribution</CardTitle>
+                        <CardDescription>Breakdown of test cases by status</CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                          <span className="text-slate-700 font-medium">Passed</span>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-slate-900 font-semibold">{metrics.passedTestCases}</div>
+                          <div className="text-slate-500 text-sm">
+                            {metrics.totalTestCases > 0 ? Math.round((metrics.passedTestCases / metrics.totalTestCases) * 100) : 0}%
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                          <span className="text-slate-700 font-medium">Failed</span>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-slate-900 font-semibold">{metrics.failedTestCases}</div>
+                          <div className="text-slate-500 text-sm">
+                            {metrics.totalTestCases > 0 ? Math.round((metrics.failedTestCases / metrics.totalTestCases) * 100) : 0}%
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                          <span className="text-slate-700 font-medium">Pending</span>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-slate-900 font-semibold">{metrics.pendingTestCases}</div>
+                          <div className="text-slate-500 text-sm">
+                            {metrics.totalTestCases > 0 ? Math.round((metrics.pendingTestCases / metrics.totalTestCases) * 100) : 0}%
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-3 h-3 bg-gray-500 rounded-full"></div>
+                          <span className="text-slate-700 font-medium">Blocked</span>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-slate-900 font-semibold">{metrics.blockedTestCases}</div>
+                          <div className="text-slate-500 text-sm">
+                            {metrics.totalTestCases > 0 ? Math.round((metrics.blockedTestCases / metrics.totalTestCases) * 100) : 0}%
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Test Suite Progress */}
+                <Card className="bg-white/60 backdrop-blur-sm border-0 shadow-lg">
+                  <CardHeader className="pb-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center">
+                        <Target className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-slate-900">Test Suite Progress</CardTitle>
+                        <CardDescription>Completion status of test suites</CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {testSuites.map((suite) => {
+                      const suiteTestCases = testCases.filter(tc => tc.suiteId === suite.id)
+                      const completed = suiteTestCases.filter(tc => tc.status === 'Pass').length
+                      const total = suiteTestCases.length
+                      const percentage = total > 0 ? Math.round((completed / total) * 100) : 0
+                      
+                      return (
+                        <div key={suite.id} className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-slate-700 font-medium">{suite.name}</span>
+                            <span className="text-slate-500 text-sm">{percentage}%</span>
+                          </div>
+                          <Progress value={percentage} className="h-2" />
+                          <div className="text-slate-500 text-xs">
+                            {completed} of {total} completed • {total - completed} remaining
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </CardContent>
+                </Card>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+
+              {/* Quick Actions */}
+              <Card className="bg-white/60 backdrop-blur-sm border-0 shadow-lg">
+                <CardHeader>
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center">
+                      <Zap className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-slate-900">Quick Actions</CardTitle>
+                      <CardDescription>Common actions for this project</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <Button 
+                      onClick={onAddTestCase}
+                      className="h-16 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300"
+                    >
+                      <Plus className="w-5 h-5 mr-2" />
+                      Add Test Case
+                    </Button>
+                    <Button 
+                      onClick={onAddTestSuite}
+                      variant="outline"
+                      className="h-16 bg-white/80 backdrop-blur-sm border-slate-200 hover:bg-white hover:border-slate-300 shadow-lg hover:shadow-xl transition-all duration-300"
+                    >
+                      <Target className="w-5 h-5 mr-2" />
+                      Create Suite
+                    </Button>
+                    <Button 
+                      onClick={onExportData}
+                      variant="outline"
+                      className="h-16 bg-white/80 backdrop-blur-sm border-slate-200 hover:bg-white hover:border-slate-300 shadow-lg hover:shadow-xl transition-all duration-300"
+                    >
+                      <Download className="w-5 h-5 mr-2" />
+                      Export Data
+                    </Button>
+                    <Button 
+                      onClick={onOpenSettings}
+                      variant="outline"
+                      className="h-16 bg-white/80 backdrop-blur-sm border-slate-200 hover:bg-white hover:border-slate-300 shadow-lg hover:shadow-xl transition-all duration-300"
+                    >
+                      <Settings className="w-5 h-5 mr-2" />
+                      Settings
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="analytics" className="space-y-8 mt-8">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Weekly Trends */}
+                <Card className="bg-white/60 backdrop-blur-sm border-0 shadow-lg">
+                  <CardHeader className="pb-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
+                        <TrendingUp className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-slate-900">Weekly Trends</CardTitle>
+                        <CardDescription>Test case activity over the last 7 days</CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                        <span className="text-slate-700 font-medium">New Test Cases</span>
+                        <span className="text-green-600 font-bold">+{metrics.weeklyActivity}</span>
+                      </div>
+                      <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                        <span className="text-slate-700 font-medium">Status Changes</span>
+                        <span className="text-blue-600 font-bold">+12</span>
+                      </div>
+                      <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
+                        <span className="text-slate-700 font-medium">Test Suites Created</span>
+                        <span className="text-purple-600 font-bold">+3</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Performance Metrics */}
+                <Card className="bg-white/60 backdrop-blur-sm border-0 shadow-lg">
+                  <CardHeader className="pb-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center">
+                        <Zap className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-slate-900">Performance Metrics</CardTitle>
+                        <CardDescription>Key performance indicators</CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="text-center p-4 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl text-white">
+                        <div className="text-2xl font-bold">{metrics.passRate}%</div>
+                        <div className="text-blue-100 text-sm">Pass Rate</div>
+                      </div>
+                      <div className="text-center p-4 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl text-white">
+                        <div className="text-2xl font-bold">{metrics.totalTestCases}</div>
+                        <div className="text-emerald-100 text-sm">Total Tests</div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="activity" className="space-y-8 mt-8">
+              <Card className="bg-white/60 backdrop-blur-sm border-0 shadow-lg">
+                <CardHeader className="pb-4">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center">
+                      <Activity className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-slate-900">Recent Activity</CardTitle>
+                      <CardDescription>Latest updates and changes</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {recentActivity.length > 0 ? (
+                      recentActivity.map((activity) => (
+                        <div key={activity.id} className="flex items-start space-x-4 p-4 bg-white/50 rounded-lg">
+                          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                            {activity.icon}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-slate-900">{activity.title}</p>
+                            <p className="text-sm text-slate-600">{activity.description}</p>
+                            <p className="text-xs text-slate-500 mt-1">
+                              {formatTimeAgo(activity.timestamp)} • {activity.user}
+                            </p>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-8">
+                        <Activity className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+                        <p className="text-slate-500">No recent activity</p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="reports" className="space-y-8 mt-8">
+              <Card className="bg-white/60 backdrop-blur-sm border-0 shadow-lg">
+                <CardHeader className="pb-4">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl flex items-center justify-center">
+                      <BarChart3 className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-slate-900">Reports & Analytics</CardTitle>
+                      <CardDescription>Generate and view detailed reports</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <Button 
+                      variant="outline"
+                      className="h-24 bg-white/80 backdrop-blur-sm border-slate-200 hover:bg-white hover:border-slate-300 shadow-lg hover:shadow-xl transition-all duration-300 flex flex-col items-center justify-center space-y-2"
+                    >
+                      <BarChart3 className="w-6 h-6" />
+                      <span className="text-sm">Test Execution Report</span>
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      className="h-24 bg-white/80 backdrop-blur-sm border-slate-200 hover:bg-white hover:border-slate-300 shadow-lg hover:shadow-xl transition-all duration-300 flex flex-col items-center justify-center space-y-2"
+                    >
+                      <TrendingUp className="w-6 h-6" />
+                      <span className="text-sm">Trend Analysis</span>
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      className="h-24 bg-white/80 backdrop-blur-sm border-slate-200 hover:bg-white hover:border-slate-300 shadow-lg hover:shadow-xl transition-all duration-300 flex flex-col items-center justify-center space-y-2"
+                    >
+                      <Users className="w-6 h-6" />
+                      <span className="text-sm">Team Performance</span>
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      className="h-24 bg-white/80 backdrop-blur-sm border-slate-200 hover:bg-white hover:border-slate-300 shadow-lg hover:shadow-xl transition-all duration-300 flex flex-col items-center justify-center space-y-2"
+                    >
+                      <Calendar className="w-6 h-6" />
+                      <span className="text-sm">Weekly Summary</span>
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      className="h-24 bg-white/80 backdrop-blur-sm border-slate-200 hover:bg-white hover:border-slate-300 shadow-lg hover:shadow-xl transition-all duration-300 flex flex-col items-center justify-center space-y-2"
+                    >
+                      <Target className="w-6 h-6" />
+                      <span className="text-sm">Suite Coverage</span>
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      className="h-24 bg-white/80 backdrop-blur-sm border-slate-200 hover:bg-white hover:border-slate-300 shadow-lg hover:shadow-xl transition-all duration-300 flex flex-col items-center justify-center space-y-2"
+                    >
+                      <Download className="w-6 h-6" />
+                      <span className="text-sm">Export All Data</span>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </div>
       </div>
-
-      {/* Main Dashboard Content */}
-      <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
-          <TabsTrigger value="activity">Activity</TabsTrigger>
-          <TabsTrigger value="reports">Reports</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="overview" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Status Distribution */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <BarChart3 className="w-5 h-5 mr-2" />
-                  Status Distribution
-                </CardTitle>
-                <CardDescription>
-                  Breakdown of test cases by status
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-3">
-                  {[
-                    { status: 'Passed', count: metrics.passedTestCases, color: 'bg-green-500' },
-                    { status: 'Failed', count: metrics.failedTestCases, color: 'bg-red-500' },
-                    { status: 'Pending', count: metrics.pendingTestCases, color: 'bg-yellow-500' },
-                    { status: 'Blocked', count: metrics.blockedTestCases, color: 'bg-gray-500' }
-                  ].map((item) => (
-                    <div key={item.status} className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <div className={`w-3 h-3 rounded-full ${item.color}`}></div>
-                        <span className="text-sm font-medium">{item.status}</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <span className="text-sm font-bold">{item.count}</span>
-                        <span className="text-xs text-gray-500">
-                          ({metrics.totalTestCases > 0 ? Math.round((item.count / metrics.totalTestCases) * 100) : 0}%)
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Test Suite Progress */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Target className="w-5 h-5 mr-2" />
-                  Test Suite Progress
-                </CardTitle>
-                <CardDescription>
-                  Completion status of test suites
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {testSuites.slice(0, 5).map((suite) => {
-                  const suiteTestCases = testCases.filter(tc => tc.suiteId === suite.id)
-                  const completed = suiteTestCases.filter(tc => tc.status === 'Passed').length
-                  const total = suiteTestCases.length
-                  const progress = total > 0 ? (completed / total) * 100 : 0
-
-                  return (
-                    <div key={suite.id} className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium truncate">{suite.name}</span>
-                        <span className="text-xs text-gray-500">{Math.round(progress)}%</span>
-                      </div>
-                      <Progress value={progress} className="h-2" />
-                      <div className="flex items-center justify-between text-xs text-gray-500">
-                        <span>{completed} of {total} completed</span>
-                        <span>{total - completed} remaining</span>
-                      </div>
-                    </div>
-                  )
-                })}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Quick Actions */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Quick Actions</CardTitle>
-              <CardDescription>
-                Common actions for this project
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Button onClick={onAddTestCase} className="h-20 flex flex-col items-center justify-center space-y-2">
-                  <Plus className="w-6 h-6" />
-                  <span className="text-sm">Add Test Case</span>
-                </Button>
-                <Button onClick={onAddTestSuite} variant="outline" className="h-20 flex flex-col items-center justify-center space-y-2">
-                  <Target className="w-6 h-6" />
-                  <span className="text-sm">Create Suite</span>
-                </Button>
-                <Button onClick={onExportData} variant="outline" className="h-20 flex flex-col items-center justify-center space-y-2">
-                  <Download className="w-6 h-6" />
-                  <span className="text-sm">Export Data</span>
-                </Button>
-                <Button onClick={onOpenSettings} variant="outline" className="h-20 flex flex-col items-center justify-center space-y-2">
-                  <Settings className="w-6 h-6" />
-                  <span className="text-sm">Settings</span>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="analytics" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Weekly Trends */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <TrendingUp className="w-5 h-5 mr-2" />
-                  Weekly Trends
-                </CardTitle>
-                <CardDescription>
-                  Test case activity over the last 7 days
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">New Test Cases</span>
-                    <span className="text-sm font-bold text-green-600">+{metrics.weeklyActivity}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Status Changes</span>
-                    <span className="text-sm font-bold text-blue-600">+12</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Test Suites Created</span>
-                    <span className="text-sm font-bold text-purple-600">+3</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Performance Metrics */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Zap className="w-5 h-5 mr-2" />
-                  Performance Metrics
-                </CardTitle>
-                <CardDescription>
-                  Key performance indicators
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="text-center p-4 bg-blue-50 rounded-lg">
-                    <div className="text-2xl font-bold text-blue-600">{metrics.passRate}%</div>
-                    <div className="text-sm text-blue-600">Pass Rate</div>
-                  </div>
-                  <div className="text-center p-4 bg-green-50 rounded-lg">
-                    <div className="text-2xl font-bold text-green-600">{metrics.totalTestCases}</div>
-                    <div className="text-sm text-green-600">Total Tests</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="activity" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Activity className="w-5 h-5 mr-2" />
-                Recent Activity
-              </CardTitle>
-              <CardDescription>
-                Latest updates and changes in the project
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {recentActivity.map((activity) => (
-                  <div key={activity.id} className="flex items-start space-x-4 p-4 border rounded-lg">
-                    <div className="flex-shrink-0">
-                      {activity.icon}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm font-medium text-gray-900">{activity.title}</p>
-                        <span className="text-xs text-gray-500">{formatTimeAgo(activity.timestamp)}</span>
-                      </div>
-                      <p className="text-sm text-gray-600 mt-1">{activity.description}</p>
-                      <p className="text-xs text-gray-500 mt-1">by {activity.user}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="reports" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Reports & Analytics</CardTitle>
-              <CardDescription>
-                Generate and view detailed reports
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <Button variant="outline" className="h-32 flex flex-col items-center justify-center space-y-2">
-                  <BarChart3 className="w-8 h-8" />
-                  <span>Test Execution Report</span>
-                </Button>
-                <Button variant="outline" className="h-32 flex flex-col items-center justify-center space-y-2">
-                  <TrendingUp className="w-8 h-8" />
-                  <span>Trend Analysis</span>
-                </Button>
-                <Button variant="outline" className="h-32 flex flex-col items-center justify-center space-y-2">
-                  <Users className="w-8 h-8" />
-                  <span>Team Performance</span>
-                </Button>
-                <Button variant="outline" className="h-32 flex flex-col items-center justify-center space-y-2">
-                  <Calendar className="w-8 h-8" />
-                  <span>Weekly Summary</span>
-                </Button>
-                <Button variant="outline" className="h-32 flex flex-col items-center justify-center space-y-2">
-                  <Target className="w-8 h-8" />
-                  <span>Suite Coverage</span>
-                </Button>
-                <Button variant="outline" className="h-32 flex flex-col items-center justify-center space-y-2">
-                  <Download className="w-8 h-8" />
-                  <span>Export All Data</span>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
     </div>
   )
 } 
