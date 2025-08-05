@@ -1360,27 +1360,18 @@ export function QAApplication() {
     setIsAddCustomColumnDialogOpen(true)
   }
 
-  // Debug: Monitor selectedSuiteId changes
-  useEffect(() => {
-    console.log('selectedSuiteId changed to:', selectedSuiteId)
-  }, [selectedSuiteId])
-
   const clearSuite = () => {
-    console.log('clearSuite called - clearing selectedSuiteId')
     setSelectedSuiteId(null)
     setCurrentView('dashboard')
   }
 
   const handleSuiteClick = (suiteId: string | null) => {
-    console.log('handleSuiteClick called with:', suiteId)
     setSelectedSuiteId(suiteId)
     if (suiteId) {
       // If a specific suite is selected, switch to test cases view
-      console.log('Switching to test cases view for suite:', suiteId)
       setCurrentView('test-cases')
     } else {
       // If no suite is selected (show all), switch to dashboard view
-      console.log('Clearing suite filter and switching to dashboard view')
       setCurrentView('dashboard')
     }
   }
