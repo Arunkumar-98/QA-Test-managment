@@ -1141,6 +1141,8 @@ export function QAApplication() {
 
   const handleShowDashboard = () => {
     setCurrentView('dashboard')
+    // Clear suite filter when switching to dashboard
+    setSelectedSuiteId(null)
   }
 
   const handleShowTestCases = () => {
