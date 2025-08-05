@@ -1752,9 +1752,23 @@ export const customColumnService = {
     }
 
     try {
+      // Don't include id field - let database generate it
       const { data, error } = await supabase
         .from('custom_columns')
-        .insert(mapCustomColumnToDB({ ...column, id: '', createdAt: new Date(), updatedAt: new Date() }))
+        .insert({
+          name: column.name,
+          label: column.label,
+          type: column.type,
+          visible: column.visible,
+          width: column.width,
+          min_width: column.minWidth,
+          options: column.options,
+          default_value: column.defaultValue,
+          required: column.required,
+          project_id: column.projectId,
+          created_at: new Date(),
+          updated_at: new Date()
+        })
         .select()
         .single()
 
