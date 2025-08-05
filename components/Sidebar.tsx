@@ -308,31 +308,31 @@ export function QASidebar({
                   </div>
                 </div>
               </AccordionTrigger>
-              <AccordionContent className="px-4 pb-3">
-                <div className="max-h-64 overflow-y-auto pr-2">
-                  <div className="flex flex-col space-y-2.5">
+              <AccordionContent className="px-3 pb-2">
+                <div className="max-h-48 overflow-y-auto pr-1">
+                  <div className="flex flex-col space-y-1.5">
                     {regularProjects.length > 0 ? (
                       regularProjects.map((project) => (
                         <div
                           key={project.id}
-                          className={`group relative p-3 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 hover:border-white/40 hover:shadow-lg transition-all duration-200 cursor-pointer ${currentProject === project.name ? 'ring-2 ring-blue-400/50 border-blue-400/50 bg-blue-500/20' : 'hover:bg-white/20'}`}
+                          className={`group relative p-2 bg-white/10 backdrop-blur-sm rounded-md border border-white/20 hover:border-white/40 hover:shadow-md transition-all duration-200 cursor-pointer ${currentProject === project.name ? 'ring-1 ring-blue-400/50 border-blue-400/50 bg-blue-500/20' : 'hover:bg-white/20'}`}
                           onClick={() => onProjectChange(project.name)}
                         >
                           <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-2.5 min-w-0 flex-1">
-                              <div className="w-6 h-6 bg-gradient-to-br from-white/20 to-white/30 rounded-md flex items-center justify-center flex-shrink-0">
-                                <Folder className="w-3.5 h-3.5 text-white" />
+                            <div className="flex items-center space-x-2 min-w-0 flex-1">
+                              <div className="w-5 h-5 bg-gradient-to-br from-white/20 to-white/30 rounded flex items-center justify-center flex-shrink-0">
+                                <Folder className="w-3 h-3 text-white" />
                               </div>
                               <div className="flex-1 min-w-0">
-                                <h4 className="font-medium text-sm text-white truncate">{project.name}</h4>
-                                <p className="text-xs text-blue-200 truncate">
+                                <h4 className="font-medium text-xs text-white truncate">{project.name}</h4>
+                                <p className="text-xs text-blue-200/80 truncate">
                                   {project.testSuiteCount} test suites
                                 </p>
                               </div>
                             </div>
                             <div className="flex items-center space-x-1">
                               {currentProject === project.name && (
-                                <div className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0"></div>
+                                <div className="w-1.5 h-1.5 bg-green-500 rounded-full flex-shrink-0"></div>
                               )}
                               <Button
                                 variant="ghost"
@@ -341,28 +341,28 @@ export function QASidebar({
                                   e.stopPropagation()
                                   onRemoveProject(project.name)
                                 }}
-                                className="h-6 w-6 p-0 hover:bg-red-500/20 hover:text-red-300 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                                className="h-5 w-5 p-0 hover:bg-red-500/20 hover:text-red-300 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
                               >
-                                <X className="w-3 h-3" />
+                                <X className="w-2.5 h-2.5" />
                               </Button>
                             </div>
                           </div>
                         </div>
                       ))
                     ) : (
-                      <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
-                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500/20 to-blue-600/30 rounded-xl flex items-center justify-center mb-3 flex-shrink-0 border border-blue-400/30">
-                          <Folder className="w-6 h-6 text-blue-300" />
+                      <div className="flex flex-col items-center justify-center py-4 px-3 text-center">
+                        <div className="w-8 h-8 bg-gradient-to-br from-blue-500/20 to-blue-600/30 rounded-lg flex items-center justify-center mb-2 flex-shrink-0 border border-blue-400/30">
+                          <Folder className="w-4 h-4 text-blue-300" />
                         </div>
-                        <h3 className="text-sm font-semibold text-white mb-1">No Projects</h3>
-                        <p className="text-xs text-blue-200 mb-4 text-center">Create your first project to get started</p>
+                        <h3 className="text-xs font-semibold text-white mb-1">No Projects</h3>
+                        <p className="text-xs text-blue-200/80 mb-3 text-center">Create your first project to get started</p>
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => setIsProjectDialogOpen(true)}
-                          className="text-xs h-8 px-3 border-blue-400/50 text-blue-200 hover:bg-blue-500/20 hover:border-blue-400"
+                          className="text-xs h-6 px-2 border-blue-400/50 text-blue-200 hover:bg-blue-500/20 hover:border-blue-400"
                         >
-                          <Plus className="w-3 h-3 mr-1 flex-shrink-0" />
+                          <Plus className="w-2.5 h-2.5 mr-1 flex-shrink-0" />
                           Create First Project
                         </Button>
                       </div>
@@ -374,13 +374,13 @@ export function QASidebar({
                     variant="outline"
                     size="sm"
                     onClick={() => setIsProjectDialogOpen(true)}
-                    className="w-full h-9 border-dashed border-blue-400/50 hover:border-blue-400 hover:bg-blue-500/20 transition-all duration-200 group mt-3 rounded-lg"
+                    className="w-full h-7 border-dashed border-blue-400/50 hover:border-blue-400 hover:bg-blue-500/20 transition-all duration-200 group mt-2 rounded-md"
                   >
-                    <div className="flex items-center space-x-2.5">
-                      <div className="w-5 h-5 rounded-md bg-blue-500/20 group-hover:bg-blue-500/30 flex items-center justify-center transition-colors duration-200 flex-shrink-0">
-                        <Plus className="w-3 h-3 text-blue-300" />
+                    <div className="flex items-center space-x-2">
+                      <div className="w-4 h-4 rounded bg-blue-500/20 group-hover:bg-blue-500/30 flex items-center justify-center transition-colors duration-200 flex-shrink-0">
+                        <Plus className="w-2.5 h-2.5 text-blue-300" />
                       </div>
-                      <span className="text-sm font-medium text-blue-200 group-hover:text-blue-100 transition-colors duration-200 truncate">
+                      <span className="text-xs font-medium text-blue-200 group-hover:text-blue-100 transition-colors duration-200 truncate">
                         Add Project
                       </span>
                     </div>
@@ -470,46 +470,46 @@ export function QASidebar({
                   </Badge>
                 </div>
               </AccordionTrigger>
-              <AccordionContent className="px-6 pb-3">
-                <div className="max-h-64 overflow-y-auto pr-2">
-                <div className="flex flex-col space-y-2">
-                  <div className="space-y-2">
+              <AccordionContent className="px-3 pb-2">
+                <div className="max-h-48 overflow-y-auto pr-1">
+                <div className="flex flex-col space-y-1.5">
+                  <div className="space-y-1.5">
                       {testSuitesWithStats.length > 0 ? (
                         testSuitesWithStats.map((suiteWithStats) => {
                           const { stats } = suiteWithStats
                         return (
                           <div
                               key={suiteWithStats.id}
-                              className={`group relative p-3 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 hover:border-white/40 hover:shadow-lg transition-all duration-200 cursor-pointer ${selectedSuiteId === suiteWithStats.id ? 'ring-2 ring-emerald-400/50 border-emerald-400/50 bg-emerald-500/20' : 'hover:bg-white/20'}`}
+                              className={`group relative p-2 bg-white/10 backdrop-blur-sm rounded-md border border-white/20 hover:border-white/40 hover:shadow-md transition-all duration-200 cursor-pointer ${selectedSuiteId === suiteWithStats.id ? 'ring-1 ring-emerald-400/50 border-emerald-400/50 bg-emerald-500/20' : 'hover:bg-white/20'}`}
                               onClick={() => onSuiteClick(suiteWithStats.id)}
                           >
                             <div className="flex items-start justify-between">
-                              <div className="flex items-start space-x-3 min-w-0 flex-1">
-                                <div className="w-8 h-8 bg-gradient-to-br from-white/20 to-white/30 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
-                                  <FileSpreadsheet className="w-4 h-4 text-white" />
+                              <div className="flex items-start space-x-2 min-w-0 flex-1">
+                                <div className="w-5 h-5 bg-gradient-to-br from-white/20 to-white/30 rounded flex items-center justify-center flex-shrink-0 mt-0.5">
+                                  <FileSpreadsheet className="w-3 h-3 text-white" />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <h4 className="font-medium text-sm text-white truncate">{suiteWithStats.name}</h4>
-                                  <p className="text-xs text-emerald-200 mt-1 truncate">{stats.total} test cases</p>
+                                    <h4 className="font-medium text-xs text-white truncate">{suiteWithStats.name}</h4>
+                                  <p className="text-xs text-emerald-200/80 mt-0.5 truncate">{stats.total} test cases</p>
                                   {stats.total > 0 && (
-                                    <div className="flex items-center space-x-2 mt-2 flex-wrap">
+                                    <div className="flex items-center space-x-1.5 mt-1.5 flex-wrap">
                                       <div className="flex items-center space-x-1">
-                                        <div className="w-2 h-2 bg-green-400 rounded-full flex-shrink-0"></div>
+                                        <div className="w-1.5 h-1.5 bg-green-400 rounded-full flex-shrink-0"></div>
                                         <span className="text-xs text-green-100">{stats.passed}</span>
                                       </div>
                                       <div className="flex items-center space-x-1">
-                                        <div className="w-2 h-2 bg-red-400 rounded-full flex-shrink-0"></div>
+                                        <div className="w-1.5 h-1.5 bg-red-400 rounded-full flex-shrink-0"></div>
                                         <span className="text-xs text-red-100">{stats.failed}</span>
                                       </div>
                                       <div className="flex items-center space-x-1">
-                                        <div className="w-2 h-2 bg-yellow-400 rounded-full flex-shrink-0"></div>
+                                        <div className="w-1.5 h-1.5 bg-yellow-400 rounded-full flex-shrink-0"></div>
                                         <span className="text-xs text-yellow-100">{stats.pending}</span>
                                       </div>
                                     </div>
                                   )}
                                 </div>
                               </div>
-                                <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex-shrink-0 min-w-[60px] justify-end">
+                                <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex-shrink-0 min-w-[50px] justify-end">
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -517,9 +517,9 @@ export function QASidebar({
                                   e.stopPropagation()
                                       onShareTestSuite(suiteWithStats)
                                     }}
-                                    className="h-7 w-7 p-0 hover:bg-blue-500/20 hover:text-blue-300 flex-shrink-0"
+                                    className="h-5 w-5 p-0 hover:bg-blue-500/20 hover:text-blue-300 flex-shrink-0"
                                   >
-                                    <Share2 className="w-3.5 h-3.5" />
+                                    <Share2 className="w-2.5 h-2.5" />
                                   </Button>
                                   <Button
                                     variant="ghost"
@@ -528,9 +528,9 @@ export function QASidebar({
                                       e.stopPropagation()
                                       handleDeleteSuite(suiteWithStats)
                                     }}
-                                    className="h-7 w-7 p-0 hover:bg-red-500/20 hover:text-red-300 flex-shrink-0"
+                                    className="h-5 w-5 p-0 hover:bg-red-500/20 hover:text-red-300 flex-shrink-0"
                               >
-                                <X className="w-3.5 h-3.5" />
+                                <X className="w-2.5 h-2.5" />
                               </Button>
                                 </div>
                             </div>
@@ -538,19 +538,19 @@ export function QASidebar({
                         )
                       })
                     ) : (
-                      <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
-                        <div className="w-12 h-12 bg-gradient-to-br from-emerald-500/20 to-emerald-600/30 rounded-xl flex items-center justify-center mb-3 flex-shrink-0 border border-emerald-400/30">
-                          <FileSpreadsheet className="w-6 h-6 text-emerald-300" />
+                      <div className="flex flex-col items-center justify-center py-4 px-3 text-center">
+                        <div className="w-8 h-8 bg-gradient-to-br from-emerald-500/20 to-emerald-600/30 rounded-lg flex items-center justify-center mb-2 flex-shrink-0 border border-emerald-400/30">
+                          <FileSpreadsheet className="w-4 h-4 text-emerald-300" />
                         </div>
-                        <h3 className="text-sm font-semibold text-white mb-1">No Test Suites</h3>
-                        <p className="text-xs text-emerald-200 mb-4 text-center">Create test suites to organize your test cases by feature or functionality</p>
+                        <h3 className="text-xs font-semibold text-white mb-1">No Test Suites</h3>
+                        <p className="text-xs text-emerald-200/80 mb-3 text-center">Create test suites to organize your test cases by feature or functionality</p>
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => setIsAddSuiteDialogOpen(true)}
-                          className="text-xs h-8 px-3 border-emerald-400/50 text-emerald-200 hover:bg-emerald-500/20 hover:border-emerald-400"
+                          className="text-xs h-6 px-2 border-emerald-400/50 text-emerald-200 hover:bg-emerald-500/20 hover:border-emerald-400"
                         >
-                          <Plus className="w-3 h-3 mr-1 flex-shrink-0" />
+                          <Plus className="w-2.5 h-2.5 mr-1 flex-shrink-0" />
                           Create First Suite
                         </Button>
                       </div>
@@ -558,14 +558,14 @@ export function QASidebar({
                     
                     {/* Add Suite button when there are existing test suites */}
                     {testSuitesWithStats.length > 0 && (
-                      <div className="pt-2">
+                      <div className="pt-1.5">
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => setIsAddSuiteDialogOpen(true)}
-                          className="w-full text-xs h-8 px-3 border-emerald-400/50 text-emerald-200 hover:bg-emerald-500/20 hover:border-emerald-400"
+                          className="w-full text-xs h-6 px-2 border-emerald-400/50 text-emerald-200 hover:bg-emerald-500/20 hover:border-emerald-400"
                         >
-                          <Plus className="w-3 h-3 mr-1 flex-shrink-0" />
+                          <Plus className="w-2.5 h-2.5 mr-1 flex-shrink-0" />
                           Add Suite
                         </Button>
                       </div>
@@ -591,49 +591,49 @@ export function QASidebar({
                   </Badge>
                 </div>
               </AccordionTrigger>
-              <AccordionContent className="px-6 pb-3">
-                <div className="max-h-64 overflow-y-auto pr-2">
-                <div className="flex flex-col space-y-2">
-                  <div className="space-y-2">
+              <AccordionContent className="px-3 pb-2">
+                <div className="max-h-48 overflow-y-auto pr-1">
+                <div className="flex flex-col space-y-1.5">
+                  <div className="space-y-1.5">
                     {platforms.length > 0 ? (
                       platforms.map((platform) => (
                         <div
                           key={platform}
-                          className="group flex items-center justify-between p-3 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 hover:border-white/40 hover:shadow-lg transition-all duration-200"
+                          className="group flex items-center justify-between p-2 bg-white/10 backdrop-blur-sm rounded-md border border-white/20 hover:border-white/40 hover:shadow-md transition-all duration-200"
                         >
-                          <div className="flex items-center space-x-3">
-                            <div className="w-7 h-7 bg-gradient-to-br from-white/20 to-white/30 rounded-md flex items-center justify-center">
-                              <Globe className="w-3.5 h-3.5 text-white" />
+                          <div className="flex items-center space-x-2">
+                            <div className="w-5 h-5 bg-gradient-to-br from-white/20 to-white/30 rounded flex items-center justify-center">
+                              <Globe className="w-3 h-3 text-white" />
                             </div>
                             <div>
-                              <span className="text-sm font-medium text-white">{platform}</span>
-                              <p className="text-xs text-purple-200">Testing Platform</p>
+                              <span className="text-xs font-medium text-white">{platform}</span>
+                              <p className="text-xs text-purple-200/80">Testing Platform</p>
                             </div>
                           </div>
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => onDeletePlatform(platform)}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-7 w-7 p-0 hover:bg-red-500/20 hover:text-red-300"
+                            className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-5 w-5 p-0 hover:bg-red-500/20 hover:text-red-300"
                           >
-                            <X className="w-3.5 h-3.5" />
+                            <X className="w-2.5 h-2.5" />
                           </Button>
                         </div>
                       ))
                     ) : (
-                      <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
-                        <div className="w-12 h-12 bg-gradient-to-br from-purple-500/20 to-purple-600/30 rounded-xl flex items-center justify-center mb-3 border border-purple-400/30">
-                          <Globe className="w-6 h-6 text-purple-300" />
+                      <div className="flex flex-col items-center justify-center py-4 px-3 text-center">
+                        <div className="w-8 h-8 bg-gradient-to-br from-purple-500/20 to-purple-600/30 rounded-lg flex items-center justify-center mb-2 border border-purple-400/30">
+                          <Globe className="w-4 h-4 text-purple-300" />
                         </div>
-                        <h3 className="text-sm font-semibold text-white mb-1">No Platforms</h3>
-                        <p className="text-xs text-purple-200 mb-4">Add testing platforms to categorize your test cases</p>
+                        <h3 className="text-xs font-semibold text-white mb-1">No Platforms</h3>
+                        <p className="text-xs text-purple-200/80 mb-3">Add testing platforms to categorize your test cases</p>
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => setIsAddPlatformDialogOpen(true)}
-                          className="text-xs h-8 px-3 border-purple-400/50 text-purple-200 hover:bg-purple-500/20 hover:border-purple-400"
+                          onClick={handleAddPlatform}
+                          className="text-xs h-6 px-2 border-purple-400/50 text-purple-200 hover:bg-purple-500/20 hover:border-purple-400"
                         >
-                          <Plus className="w-3 h-3 mr-1" />
+                          <Plus className="w-2.5 h-2.5 mr-1" />
                           Add Platform
                         </Button>
                       </div>
@@ -659,19 +659,19 @@ export function QASidebar({
                   </Badge>
                 </div>
               </AccordionTrigger>
-              <AccordionContent className="px-6 pb-3">
-                <div className="max-h-64 overflow-y-auto pr-2">
-                <div className="flex flex-col space-y-2">
-                  <div className="space-y-2">
+              <AccordionContent className="px-3 pb-2">
+                <div className="max-h-48 overflow-y-auto pr-1">
+                <div className="flex flex-col space-y-1.5">
+                  <div className="space-y-1.5">
                     {importantLinks.length > 0 ? (
                       importantLinks.map((link) => (
                         <div
                           key={link.id}
-                          className="group relative p-3 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 hover:border-white/40 hover:shadow-lg transition-all duration-200"
+                          className="group relative p-2 bg-white/10 backdrop-blur-sm rounded-md border border-white/20 hover:border-white/40 hover:shadow-md transition-all duration-200"
                         >
-                          <div className="flex items-start space-x-3">
-                            <div className="w-8 h-8 bg-gradient-to-br from-white/20 to-white/30 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
-                              <Link className="w-4 h-4 text-white" />
+                          <div className="flex items-start space-x-2">
+                            <div className="w-5 h-5 bg-gradient-to-br from-white/20 to-white/30 rounded flex items-center justify-center flex-shrink-0 mt-0.5">
+                              <Link className="w-3 h-3 text-white" />
                             </div>
                             <div className="flex-1 min-w-0">
                               <a
@@ -680,9 +680,9 @@ export function QASidebar({
                                 rel="noopener noreferrer"
                                 className="block hover:text-blue-300 transition-colors duration-200"
                               >
-                                <h4 className="font-medium text-sm text-white truncate">{link.title}</h4>
-                                <p className="text-xs text-blue-200 truncate mt-1">{link.url}</p>
-                                <div className="flex items-center mt-2">
+                                <h4 className="font-medium text-xs text-white truncate">{link.title}</h4>
+                                <p className="text-xs text-blue-200/80 truncate mt-0.5">{link.url}</p>
+                                <div className="flex items-center mt-1">
                                   <Badge variant="outline" className="text-xs bg-blue-500/20 text-blue-100 border-blue-400/30">
                                     {link.category}
                                   </Badge>
@@ -693,27 +693,27 @@ export function QASidebar({
                               variant="ghost"
                               size="sm"
                               onClick={() => onDeleteImportantLink(link.id)}
-                              className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-7 w-7 p-0 hover:bg-red-500/20 hover:text-red-300"
+                              className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-5 w-5 p-0 hover:bg-red-500/20 hover:text-red-300"
                             >
-                              <X className="w-3.5 h-3.5" />
+                              <X className="w-2.5 h-2.5" />
                             </Button>
                           </div>
                         </div>
                       ))
                     ) : (
-                      <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
-                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500/20 to-blue-600/30 rounded-xl flex items-center justify-center mb-3 border border-blue-400/30">
-                          <Link className="w-6 h-6 text-blue-300" />
+                      <div className="flex flex-col items-center justify-center py-4 px-3 text-center">
+                        <div className="w-8 h-8 bg-gradient-to-br from-blue-500/20 to-blue-600/30 rounded-lg flex items-center justify-center mb-2 border border-blue-400/30">
+                          <Link className="w-4 h-4 text-blue-300" />
                         </div>
-                        <h3 className="text-sm font-semibold text-white mb-1">No Important Links</h3>
-                        <p className="text-xs text-blue-200 mb-4">Add important links for quick access to resources</p>
+                        <h3 className="text-xs font-semibold text-white mb-1">No Important Links</h3>
+                        <p className="text-xs text-blue-200/80 mb-3">Add important links for quick access to resources</p>
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => setIsAddLinkDialogOpen(true)}
-                          className="text-xs h-8 px-3 border-blue-400/50 text-blue-200 hover:bg-blue-500/20 hover:border-blue-400"
+                          className="text-xs h-6 px-2 border-blue-400/50 text-blue-200 hover:bg-blue-500/20 hover:border-blue-400"
                         >
-                          <Plus className="w-3 h-3 mr-1" />
+                          <Plus className="w-2.5 h-2.5 mr-1" />
                           Add Link
                         </Button>
                       </div>
@@ -739,19 +739,19 @@ export function QASidebar({
                   </Badge>
                 </div>
               </AccordionTrigger>
-              <AccordionContent className="px-6 pb-3">
-                <div className="max-h-64 overflow-y-auto pr-2">
-                <div className="flex flex-col space-y-2">
-                  <div className="space-y-2">
+              <AccordionContent className="px-3 pb-2">
+                <div className="max-h-48 overflow-y-auto pr-1">
+                <div className="flex flex-col space-y-1.5">
+                  <div className="space-y-1.5">
                     {documents.length > 0 ? (
                       documents.map((doc) => (
                         <div
                           key={doc.id}
-                          className="group relative p-3 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 hover:border-white/40 hover:shadow-lg transition-all duration-200"
+                          className="group relative p-2 bg-white/10 backdrop-blur-sm rounded-md border border-white/20 hover:border-white/40 hover:shadow-md transition-all duration-200"
                         >
-                          <div className="flex items-start space-x-3">
-                            <div className="w-8 h-8 bg-gradient-to-br from-white/20 to-white/30 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
-                              <BookOpen className="w-4 h-4 text-white" />
+                          <div className="flex items-start space-x-2">
+                            <div className="w-5 h-5 bg-gradient-to-br from-white/20 to-white/30 rounded flex items-center justify-center flex-shrink-0 mt-0.5">
+                              <BookOpen className="w-3 h-3 text-white" />
                             </div>
                             <div className="flex-1 min-w-0">
                               <a
@@ -760,9 +760,9 @@ export function QASidebar({
                                 rel="noopener noreferrer"
                                 className="block hover:text-orange-300 transition-colors duration-200"
                               >
-                                <h4 className="font-medium text-sm text-white truncate">{doc.title}</h4>
-                                <p className="text-xs text-orange-200 truncate mt-1">{doc.url}</p>
-                                <div className="flex items-center mt-2">
+                                <h4 className="font-medium text-xs text-white truncate">{doc.title}</h4>
+                                <p className="text-xs text-orange-200/80 truncate mt-0.5">{doc.url}</p>
+                                <div className="flex items-center mt-1">
                                   <Badge
                                     variant="outline"
                                     className="text-xs bg-orange-500/20 text-orange-100 border-orange-400/30 capitalize"
@@ -776,27 +776,27 @@ export function QASidebar({
                               variant="ghost"
                               size="sm"
                               onClick={() => onDeleteDocument(doc.id)}
-                              className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-7 w-7 p-0 hover:bg-red-500/20 hover:text-red-300"
+                              className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-5 w-5 p-0 hover:bg-red-500/20 hover:text-red-300"
                             >
-                              <X className="w-3.5 h-3.5" />
+                              <X className="w-2.5 h-2.5" />
                             </Button>
                           </div>
                         </div>
                       ))
                     ) : (
-                      <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
-                        <div className="w-12 h-12 bg-gradient-to-br from-orange-500/20 to-orange-600/30 rounded-xl flex items-center justify-center mb-3 border border-orange-400/30">
-                          <BookOpen className="w-6 h-6 text-orange-300" />
+                      <div className="flex flex-col items-center justify-center py-4 px-3 text-center">
+                        <div className="w-8 h-8 bg-gradient-to-br from-orange-500/20 to-orange-600/30 rounded-lg flex items-center justify-center mb-2 border border-orange-400/30">
+                          <BookOpen className="w-4 h-4 text-orange-300" />
                         </div>
-                        <h3 className="text-sm font-semibold text-white mb-1">No Documents</h3>
-                        <p className="text-xs text-orange-200 mb-4">Add important documents for reference</p>
+                        <h3 className="text-xs font-semibold text-white mb-1">No Documents</h3>
+                        <p className="text-xs text-orange-200/80 mb-3">Add important documents for reference</p>
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => setIsAddDocumentDialogOpen(true)}
-                          className="text-xs h-8 px-3 border-orange-400/50 text-orange-200 hover:bg-orange-500/20 hover:border-orange-400"
+                          className="text-xs h-6 px-2 border-orange-400/50 text-orange-200 hover:bg-orange-500/20 hover:border-orange-400"
                         >
-                          <Plus className="w-3 h-3 mr-1" />
+                          <Plus className="w-2.5 h-2.5 mr-1" />
                           Add Document
                         </Button>
                       </div>
