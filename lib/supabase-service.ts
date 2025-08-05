@@ -557,6 +557,18 @@ export const testSuiteService = {
   },
 
   async delete(id: string): Promise<void> {
+    // First, clear the suite_id from all test cases that belong to this suite
+    const { error: updateError } = await supabase
+      .from('test_cases')
+      .update({ suite_id: null })
+      .eq('suite_id', id)
+    
+    if (updateError) {
+      console.error('Failed to clear suite_id from test cases:', updateError)
+      throw updateError
+    }
+    
+    // Then delete the test suite
     const { error } = await supabase
       .from('test_suites')
       .delete()
