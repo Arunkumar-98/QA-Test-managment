@@ -48,9 +48,10 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
-import { Settings, Eye, Trash2, LogOut, User, Share2, Plus, Upload, Clipboard, Download, X, Folder, Table, FileText, Share, RefreshCw, Mail, EyeOff } from "lucide-react"
+import { Settings, Eye, Trash2, LogOut, User, Share2, Plus, Upload, Clipboard, Download, X, Folder, Table, FileText, Share, RefreshCw, Mail, EyeOff, BarChart3 } from "lucide-react"
 import { useAuth } from "./AuthProvider"
 import { CustomColumnDialog } from './CustomColumnDialog'
+import { ProjectDashboard } from './ProjectDashboard'
 
 export function QAApplication() {
   // Auth context
@@ -88,6 +89,8 @@ export function QAApplication() {
   const [projectsLoading, setProjectsLoading] = useState(true)
   const [isNotesDialogOpen, setIsNotesDialogOpen] = useState(false)
   const [isProjectMembersDialogOpen, setIsProjectMembersDialogOpen] = useState(false)
+  const [showDashboard, setShowDashboard] = useState(false)
+  const [currentView, setCurrentView] = useState<'dashboard' | 'test-cases'>('dashboard')
 
   
   // Selected test case for dialogs
@@ -535,6 +538,7 @@ export function QAApplication() {
     if (selectedProject) {
       setCurrentProjectId(selectedProject.id)
       setCurrentProject(selectedProject.name)
+      setCurrentView('dashboard') // Show dashboard by default
       
       // Load project-specific data for the new project
         const [platformsData, documentsData, linksData] = await Promise.all([
@@ -1132,6 +1136,22 @@ export function QAApplication() {
     setIsProjectMembersDialogOpen(true)
   }
 
+  const handleShowDashboard = () => {
+    setCurrentView('dashboard')
+  }
+
+  const handleShowTestCases = () => {
+    setCurrentView('test-cases')
+  }
+
+  const handleExportDashboardData = () => {
+    handleExportToExcel()
+  }
+
+  const handleOpenDashboardSettings = () => {
+    setIsProjectSettingsOpen(true)
+  }
+
   // Custom Columns Management
   const loadCustomColumns = async (projectId: string) => {
     try {
@@ -1618,53 +1638,95 @@ export function QAApplication() {
                   user={user}
                 />
               ) : (
-                /* Test Cases Table */
+                /* Main Content Area */
                 <div className="flex-1 flex flex-col overflow-hidden">
-                  <TestCaseTable
-                  testCases={finalTestCases}
-                  selectedTestCases={selectedTestCases}
-                  searchQuery={searchQuery}
-                  setSearchQuery={setSearchQuery}
-                  statusFilter={statusFilter}
-                  setStatusFilter={setStatusFilter}
-                  priorityFilter={priorityFilter}
-                  setPriorityFilter={setPriorityFilter}
-                  platformFilter={platformFilter}
-                  setPlatformFilter={setPlatformFilter}
-                  categoryFilter={categoryFilter}
-                  setCategoryFilter={setCategoryFilter}
-                  assignedTesterFilter={assignedTesterFilter}
-                  setAssignedTesterFilter={setAssignedTesterFilter}
-                  savedFilters={savedFilters}
-                  tableColumns={tableColumns}
-                  currentPage={currentPage}
-                  setCurrentPage={setCurrentPage}
-                  rowsPerPage={rowsPerPage}
-                  setRowsPerPage={setRowsPerPage}
-                  onAddTestCase={() => setIsAddDialogOpen(true)}
-                  onEditTestCase={handleEditTestCase}
-                  onViewTestCase={handleViewTestCase}
-                  onRemoveTestCase={removeTestCase}
-                  onRemoveSelectedTestCases={removeSelectedTestCases}
-        deleteLoading={deleteLoading}
-                  onUpdateTestCaseStatus={updateTestCaseStatus}
-                  onBulkUpdateStatus={bulkUpdateStatus}
-                  onToggleTestCaseSelection={toggleTestCaseSelection}
-                  onToggleSelectAll={(filteredTestCases) => toggleSelectAll(filteredTestCases)}
-                  onClearAllTestCases={clearAllTestCases}
-                  onFileUpload={handleFileUpload}
-                  onExportToExcel={handleExportToExcel}
-                  onSaveFilter={saveCurrentFilter}
-                  onLoadFilter={(filter) => loadSavedFilter(filter)}
-                  onDeleteFilter={deleteSavedFilter}
-                  onClearAllFilters={clearFilters}
-                  onOpenComments={handleOpenComments}
-                  onOpenAutomation={handleOpenAutomation}
-                  onAddTestCaseFromPaste={handleAddTestCaseFromPaste}
-                  currentProject={currentProject}
-                  isPasteDialogOpen={isPasteDialogOpen}
-                  setIsPasteDialogOpen={setIsPasteDialogOpen}
-                />
+                  {/* View Toggle Buttons */}
+                  <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-white">
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        variant={currentView === 'dashboard' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={handleShowDashboard}
+                        className="flex items-center space-x-2"
+                      >
+                        <BarChart3 className="w-4 h-4" />
+                        <span>Dashboard</span>
+                      </Button>
+                      <Button
+                        variant={currentView === 'test-cases' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={handleShowTestCases}
+                        className="flex items-center space-x-2"
+                      >
+                        <FileText className="w-4 h-4" />
+                        <span>Test Cases</span>
+                      </Button>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Badge variant="outline" className="text-sm">
+                        {currentProject}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  {/* Dashboard or Test Cases Content */}
+                  {currentView === 'dashboard' ? (
+                    <ProjectDashboard
+                      project={{ id: currentProjectId, name: currentProject, createdAt: new Date() }}
+                      testCases={finalTestCases}
+                      testSuites={testSuites}
+                      onAddTestCase={() => setIsAddDialogOpen(true)}
+                      onAddTestSuite={() => setIsSuiteDialogOpen(true)}
+                      onExportData={handleExportDashboardData}
+                      onOpenSettings={handleOpenDashboardSettings}
+                    />
+                  ) : (
+                    <TestCaseTable
+                      testCases={finalTestCases}
+                      selectedTestCases={selectedTestCases}
+                      searchQuery={searchQuery}
+                      setSearchQuery={setSearchQuery}
+                      statusFilter={statusFilter}
+                      setStatusFilter={setStatusFilter}
+                      priorityFilter={priorityFilter}
+                      setPriorityFilter={setPriorityFilter}
+                      platformFilter={platformFilter}
+                      setPlatformFilter={setPlatformFilter}
+                      categoryFilter={categoryFilter}
+                      setCategoryFilter={setCategoryFilter}
+                      assignedTesterFilter={assignedTesterFilter}
+                      setAssignedTesterFilter={setAssignedTesterFilter}
+                      savedFilters={savedFilters}
+                      tableColumns={tableColumns}
+                      currentPage={currentPage}
+                      setCurrentPage={setCurrentPage}
+                      rowsPerPage={rowsPerPage}
+                      setRowsPerPage={setRowsPerPage}
+                      onAddTestCase={() => setIsAddDialogOpen(true)}
+                      onEditTestCase={handleEditTestCase}
+                      onViewTestCase={handleViewTestCase}
+                      onRemoveTestCase={removeTestCase}
+                      onRemoveSelectedTestCases={removeSelectedTestCases}
+                      deleteLoading={deleteLoading}
+                      onUpdateTestCaseStatus={updateTestCaseStatus}
+                      onBulkUpdateStatus={bulkUpdateStatus}
+                      onToggleTestCaseSelection={toggleTestCaseSelection}
+                      onToggleSelectAll={(filteredTestCases) => toggleSelectAll(filteredTestCases)}
+                      onClearAllTestCases={clearAllTestCases}
+                      onFileUpload={handleFileUpload}
+                      onExportToExcel={handleExportToExcel}
+                      onSaveFilter={saveCurrentFilter}
+                      onLoadFilter={(filter) => loadSavedFilter(filter)}
+                      onDeleteFilter={deleteSavedFilter}
+                      onClearAllFilters={clearFilters}
+                      onOpenComments={handleOpenComments}
+                      onOpenAutomation={handleOpenAutomation}
+                      onAddTestCaseFromPaste={handleAddTestCaseFromPaste}
+                      currentProject={currentProject}
+                      isPasteDialogOpen={isPasteDialogOpen}
+                      setIsPasteDialogOpen={setIsPasteDialogOpen}
+                    />
+                  )}
                 </div>
               )}
             </div>
