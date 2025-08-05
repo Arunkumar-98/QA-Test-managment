@@ -106,6 +106,7 @@ export const testCaseService = {
       steps_to_reproduce: testCase.stepsToReproduce,
       project_id: testCase.projectId,
       suite_id: testCase.suiteId || undefined, // Convert empty string to undefined
+      custom_fields: testCase.customFields || {},
       created_at: new Date(),
       updated_at: new Date()
     }
@@ -238,6 +239,7 @@ export const testCaseService = {
     if (updates.projectId !== undefined) dbUpdates.project_id = updates.projectId
     if (updates.suiteId !== undefined) dbUpdates.suite_id = updates.suiteId || undefined
     if (updates.position !== undefined) dbUpdates.position = updates.position
+    if (updates.customFields !== undefined) dbUpdates.custom_fields = updates.customFields
     if (updates.automationScript !== undefined) {
       if (updates.automationScript) {
         (dbUpdates as any).automation_script = {
