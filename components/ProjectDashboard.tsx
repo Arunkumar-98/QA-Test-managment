@@ -187,8 +187,8 @@ export function ProjectDashboard({
   }
 
   return (
-    <div className="bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 h-full overflow-y-auto">
-      <div className="space-y-8 p-8">
+    <div className="bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 h-full overflow-y-auto flex flex-col">
+      <div className="flex-1 space-y-8 p-8 overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
