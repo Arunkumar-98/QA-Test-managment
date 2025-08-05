@@ -120,6 +120,7 @@ export function QAApplication() {
   const [customColumnsList, setCustomColumnsList] = useState<CustomColumn[]>([])
   const [isAddCustomColumnDialogOpen, setIsAddCustomColumnDialogOpen] = useState(false)
   const [editingCustomColumn, setEditingCustomColumn] = useState<CustomColumn | null>(null)
+  const [editingDefaultColumn, setEditingDefaultColumn] = useState<{key: string, column: any} | null>(null)
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
@@ -1219,7 +1220,42 @@ export function QAApplication() {
 
   const handleAddCustomColumn = async (column: Omit<CustomColumn, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
-      // Validate that we have a valid project ID
+      // Check if we're editing a default column
+      if (editingDefaultColumn) {
+        // Update default column properties
+        setTableColumns(prev => ({
+          ...prev,
+          [editingDefaultColumn.key]: {
+            ...prev[editingDefaultColumn.key as keyof typeof tableColumns],
+            width: column.width,
+            minWidth: column.minWidth,
+            visible: column.visible
+          }
+        }))
+        
+        setIsAddCustomColumnDialogOpen(false)
+        setEditingDefaultColumn(null)
+        toast({
+          title: "Default Column Updated",
+          description: `Column "${column.label}" has been updated successfully.`,
+        })
+        return
+      }
+
+      // Check if we're editing an existing custom column
+      if (editingCustomColumn) {
+        const updatedColumn = await customColumnService.update(editingCustomColumn.id, column)
+        setCustomColumnsList(prev => prev.map(col => col.id === editingCustomColumn.id ? updatedColumn : col))
+        setIsAddCustomColumnDialogOpen(false)
+        setEditingCustomColumn(null)
+        toast({
+          title: "Custom Column Updated",
+          description: `Column "${column.label}" has been updated successfully.`,
+        })
+        return
+      }
+
+      // Validate that we have a valid project ID for new custom columns
       if (!currentProjectId || currentProjectId.trim() === '') {
         toast({
           title: "Error",
@@ -1229,22 +1265,22 @@ export function QAApplication() {
         return
       }
 
+      // Create new custom column
       const newColumn = await customColumnService.create({
         ...column,
         projectId: currentProjectId
       })
       setCustomColumnsList(prev => [...prev, newColumn])
       setIsAddCustomColumnDialogOpen(false)
-      setEditingCustomColumn(null)
       toast({
         title: "Custom Column Added",
         description: `Column "${column.label}" has been added successfully.`,
       })
     } catch (error) {
-      console.error('Failed to add custom column:', error)
+      console.error('Failed to handle column operation:', error)
       toast({
         title: "Error",
-        description: "Failed to add custom column. Please try again.",
+        description: "Failed to complete column operation. Please try again.",
         variant: "destructive",
       })
     }
@@ -1254,37 +1290,46 @@ export function QAApplication() {
     try {
       const updatedColumn = await customColumnService.update(id, updates)
       setCustomColumnsList(prev => prev.map(col => col.id === id ? updatedColumn : col))
-      setEditingCustomColumn(null)
-      toast({
-        title: "Custom Column Updated",
-        description: `Column "${updatedColumn.label}" has been updated successfully.`,
-      })
     } catch (error) {
-      console.error('Failed to update custom column:', error)
+      console.error('Failed to update custom column visibility:', error)
       toast({
         title: "Error",
-        description: "Failed to update custom column. Please try again.",
+        description: "Failed to update column visibility. Please try again.",
         variant: "destructive",
       })
     }
   }
 
   const handleDeleteCustomColumn = async (id: string) => {
+    if (!currentProjectId || currentProjectId.trim() === '') {
+      toast({
+        title: "Error",
+        description: "No project selected. Please select a project first.",
+        variant: "destructive"
+      })
+      return
+    }
+    
     try {
       await customColumnService.delete(id)
       setCustomColumnsList(prev => prev.filter(col => col.id !== id))
       toast({
-        title: "Custom Column Deleted",
-        description: "Custom column has been deleted successfully.",
+        title: "Success",
+        description: "Custom column deleted successfully",
       })
     } catch (error) {
-      console.error('Failed to delete custom column:', error)
+      console.error('❌ Failed to delete custom column:', error)
       toast({
         title: "Error",
-        description: "Failed to delete custom column. Please try again.",
-        variant: "destructive",
+        description: "Failed to delete custom column",
+        variant: "destructive"
       })
     }
+  }
+
+  const handleEditDefaultColumn = (key: string, column: any) => {
+    setEditingDefaultColumn({ key, column })
+    setIsAddCustomColumnDialogOpen(true)
   }
 
   return (
@@ -1785,6 +1830,14 @@ export function QAApplication() {
                       <Button
                         variant="ghost"
                         size="sm"
+                        onClick={() => handleEditDefaultColumn(key, column)}
+                        title="Edit column"
+                      >
+                        <Settings className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => {
                           // Hide the column instead of deleting (for default columns)
                           setTableColumns(prev => ({
@@ -2092,10 +2145,12 @@ export function QAApplication() {
          onClose={() => {
            setIsAddCustomColumnDialogOpen(false)
            setEditingCustomColumn(null)
+           setEditingDefaultColumn(null)
          }}
          onSubmit={handleAddCustomColumn}
          column={editingCustomColumn}
          isEditMode={!!editingCustomColumn}
+         defaultColumn={editingDefaultColumn}
        />
 
 

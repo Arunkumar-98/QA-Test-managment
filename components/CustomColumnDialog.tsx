@@ -24,6 +24,7 @@ interface CustomColumnDialogProps {
   onSubmit: (column: Omit<CustomColumn, 'id' | 'createdAt' | 'updatedAt'>) => void
   column?: CustomColumn | null
   isEditMode?: boolean
+  defaultColumn?: { key: string; column: any } | null
 }
 
 export function CustomColumnDialog({
@@ -31,7 +32,8 @@ export function CustomColumnDialog({
   onClose,
   onSubmit,
   column,
-  isEditMode = false
+  isEditMode = false,
+  defaultColumn
 }: CustomColumnDialogProps) {
   const [formData, setFormData] = useState({
     name: "",
@@ -48,7 +50,21 @@ export function CustomColumnDialog({
   const [newOption, setNewOption] = useState("")
 
   useEffect(() => {
-    if (column && isEditMode) {
+    if (defaultColumn) {
+      // Handle default column editing
+      setFormData({
+        name: defaultColumn.key,
+        label: defaultColumn.key.replace(/([A-Z])/g, ' $1').trim(),
+        type: "text" as CustomColumnType,
+        visible: defaultColumn.column.visible,
+        width: defaultColumn.column.width,
+        minWidth: defaultColumn.column.minWidth,
+        options: [],
+        defaultValue: "",
+        required: false
+      })
+    } else if (column && isEditMode) {
+      // Handle custom column editing
       setFormData({
         name: column.name,
         label: column.label,
@@ -61,6 +77,7 @@ export function CustomColumnDialog({
         required: column.required || false
       })
     } else {
+      // Handle new custom column creation
       setFormData({
         name: "",
         label: "",
@@ -73,7 +90,7 @@ export function CustomColumnDialog({
         required: false
       })
     }
-  }, [column, isEditMode, isOpen])
+  }, [column, isEditMode, isOpen, defaultColumn])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -86,10 +103,12 @@ export function CustomColumnDialog({
       ...formData,
       defaultValue: formData.type === 'boolean' ? formData.defaultValue === 'true' : 
                    formData.type === 'number' ? Number(formData.defaultValue) || 0 : 
-                   formData.defaultValue
+                   formData.defaultValue,
+      // Add projectId for custom columns (will be set in the parent component)
+      ...(defaultColumn ? {} : { projectId: 'temp' })
     }
 
-    onSubmit(columnData)
+    onSubmit(columnData as Omit<CustomColumn, 'id' | 'createdAt' | 'updatedAt'>)
   }
 
   const addOption = () => {
@@ -124,12 +143,19 @@ export function CustomColumnDialog({
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            {isEditMode ? "Edit Custom Column" : "Add Custom Column"}
+            {defaultColumn 
+              ? "Edit Default Column" 
+              : isEditMode 
+                ? "Edit Custom Column" 
+                : "Add Custom Column"
+            }
           </DialogTitle>
           <DialogDescription>
-            {isEditMode 
-              ? "Modify the custom column settings below."
-              : "Create a new custom column to add to your test case table."
+            {defaultColumn 
+              ? "Modify the default column settings below."
+              : isEditMode 
+                ? "Modify the custom column settings below."
+                : "Create a new custom column to add to your test case table."
             }
           </DialogDescription>
         </DialogHeader>
@@ -144,9 +170,11 @@ export function CustomColumnDialog({
                 onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                 placeholder="e.g., ios_status"
                 required
+                readOnly={!!defaultColumn}
+                className={defaultColumn ? "bg-gray-50" : ""}
               />
               <p className="text-xs text-muted-foreground">
-                Internal name (no spaces, lowercase)
+                {defaultColumn ? "Default column name cannot be changed" : "Internal name (no spaces, lowercase)"}
               </p>
             </div>
 
@@ -158,9 +186,11 @@ export function CustomColumnDialog({
                 onChange={(e) => setFormData(prev => ({ ...prev, label: e.target.value }))}
                 placeholder="e.g., iOS Status"
                 required
+                readOnly={!!defaultColumn}
+                className={defaultColumn ? "bg-gray-50" : ""}
               />
               <p className="text-xs text-muted-foreground">
-                Name shown in the table header
+                {defaultColumn ? "Default column label cannot be changed" : "Name shown in the table header"}
               </p>
             </div>
           </div>
@@ -173,8 +203,9 @@ export function CustomColumnDialog({
                 onValueChange={(value: CustomColumnType) => 
                   setFormData(prev => ({ ...prev, type: value, defaultValue: "" }))
                 }
+                disabled={!!defaultColumn}
               >
-                <SelectTrigger>
+                <SelectTrigger className={defaultColumn ? "bg-gray-50" : ""}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -185,6 +216,11 @@ export function CustomColumnDialog({
                   <SelectItem value="date">Date</SelectItem>
                 </SelectContent>
               </Select>
+              {defaultColumn && (
+                <p className="text-xs text-muted-foreground">
+                  Default column type cannot be changed
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
