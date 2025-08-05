@@ -1661,36 +1661,34 @@ export function QAApplication() {
               ) : (
                 /* Main Content Area */
                 <div className="flex-1 flex flex-col overflow-hidden">
-                  {/* View Toggle Buttons - Only show when no suite is selected */}
-                  {!selectedSuiteId && (
-                    <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-white">
-                      <div className="flex items-center space-x-2">
-                        <Button
-                          variant={currentView === 'dashboard' ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={handleShowDashboard}
-                          className="flex items-center space-x-2"
-                        >
-                          <BarChart3 className="w-4 h-4" />
-                          <span>Dashboard</span>
-                        </Button>
-                        <Button
-                          variant={currentView === 'test-cases' ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={handleShowTestCases}
-                          className="flex items-center space-x-2"
-                        >
-                          <FileText className="w-4 h-4" />
-                          <span>Test Cases</span>
-                        </Button>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Badge variant="outline" className="text-sm">
-                          {currentProject}
-                        </Badge>
-                      </div>
+                  {/* View Toggle Buttons - Always show to allow switching between views */}
+                  <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-white">
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        variant={currentView === 'dashboard' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={handleShowDashboard}
+                        className="flex items-center space-x-2"
+                      >
+                        <BarChart3 className="w-4 h-4" />
+                        <span>Dashboard</span>
+                      </Button>
+                      <Button
+                        variant={currentView === 'test-cases' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={handleShowTestCases}
+                        className="flex items-center space-x-2"
+                      >
+                        <FileText className="w-4 h-4" />
+                        <span>Test Cases</span>
+                      </Button>
                     </div>
-                  )}
+                    <div className="flex items-center space-x-2">
+                      <Badge variant="outline" className="text-sm">
+                        {currentProject}
+                      </Badge>
+                    </div>
+                  </div>
 
                   {/* Dashboard or Test Cases Content */}
                   {currentView === 'dashboard' ? (
