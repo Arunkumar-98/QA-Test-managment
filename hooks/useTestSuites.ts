@@ -68,30 +68,58 @@ export const useTestSuites = (currentProjectId: string) => {
   }, [])
 
   const addTestCaseToSuite = useCallback(async (suiteId: string, testCaseId: string) => {
-    const suite = testSuites.find(s => s.id === suiteId)
-    if (!suite) return
+    setTestSuites(prevSuites => {
+      const suite = prevSuites.find(s => s.id === suiteId)
+      if (!suite) return prevSuites
 
-    const updatedTestCaseIds = [...suite.testCaseIds, testCaseId]
-    const totalTests = (suite.totalTests || 0) + 1
+      const updatedTestCaseIds = [...suite.testCaseIds, testCaseId]
+      const totalTests = (suite.totalTests || 0) + 1
 
-    await updateTestSuite(suiteId, {
-      testCaseIds: updatedTestCaseIds,
-      totalTests
+      // Update the suite locally first
+      const updatedSuites = prevSuites.map(s => 
+        s.id === suiteId 
+          ? { ...s, testCaseIds: updatedTestCaseIds, totalTests }
+          : s
+      )
+
+      // Then update in the database
+      updateTestSuite(suiteId, {
+        testCaseIds: updatedTestCaseIds,
+        totalTests
+      }).catch(error => {
+        console.error('Failed to update test suite in database:', error)
+      })
+
+      return updatedSuites
     })
-  }, [testSuites, updateTestSuite])
+  }, [updateTestSuite])
 
   const removeTestCaseFromSuite = useCallback(async (suiteId: string, testCaseId: string) => {
-    const suite = testSuites.find(s => s.id === suiteId)
-    if (!suite) return
+    setTestSuites(prevSuites => {
+      const suite = prevSuites.find(s => s.id === suiteId)
+      if (!suite) return prevSuites
 
-    const updatedTestCaseIds = suite.testCaseIds.filter(id => id !== testCaseId)
-    const totalTests = Math.max(0, (suite.totalTests || 0) - 1)
+      const updatedTestCaseIds = suite.testCaseIds.filter(id => id !== testCaseId)
+      const totalTests = Math.max(0, (suite.totalTests || 0) - 1)
 
-    await updateTestSuite(suiteId, {
-      testCaseIds: updatedTestCaseIds,
-      totalTests
+      // Update the suite locally first
+      const updatedSuites = prevSuites.map(s => 
+        s.id === suiteId 
+          ? { ...s, testCaseIds: updatedTestCaseIds, totalTests }
+          : s
+      )
+
+      // Then update in the database
+      updateTestSuite(suiteId, {
+        testCaseIds: updatedTestCaseIds,
+        totalTests
+      }).catch(error => {
+        console.error('Failed to update test suite in database:', error)
+      })
+
+      return updatedSuites
     })
-  }, [testSuites, updateTestSuite])
+  }, [updateTestSuite])
 
   const updateSuiteStatistics = useCallback(async (suiteId: string, stats: {
     totalTests: number

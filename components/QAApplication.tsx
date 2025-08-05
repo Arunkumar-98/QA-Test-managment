@@ -363,18 +363,8 @@ export function QAApplication() {
     loadProjectData()
   }, [currentProjectId])
 
-  // Refresh test suite statistics when test cases change
-  useEffect(() => {
-    const refreshAllSuiteStatistics = async () => {
-      for (const suite of testSuites) {
-        await refreshTestSuiteStatistics(suite.id)
-      }
-    }
-    
-    if (testCases.length > 0 && testSuites.length > 0) {
-      refreshAllSuiteStatistics()
-    }
-  }, [testCases, testSuites])
+  // REMOVED: This useEffect was causing infinite API calls
+  // Test suite statistics will be refreshed manually when needed instead
 
   // Project management
   const handleAddProject = async (projectName: string) => {
