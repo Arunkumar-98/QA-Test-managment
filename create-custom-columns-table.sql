@@ -34,6 +34,12 @@ CREATE INDEX IF NOT EXISTS idx_test_cases_custom_fields ON test_cases USING GIN(
 -- Add RLS policies for custom_columns
 ALTER TABLE custom_columns ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if they exist (to avoid conflicts)
+DROP POLICY IF EXISTS "Users can view their own custom columns" ON custom_columns;
+DROP POLICY IF EXISTS "Users can insert their own custom columns" ON custom_columns;
+DROP POLICY IF EXISTS "Users can update their own custom columns" ON custom_columns;
+DROP POLICY IF EXISTS "Users can delete their own custom columns" ON custom_columns;
+
 -- Policy for users to view their own custom columns
 CREATE POLICY "Users can view their own custom columns" ON custom_columns
   FOR SELECT USING (
@@ -77,6 +83,9 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
+-- Drop existing trigger if it exists
+DROP TRIGGER IF EXISTS update_custom_columns_updated_at ON custom_columns;
 
 CREATE TRIGGER update_custom_columns_updated_at
   BEFORE UPDATE ON custom_columns
