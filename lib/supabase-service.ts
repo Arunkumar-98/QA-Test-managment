@@ -1704,6 +1704,12 @@ export const projectMembershipService = {
 // Custom Column Service
 export const customColumnService = {
   async getAll(projectId: string): Promise<CustomColumn[]> {
+    // Validate project ID
+    if (!projectId || projectId.trim() === '') {
+      console.log('⚠️ No project ID provided, returning empty custom columns list')
+      return []
+    }
+
     const { data, error } = await supabase
       .from('custom_columns')
       .select('*')
@@ -1715,6 +1721,11 @@ export const customColumnService = {
   },
 
   async create(column: CreateCustomColumnInput): Promise<CustomColumn> {
+    // Validate project ID
+    if (!column.projectId || column.projectId.trim() === '') {
+      throw new Error('Project ID is required to create a custom column')
+    }
+
     const { data, error } = await supabase
       .from('custom_columns')
       .insert(mapCustomColumnToDB({ ...column, id: '', createdAt: new Date(), updatedAt: new Date() }))

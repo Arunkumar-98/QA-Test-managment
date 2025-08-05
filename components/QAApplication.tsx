@@ -1139,6 +1139,12 @@ export function QAApplication() {
   // Custom Columns Management
   const loadCustomColumns = async (projectId: string) => {
     try {
+      // Validate project ID
+      if (!projectId || projectId.trim() === '') {
+        console.log('⚠️ No project ID provided, skipping custom columns load')
+        return
+      }
+
       const columns = await customColumnService.getAll(projectId)
       setCustomColumnsList(columns)
       
@@ -1153,6 +1159,12 @@ export function QAApplication() {
 
   const createDefaultCustomColumns = async (projectId: string) => {
     try {
+      // Validate project ID
+      if (!projectId || projectId.trim() === '') {
+        console.log('⚠️ No project ID provided, skipping default custom columns creation')
+        return
+      }
+
       const iosColumn = await customColumnService.create({
         name: 'ios_status',
         label: 'iOS Status',
@@ -1187,6 +1199,16 @@ export function QAApplication() {
 
   const handleAddCustomColumn = async (column: Omit<CustomColumn, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
+      // Validate that we have a valid project ID
+      if (!currentProjectId || currentProjectId.trim() === '') {
+        toast({
+          title: "Error",
+          description: "No project selected. Please select a project first.",
+          variant: "destructive",
+        })
+        return
+      }
+
       const newColumn = await customColumnService.create({
         ...column,
         projectId: currentProjectId
@@ -1357,13 +1379,24 @@ export function QAApplication() {
                         <span className="font-medium">Project Settings</span>
                       </button>
                       
-                      <button
-                        onClick={() => setIsTableSettingsOpen(true)}
-                        className="w-full px-4 py-3 text-left text-sm text-white hover:bg-white/10 flex items-center space-x-3 transition-colors"
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          if (!currentProjectId || currentProjectId.trim() === '') {
+                            toast({
+                              title: "No Project Selected",
+                              description: "Please select a project first to configure table settings.",
+                              variant: "destructive",
+                            })
+                            return
+                          }
+                          setIsTableSettingsOpen(true)
+                        }}
+                        className="text-slate-600 hover:text-slate-900"
                       >
-                        <Table className="w-4 h-4 text-blue-300" />
-                        <span className="font-medium">Table Settings</span>
-                      </button>
+                        <Settings className="w-4 h-4" />
+                      </Button>
                       
                       <div className="px-4 py-2 border-t border-white/10">
                         <p className="text-xs font-medium text-blue-200 uppercase tracking-wide">Other</p>
@@ -1420,7 +1453,17 @@ export function QAApplication() {
             onDeleteImportantLink={handleDeleteImportantLink}
             onAddPlatform={handleAddPlatform}
             onDeletePlatform={handleDeletePlatform}
-            onOpenTableSettings={() => setIsTableSettingsOpen(true)}
+            onOpenTableSettings={() => {
+              if (!currentProjectId || currentProjectId.trim() === '') {
+                toast({
+                  title: "No Project Selected",
+                  description: "Please select a project first to configure table settings.",
+                  variant: "destructive",
+                })
+                return
+              }
+              setIsTableSettingsOpen(true)
+            }}
             onOpenProjectSettings={() => setIsProjectSettingsOpen(true)}
             onSuiteClick={setSelectedSuiteId}
             selectedSuiteId={selectedSuiteId}
