@@ -108,6 +108,7 @@ export function EnhancedPasteDialog({
   const getFormatIcon = (format: string) => {
     switch (format) {
       case 'csv': return <TableIcon className="w-4 h-4" />
+      case 'tsv': return <TableIcon className="w-4 h-4" />
       case 'structured': return <FileText className="w-4 h-4" />
       default: return <Clipboard className="w-4 h-4" />
     }
@@ -116,6 +117,7 @@ export function EnhancedPasteDialog({
   const getFormatColor = (format: string) => {
     switch (format) {
       case 'csv': return 'bg-blue-100 text-blue-800'
+      case 'tsv': return 'bg-purple-100 text-purple-800'
       case 'structured': return 'bg-green-100 text-green-800'
       default: return 'bg-yellow-100 text-yellow-800'
     }
@@ -211,7 +213,9 @@ export function EnhancedPasteDialog({
                       </Badge>
                     )}
                     <Badge variant="outline" className={getFormatColor(detectedFormat)}>
-                      {detectedFormat.toUpperCase()}
+                      {detectedFormat === 'csv' ? 'CSV' : 
+                       detectedFormat === 'tsv' ? 'TABLE' :
+                       detectedFormat.toUpperCase()}
                     </Badge>
                   </div>
                 </div>
@@ -285,6 +289,25 @@ export function EnhancedPasteDialog({
 
           <TabsContent value="help" className="flex-1 overflow-auto">
             <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <TableIcon className="w-5 h-5" />
+                    Table Format (TSV)
+                  </CardTitle>
+                  <CardDescription>
+                    Paste tab-separated data from Excel, Google Sheets, or tables
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <pre className="bg-muted p-3 rounded text-sm overflow-x-auto">
+{`Test Case Title	Description	Steps to Reproduce	Expected Result	Priority	Status
+Short Active Screen Recording	Record 3–5 min while app is foregrounded	1. Start recording 2. Keep app in foreground	Recording completes and note is generated	Medium	Pending
+Medium Active Screen Recording	Record 10–15 min with app in active state	Same as above	Recording completes and is uploaded	Medium	Pending`}
+                  </pre>
+                </CardContent>
+              </Card>
+
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">

@@ -361,7 +361,7 @@ export const mapImportedDataToTestCase = (
 ): Partial<TestCase> => {
   return {
     testCase: mapImportField(row, 'testCase', [
-      'Test Case', 'Test Case Name', 'Test ID', 'Title', 'Name', 'TC Name'
+      'Test Case Title', 'Test Case', 'Test Case Name', 'Test ID', 'Title', 'Name', 'TC Name'
     ], `Imported Test Case ${index + 1}`),
     
     description: mapImportField(row, 'description', [
@@ -693,9 +693,70 @@ export const parseCSVEnhanced = (csvContent: string): {
   }
 }
 
+// Enhanced TSV parsing for tab-separated data (common when copying from Excel/Google Sheets)
+export const parseTSVEnhanced = (tsvContent: string): {
+  data: any[]
+  errors: string[]
+  warnings: string[]
+} => {
+  const errors: string[] = []
+  const warnings: string[] = []
+
+  try {
+    const lines = tsvContent.split('\n').filter(line => line.trim())
+    
+    if (lines.length === 0) {
+      return { data: [], errors: ['No data found'], warnings }
+    }
+
+    // Parse header row
+    const header = lines[0].split('\t').map(col => col.trim().replace(/"/g, ''))
+    
+    if (header.length === 0) {
+      errors.push('No headers found')
+      return { data: [], errors, warnings }
+    }
+
+    // Check for empty headers
+    const emptyHeaders = header.filter(h => !h)
+    if (emptyHeaders.length > 0) {
+      warnings.push(`${emptyHeaders.length} empty header(s) found`)
+    }
+
+    // Check for duplicate headers
+    const duplicateHeaders = header.filter((item, index) => header.indexOf(item) !== index)
+    if (duplicateHeaders.length > 0) {
+      warnings.push(`Duplicate headers found: ${duplicateHeaders.join(', ')}`)
+    }
+
+    // Parse data rows
+    const data = lines.slice(1).map((line, rowIndex) => {
+      const values = line.split('\t').map(val => val.trim().replace(/"/g, ''))
+      const row: any = {}
+      
+      header.forEach((col, colIndex) => {
+        row[col] = values[colIndex] || ''
+      })
+
+      // Check for empty rows
+      const hasData = Object.values(row).some(val => val && val.toString().trim())
+      if (!hasData) {
+        warnings.push(`Row ${rowIndex + 2} appears to be empty`)
+      }
+
+      return row
+    })
+
+    return { data, errors, warnings }
+  } catch (error) {
+    errors.push(`Failed to parse TSV: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    return { data: [], errors, warnings }
+  }
+}
+
 // Smart text parsing for various formats
 export const parseTextIntelligently = (text: string): {
-  format: 'csv' | 'structured' | 'freeform'
+  format: 'csv' | 'structured' | 'freeform' | 'tsv'
   data: any[]
   confidence: number
 } => {
@@ -703,6 +764,16 @@ export const parseTextIntelligently = (text: string): {
   
   if (lines.length === 0) {
     return { format: 'freeform', data: [], confidence: 0 }
+  }
+
+  // Check if it's TSV (Tab-Separated Values) - common format for copied tables
+  if (lines.length > 1 && lines[0].includes('\t')) {
+    try {
+      const { data } = parseTSVEnhanced(text)
+      return { format: 'tsv', data, confidence: 0.95 }
+    } catch {
+      // Fall through to other formats
+    }
   }
 
   // Check if it's CSV
