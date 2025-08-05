@@ -1710,14 +1710,39 @@ export const customColumnService = {
       return []
     }
 
-    const { data, error } = await supabase
-      .from('custom_columns')
-      .select('*')
-      .eq('project_id', projectId)
-      .order('created_at', { ascending: true })
+    try {
+      const { data, error } = await supabase
+        .from('custom_columns')
+        .select('*')
+        .eq('project_id', projectId)
+        .order('created_at', { ascending: true })
 
-    if (error) throw error
-    return data.map(mapCustomColumnFromDB)
+      if (error) {
+        console.error('❌ Database error in customColumnService.getAll:', {
+          error,
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        })
+        
+        // Check if it's a table doesn't exist error
+        if (error.code === '42P01') { // PostgreSQL table doesn't exist error
+          throw new Error('Custom columns table does not exist. Please run the database migration: create-custom-columns-table.sql')
+        }
+        
+        throw error
+      }
+      
+      return data.map(mapCustomColumnFromDB)
+    } catch (error) {
+      console.error('❌ Failed to get custom columns:', {
+        error,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        projectId
+      })
+      throw error
+    }
   },
 
   async create(column: CreateCustomColumnInput): Promise<CustomColumn> {
@@ -1726,14 +1751,39 @@ export const customColumnService = {
       throw new Error('Project ID is required to create a custom column')
     }
 
-    const { data, error } = await supabase
-      .from('custom_columns')
-      .insert(mapCustomColumnToDB({ ...column, id: '', createdAt: new Date(), updatedAt: new Date() }))
-      .select()
-      .single()
+    try {
+      const { data, error } = await supabase
+        .from('custom_columns')
+        .insert(mapCustomColumnToDB({ ...column, id: '', createdAt: new Date(), updatedAt: new Date() }))
+        .select()
+        .single()
 
-    if (error) throw error
-    return mapCustomColumnFromDB(data)
+      if (error) {
+        console.error('❌ Database error in customColumnService.create:', {
+          error,
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        })
+        
+        // Check if it's a table doesn't exist error
+        if (error.code === '42P01') { // PostgreSQL table doesn't exist error
+          throw new Error('Custom columns table does not exist. Please run the database migration: create-custom-columns-table.sql')
+        }
+        
+        throw error
+      }
+      
+      return mapCustomColumnFromDB(data)
+    } catch (error) {
+      console.error('❌ Failed to create custom column:', {
+        error,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        column
+      })
+      throw error
+    }
   },
 
   async update(id: string, updates: Partial<CustomColumn>): Promise<CustomColumn> {

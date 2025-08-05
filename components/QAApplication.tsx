@@ -1135,15 +1135,28 @@ export function QAApplication() {
         return
       }
 
+      console.log('🔄 Loading custom columns for project:', projectId)
       const columns = await customColumnService.getAll(projectId)
+      console.log('✅ Custom columns loaded:', columns.length, 'columns')
       setCustomColumnsList(columns)
       
       // If no custom columns exist, create default iOS and Android columns
       if (columns.length === 0) {
+        console.log('📝 No custom columns found, creating defaults...')
         await createDefaultCustomColumns(projectId)
       }
     } catch (error) {
-      console.error('Failed to load custom columns:', error)
+      console.error('❌ Failed to load custom columns:', {
+        error,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : 'No stack trace',
+        projectId,
+        errorType: typeof error,
+        errorKeys: error && typeof error === 'object' ? Object.keys(error) : 'Not an object'
+      })
+      
+      // Don't show error toast for this as it might be expected if table doesn't exist yet
+      // The createDefaultCustomColumns function will show the appropriate error message
     }
   }
 
@@ -1154,6 +1167,8 @@ export function QAApplication() {
         console.log('⚠️ No project ID provided, skipping default custom columns creation')
         return
       }
+
+      console.log('🔄 Creating default custom columns for project:', projectId)
 
       const iosColumn = await customColumnService.create({
         name: 'ios_status',
@@ -1181,9 +1196,24 @@ export function QAApplication() {
         projectId
       })
 
+      console.log('✅ Default custom columns created successfully:', { iosColumn, androidColumn })
       setCustomColumnsList([iosColumn, androidColumn])
     } catch (error) {
-      console.error('Failed to create default custom columns:', error)
+      console.error('❌ Failed to create default custom columns:', {
+        error,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : 'No stack trace',
+        projectId,
+        errorType: typeof error,
+        errorKeys: error && typeof error === 'object' ? Object.keys(error) : 'Not an object'
+      })
+      
+      // Show user-friendly error message
+      toast({
+        title: "Database Setup Required",
+        description: "Please run the database migration for custom columns feature. Check the SQL file: create-custom-columns-table.sql",
+        variant: "destructive",
+      })
     }
   }
 
