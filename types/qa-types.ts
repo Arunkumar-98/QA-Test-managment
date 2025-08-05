@@ -83,6 +83,10 @@ export type TestCase = {
     output?: string
     error?: string
   }
+  // Custom fields for dynamic columns
+  customFields?: {
+    [key: string]: string | number | boolean | null
+  }
 }
 
 // Database version of TestCase (snake_case)
@@ -98,7 +102,6 @@ export type TestCaseDB = {
   execution_date: string
   notes: string
   actual_result: string
-  user_id?: string
   environment: string
   prerequisites: string
   platform: string
@@ -119,6 +122,10 @@ export type TestCaseDB = {
     execution_time?: number
     output?: string
     error?: string
+  }
+  // Custom fields for dynamic columns
+  custom_fields?: {
+    [key: string]: string | number | boolean | null
   }
 }
 
@@ -432,7 +439,8 @@ export const mapTestCaseFromDB = (db: TestCaseDB): TestCase => ({
     executionTime: db.automation_script.execution_time,
     output: db.automation_script.output,
     error: db.automation_script.error
-  } : undefined
+  } : undefined,
+  customFields: db.custom_fields || {}
 })
 
 export const mapTestCaseToDB = (tc: TestCase): TestCaseDB => ({
@@ -467,7 +475,8 @@ export const mapTestCaseToDB = (tc: TestCase): TestCaseDB => ({
     execution_time: tc.automationScript.executionTime,
     output: tc.automationScript.output,
     error: tc.automationScript.error
-  } : undefined
+  } : undefined,
+  custom_fields: tc.customFields || {}
 })
 
 export const mapTestSuiteFromDB = (db: TestSuiteDB): TestSuite => ({
@@ -832,6 +841,75 @@ export type ProjectMembershipDB = {
 }
 
 export type CreateProjectMembershipInput = Omit<ProjectMembership, 'id' | 'createdAt' | 'updatedAt'>
+
+// Custom Column Types
+export type CustomColumnType = 'text' | 'number' | 'boolean' | 'select' | 'date'
+
+export type CustomColumn = {
+  id: string
+  name: string
+  label: string
+  type: CustomColumnType
+  visible: boolean
+  width: string
+  minWidth: string
+  options?: string[] // For select type
+  defaultValue?: string | number | boolean
+  required?: boolean
+  projectId: string
+  createdAt: Date
+  updatedAt: Date
+}
+
+export type CustomColumnDB = {
+  id: string
+  name: string
+  label: string
+  type: CustomColumnType
+  visible: boolean
+  width: string
+  min_width: string
+  options?: string[]
+  default_value?: string | number | boolean
+  required?: boolean
+  project_id: string
+  created_at: Date
+  updated_at: Date
+}
+
+export type CreateCustomColumnInput = Omit<CustomColumn, 'id' | 'createdAt' | 'updatedAt'>
+
+export const mapCustomColumnFromDB = (db: CustomColumnDB): CustomColumn => ({
+  id: db.id,
+  name: db.name,
+  label: db.label,
+  type: db.type,
+  visible: db.visible,
+  width: db.width,
+  minWidth: db.min_width,
+  options: db.options,
+  defaultValue: db.default_value,
+  required: db.required,
+  projectId: db.project_id,
+  createdAt: db.created_at,
+  updatedAt: db.updated_at
+})
+
+export const mapCustomColumnToDB = (column: CustomColumn): CustomColumnDB => ({
+  id: column.id,
+  name: column.name,
+  label: column.label,
+  type: column.type,
+  visible: column.visible,
+  width: column.width,
+  min_width: column.minWidth,
+  options: column.options,
+  default_value: column.defaultValue,
+  required: column.required,
+  project_id: column.projectId,
+  created_at: column.createdAt,
+  updated_at: column.updatedAt
+})
 
 export type ProjectWithMembership = {
   id: string

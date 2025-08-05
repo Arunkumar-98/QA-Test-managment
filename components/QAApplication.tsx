@@ -25,7 +25,7 @@ import { ActionGuard } from './ActionGuard'
 import { FullScreenWelcome } from './FullScreenWelcome'
 import { 
   TestCase, TestCaseStatus, TestSuite, Document, ImportantLink, Project,
-  CreateDocumentInput, CreateImportantLinkInput, SharedProjectReference
+  CreateDocumentInput, CreateImportantLinkInput, SharedProjectReference, CustomColumn
 } from "@/types/qa-types"
 import type { Comment } from "@/types/qa-types"
 import { DEFAULT_PROJECT, PLATFORM_OPTIONS } from "@/lib/constants"
@@ -33,7 +33,7 @@ import { getSuiteStatistics, mapImportedDataToTestCase, validateImportedTestCase
 import { toast } from "@/hooks/use-toast"
 import * as XLSX from "xlsx"
 
-import { projectService, documentService, importantLinkService, platformService, commentService, sharedProjectReferenceService } from "@/lib/supabase-service"
+import { projectService, documentService, importantLinkService, platformService, commentService, sharedProjectReferenceService, customColumnService } from "@/lib/supabase-service"
 import {
   Dialog,
   DialogContent,
@@ -44,11 +44,13 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { Settings, Eye, Trash2, LogOut, User, Share2, Plus, Upload, Clipboard, Download, X, Folder, Table, FileText, Share, RefreshCw, Mail } from "lucide-react"
 import { useAuth } from "./AuthProvider"
+import { CustomColumnDialog } from './CustomColumnDialog'
 
 export function QAApplication() {
   // Auth context
@@ -113,6 +115,11 @@ export function QAApplication() {
 
   // Custom columns state
   const [customColumns, setCustomColumns] = useState<any>({})
+  
+  // Custom columns management
+  const [customColumnsList, setCustomColumnsList] = useState<CustomColumn[]>([])
+  const [isAddCustomColumnDialogOpen, setIsAddCustomColumnDialogOpen] = useState(false)
+  const [editingCustomColumn, setEditingCustomColumn] = useState<CustomColumn | null>(null)
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
@@ -329,7 +336,7 @@ export function QAApplication() {
       }
 
       try {
-        // Load platforms, documents, and important links for current project
+        // Load platforms, documents, important links, and custom columns for current project
         const [platformsData, documentsData, linksData] = await Promise.all([
           platformService.getAll(currentProjectId),
           documentService.getAll(currentProjectId),
@@ -345,6 +352,9 @@ export function QAApplication() {
         setPlatforms(platformsData.map(p => p.name))
         setDocuments(documentsData)
         setImportantLinks(linksData)
+        
+        // Load custom columns
+        await loadCustomColumns(currentProjectId)
       } catch (error) {
         console.error('❌ Failed to load project data:', error)
       }
@@ -1126,6 +1136,115 @@ export function QAApplication() {
     setIsProjectMembersDialogOpen(true)
   }
 
+  // Custom Columns Management
+  const loadCustomColumns = async (projectId: string) => {
+    try {
+      const columns = await customColumnService.getAll(projectId)
+      setCustomColumnsList(columns)
+      
+      // If no custom columns exist, create default iOS and Android columns
+      if (columns.length === 0) {
+        await createDefaultCustomColumns(projectId)
+      }
+    } catch (error) {
+      console.error('Failed to load custom columns:', error)
+    }
+  }
+
+  const createDefaultCustomColumns = async (projectId: string) => {
+    try {
+      const iosColumn = await customColumnService.create({
+        name: 'ios_status',
+        label: 'iOS Status',
+        type: 'select',
+        visible: true,
+        width: 'w-32',
+        minWidth: 'min-w-[120px]',
+        options: ['Pending', 'Pass', 'Fail', 'In Progress', 'Blocked'],
+        defaultValue: 'Pending',
+        required: false,
+        projectId
+      })
+
+      const androidColumn = await customColumnService.create({
+        name: 'android_status',
+        label: 'Android Status',
+        type: 'select',
+        visible: true,
+        width: 'w-32',
+        minWidth: 'min-w-[120px]',
+        options: ['Pending', 'Pass', 'Fail', 'In Progress', 'Blocked'],
+        defaultValue: 'Pending',
+        required: false,
+        projectId
+      })
+
+      setCustomColumnsList([iosColumn, androidColumn])
+    } catch (error) {
+      console.error('Failed to create default custom columns:', error)
+    }
+  }
+
+  const handleAddCustomColumn = async (column: Omit<CustomColumn, 'id' | 'createdAt' | 'updatedAt'>) => {
+    try {
+      const newColumn = await customColumnService.create({
+        ...column,
+        projectId: currentProjectId
+      })
+      setCustomColumnsList(prev => [...prev, newColumn])
+      setIsAddCustomColumnDialogOpen(false)
+      setEditingCustomColumn(null)
+      toast({
+        title: "Custom Column Added",
+        description: `Column "${column.label}" has been added successfully.`,
+      })
+    } catch (error) {
+      console.error('Failed to add custom column:', error)
+      toast({
+        title: "Error",
+        description: "Failed to add custom column. Please try again.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleUpdateCustomColumn = async (id: string, updates: Partial<CustomColumn>) => {
+    try {
+      const updatedColumn = await customColumnService.update(id, updates)
+      setCustomColumnsList(prev => prev.map(col => col.id === id ? updatedColumn : col))
+      setEditingCustomColumn(null)
+      toast({
+        title: "Custom Column Updated",
+        description: `Column "${updatedColumn.label}" has been updated successfully.`,
+      })
+    } catch (error) {
+      console.error('Failed to update custom column:', error)
+      toast({
+        title: "Error",
+        description: "Failed to update custom column. Please try again.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleDeleteCustomColumn = async (id: string) => {
+    try {
+      await customColumnService.delete(id)
+      setCustomColumnsList(prev => prev.filter(col => col.id !== id))
+      toast({
+        title: "Custom Column Deleted",
+        description: "Custom column has been deleted successfully.",
+      })
+    } catch (error) {
+      console.error('Failed to delete custom column:', error)
+      toast({
+        title: "Error",
+        description: "Failed to delete custom column. Please try again.",
+        variant: "destructive",
+      })
+    }
+  }
+
   return (
     <>
       <div className="min-h-screen bg-slate-50">
@@ -1594,6 +1713,90 @@ export function QAApplication() {
               </div>
             </div>
             
+            {/* Custom Columns Management */}
+            <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                  <h3 className="text-lg font-semibold text-slate-900">Custom Columns</h3>
+                </div>
+                <Button
+                  onClick={() => setIsAddCustomColumnDialogOpen(true)}
+                  className="bg-purple-600 hover:bg-purple-700"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Custom Column
+                </Button>
+              </div>
+              
+              {customColumnsList.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Table className="w-6 h-6 text-purple-600" />
+                  </div>
+                  <h4 className="text-lg font-medium text-slate-900 mb-2">No Custom Columns</h4>
+                  <p className="text-slate-600 mb-4">Create custom columns to track additional data for your test cases.</p>
+                  <Button
+                    onClick={() => setIsAddCustomColumnDialogOpen(true)}
+                    variant="outline"
+                    className="border-purple-200 text-purple-700 hover:bg-purple-50"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Your First Column
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {customColumnsList.map((column) => (
+                    <div key={column.id} className="flex items-center justify-between p-4 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <Label className="font-medium text-slate-900">{column.label}</Label>
+                          <Badge variant="outline" className="text-xs">
+                            {column.type}
+                          </Badge>
+                          {column.required && (
+                            <Badge variant="destructive" className="text-xs">
+                              Required
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-slate-600 mt-1">
+                          {column.name} • {column.width} • {column.options?.length || 0} options
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          checked={column.visible}
+                          onCheckedChange={(checked) => 
+                            handleUpdateCustomColumn(column.id, { visible: checked as boolean })
+                          }
+                        />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setEditingCustomColumn(column)
+                            setIsAddCustomColumnDialogOpen(true)
+                          }}
+                        >
+                          <Settings className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteCustomColumn(column.id)}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            
             {/* Data Options */}
             <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
               <div className="flex items-center justify-between mb-6">
@@ -1802,6 +2005,18 @@ export function QAApplication() {
         currentProject={currentProject}
         selectedSuiteId={selectedSuiteId || undefined}
       />
+
+             {/* Custom Column Dialog */}
+       <CustomColumnDialog
+         isOpen={isAddCustomColumnDialogOpen}
+         onClose={() => {
+           setIsAddCustomColumnDialogOpen(false)
+           setEditingCustomColumn(null)
+         }}
+         onSubmit={handleAddCustomColumn}
+         column={editingCustomColumn}
+         isEditMode={!!editingCustomColumn}
+       />
 
 
     </>

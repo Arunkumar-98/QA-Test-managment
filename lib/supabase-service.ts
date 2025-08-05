@@ -39,6 +39,7 @@ import {
   ProjectWithMembership,
   ProjectRole,
   MembershipStatus,
+  ProjectInvitation,
   mapTestCaseFromDB, 
   mapTestCaseToDB, 
   mapTestSuiteFromDB, 
@@ -64,7 +65,11 @@ import {
   mapNoteFromDB,
   mapNoteToDB,
   mapProjectMembershipFromDB,
-  mapProjectMembershipToDB
+  mapProjectMembershipToDB,
+  CustomColumn,
+  CreateCustomColumnInput,
+  mapCustomColumnFromDB,
+  mapCustomColumnToDB
 } from '@/types/qa-types'
 
 // Test Cases
@@ -1693,5 +1698,60 @@ export const projectMembershipService = {
     
     if (error) return false
     return data || false
+  }
+} 
+
+// Custom Column Service
+export const customColumnService = {
+  async getAll(projectId: string): Promise<CustomColumn[]> {
+    const { data, error } = await supabase
+      .from('custom_columns')
+      .select('*')
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: true })
+
+    if (error) throw error
+    return data.map(mapCustomColumnFromDB)
+  },
+
+  async create(column: CreateCustomColumnInput): Promise<CustomColumn> {
+    const { data, error } = await supabase
+      .from('custom_columns')
+      .insert(mapCustomColumnToDB({ ...column, id: '', createdAt: new Date(), updatedAt: new Date() }))
+      .select()
+      .single()
+
+    if (error) throw error
+    return mapCustomColumnFromDB(data)
+  },
+
+  async update(id: string, updates: Partial<CustomColumn>): Promise<CustomColumn> {
+    const { data, error } = await supabase
+      .from('custom_columns')
+      .update({ ...updates, updated_at: new Date() })
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) throw error
+    return mapCustomColumnFromDB(data)
+  },
+
+  async delete(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('custom_columns')
+      .delete()
+      .eq('id', id)
+
+    if (error) throw error
+  },
+
+  async updateTestCaseCustomFields(testCaseId: string, customFields: { [key: string]: any }): Promise<void> {
+    const { error } = await supabase
+      .from('test_cases')
+      .update({ custom_fields: customFields, updated_at: new Date() })
+      .eq('id', testCaseId)
+
+    if (error) throw error
   }
 } 
