@@ -1365,6 +1365,12 @@ export function QAApplication() {
     console.log('selectedSuiteId changed to:', selectedSuiteId)
   }, [selectedSuiteId])
 
+  const clearSuite = () => {
+    console.log('clearSuite called - clearing selectedSuiteId')
+    setSelectedSuiteId(null)
+    setCurrentView('dashboard')
+  }
+
   const handleSuiteClick = (suiteId: string | null) => {
     console.log('handleSuiteClick called with:', suiteId)
     setSelectedSuiteId(suiteId)
@@ -1632,7 +1638,7 @@ export function QAApplication() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => handleSuiteClick(null)}
+                    onClick={clearSuite}
                     className="text-blue-600 hover:text-blue-800 hover:bg-blue-100 px-3"
                   >
                     <X className="w-4 h-4 mr-1" />
