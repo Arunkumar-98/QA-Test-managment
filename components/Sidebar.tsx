@@ -859,7 +859,7 @@ export function QASidebar({
                     input.onchange = (e) => onFileUpload(e as any)
                     input.click()
                   }}
-                  className="h-9 text-sm font-medium border-blue-400/50 bg-blue-500/20 hover:border-blue-400 hover:bg-blue-500/30 rounded-lg transition-all duration-200 text-white hover:text-white !text-white"
+                  className="h-9 text-sm font-medium border-blue-400/50 bg-blue-500/20 hover:border-blue-400 hover:bg-blue-500/30 rounded-lg transition-all duration-200 !text-white"
                 >
                   <Upload className="w-3.5 h-3.5 mr-1.5" />
                   Import
@@ -869,7 +869,7 @@ export function QASidebar({
                   variant="outline"
                   size="sm"
                   onClick={() => setIsPasteDialogOpen?.(true)}
-                  className="h-9 text-sm font-medium border-blue-400/50 bg-blue-500/20 hover:border-blue-400 hover:bg-blue-500/30 rounded-lg transition-all duration-200 text-white hover:text-white !text-white"
+                  className="h-9 text-sm font-medium border-blue-400/50 bg-blue-500/20 hover:border-blue-400 hover:bg-blue-500/30 rounded-lg transition-all duration-200 !text-white"
                 >
                   <Clipboard className="w-3.5 h-3.5 mr-1.5" />
                   Paste
@@ -882,7 +882,7 @@ export function QASidebar({
                   variant="outline"
                   size="sm"
                   onClick={() => window.location.reload()}
-                  className="h-9 text-sm font-medium border-blue-400/50 bg-blue-500/20 hover:border-blue-400 hover:bg-blue-500/30 rounded-lg transition-all duration-200 text-white hover:text-white !text-white"
+                  className="h-9 text-sm font-medium border-blue-400/50 bg-blue-500/20 hover:border-blue-400 hover:bg-blue-500/30 rounded-lg transition-all duration-200 !text-white"
                 >
                   <BarChart3 className="w-3.5 h-3.5 mr-1.5" />
                   Refresh
@@ -892,7 +892,7 @@ export function QASidebar({
                   variant="outline"
                   size="sm"
                   onClick={onExportToExcel}
-                  className="h-9 text-sm font-medium border-blue-400/50 bg-blue-500/20 hover:border-blue-400 hover:bg-blue-500/30 rounded-lg transition-all duration-200 text-white hover:text-white !text-white"
+                  className="h-9 text-sm font-medium border-blue-400/50 bg-blue-500/20 hover:border-blue-400 hover:bg-blue-500/30 rounded-lg transition-all duration-200 !text-white"
                 >
                   <Download className="w-3.5 h-3.5 mr-1.5" />
                   Export
@@ -907,7 +907,7 @@ export function QASidebar({
                 disabled={!currentProjectId || currentProjectId.trim() === ''}
                 className={`w-full h-9 text-sm font-medium rounded-lg transition-all duration-200 ${
                   currentProjectId && currentProjectId.trim() !== ''
-                    ? 'border-green-400/50 bg-green-500/20 hover:border-green-400 hover:bg-green-500/30 text-white hover:text-white !text-white'
+                    ? 'border-green-400/50 bg-green-500/20 hover:border-green-400 hover:bg-green-500/30 !text-white'
                     : 'border-gray-400/30 bg-gray-500/10 text-gray-400 cursor-not-allowed'
                 }`}
               >
@@ -923,7 +923,7 @@ export function QASidebar({
                 disabled={!currentProjectId || currentProjectId.trim() === ''}
                 className={`w-full h-9 text-sm font-medium rounded-lg transition-all duration-200 ${
                   currentProjectId && currentProjectId.trim() !== ''
-                    ? 'border-purple-400/50 bg-purple-500/20 hover:border-purple-400 hover:bg-purple-500/30 text-white hover:text-white !text-white'
+                    ? 'border-purple-400/50 bg-purple-500/20 hover:border-purple-400 hover:bg-purple-500/30 !text-white'
                     : 'border-gray-400/30 bg-gray-500/10 text-gray-400 cursor-not-allowed'
                 }`}
               >

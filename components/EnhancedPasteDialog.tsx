@@ -43,7 +43,7 @@ export function EnhancedPasteDialog({
   const [pastedText, setPastedText] = useState('')
   const [parsedData, setParsedData] = useState<any[]>([])
   const [parsedTestCases, setParsedTestCases] = useState<Partial<TestCase>[]>([])
-  const [detectedFormat, setDetectedFormat] = useState<'csv' | 'structured' | 'freeform'>('freeform')
+  const [detectedFormat, setDetectedFormat] = useState<'csv' | 'structured' | 'freeform' | 'tsv'>('freeform')
   const [confidence, setConfidence] = useState(0)
   const [validationErrors, setValidationErrors] = useState<string[]>([])
   const [activeTab, setActiveTab] = useState('paste')
@@ -215,7 +215,8 @@ export function EnhancedPasteDialog({
                     <Badge variant="outline" className={getFormatColor(detectedFormat)}>
                       {detectedFormat === 'csv' ? 'CSV' : 
                        detectedFormat === 'tsv' ? 'TABLE' :
-                       detectedFormat.toUpperCase()}
+                       detectedFormat === 'structured' ? 'STRUCTURED' :
+                       'FREEFORM'}
                     </Badge>
                   </div>
                 </div>
