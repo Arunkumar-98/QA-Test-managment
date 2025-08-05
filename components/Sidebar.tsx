@@ -474,6 +474,24 @@ export function QASidebar({
                 <div className="max-h-56 overflow-y-auto pr-2">
                 <div className="flex flex-col space-y-2.5">
                   <div className="space-y-2.5">
+                    {/* Show All Test Cases Option */}
+                    {selectedSuiteId && (
+                      <div
+                        className="group relative p-3 bg-gradient-to-r from-blue-500/20 to-indigo-500/20 backdrop-blur-sm rounded-lg border border-blue-400/30 hover:border-blue-400/50 hover:shadow-lg transition-all duration-200 cursor-pointer"
+                        onClick={() => onSuiteClick(null)}
+                      >
+                        <div className="flex items-center space-x-3">
+                          <div className="w-7 h-7 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <FileText className="w-4 h-4 text-white" />
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-medium text-sm text-white">Show All Test Cases</h4>
+                            <p className="text-xs text-blue-200">View all test cases from all suites in this project</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                       {testSuitesWithStats.length > 0 ? (
                         testSuitesWithStats.map((suiteWithStats) => {
                           const { stats } = suiteWithStats

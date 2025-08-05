@@ -538,7 +538,8 @@ export function QAApplication() {
     if (selectedProject) {
       setCurrentProjectId(selectedProject.id)
       setCurrentProject(selectedProject.name)
-      setCurrentView('dashboard') // Show dashboard by default
+      setCurrentView('dashboard') // Show dashboard by default for project view
+      // Don't clear selectedSuiteId - let user choose suite or stay in project view
       
       // Load project-specific data for the new project
         const [platformsData, documentsData, linksData] = await Promise.all([
@@ -1083,16 +1084,18 @@ export function QAApplication() {
     })
   }
 
-  // Filter test cases for selected suite and current project
+  // Filter test cases based on selection:
+  // - If selectedSuiteId is null: show ALL test cases from ALL suites (project view)
+  // - If selectedSuiteId is set: show only test cases from that specific suite
   const displayedTestCases = testCases.filter(tc =>
     tc.projectId === currentProjectId &&
-    (!selectedSuiteId || tc.suiteId === selectedSuiteId)
+    (selectedSuiteId === null || tc.suiteId === selectedSuiteId)
   )
 
-  // Use filtered test cases from useSearchAndFilter hook
+  // Use filtered test cases from useSearchAndFilter hook with same logic
   const finalTestCases = filteredTestCases.filter(tc =>
     tc.projectId === currentProjectId &&
-    (!selectedSuiteId || tc.suiteId === selectedSuiteId)
+    (selectedSuiteId === null || tc.suiteId === selectedSuiteId)
   )
 
   const handleOpenShareProject = () => {
@@ -1357,6 +1360,17 @@ export function QAApplication() {
     setIsAddCustomColumnDialogOpen(true)
   }
 
+  const handleSuiteClick = (suiteId: string | null) => {
+    setSelectedSuiteId(suiteId)
+    if (suiteId) {
+      // If a specific suite is selected, switch to test cases view
+      setCurrentView('test-cases')
+    } else {
+      // If no suite is selected (show all), stay in current view (usually dashboard)
+      // User can manually switch between dashboard and test cases
+    }
+  }
+
   return (
     <>
       <div className="min-h-screen bg-slate-50">
@@ -1555,7 +1569,7 @@ export function QAApplication() {
               setIsTableSettingsOpen(true)
             }}
             onOpenProjectSettings={() => setIsProjectSettingsOpen(true)}
-            onSuiteClick={setSelectedSuiteId}
+            onSuiteClick={handleSuiteClick}
             selectedSuiteId={selectedSuiteId}
             onAddTestCases={(testCases) => {
               testCases.forEach(testCase => {
@@ -1610,7 +1624,7 @@ export function QAApplication() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => setSelectedSuiteId(null)}
+                    onClick={() => handleSuiteClick(null)}
                     className="text-blue-600 hover:text-blue-800 hover:bg-blue-100 px-3"
                   >
                     <X className="w-4 h-4 mr-1" />
