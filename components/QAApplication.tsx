@@ -1366,8 +1366,8 @@ export function QAApplication() {
       // If a specific suite is selected, switch to test cases view
       setCurrentView('test-cases')
     } else {
-      // If no suite is selected (show all), stay in current view (usually dashboard)
-      // User can manually switch between dashboard and test cases
+      // If no suite is selected (show all), switch to dashboard view
+      setCurrentView('dashboard')
     }
   }
 
