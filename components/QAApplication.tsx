@@ -48,7 +48,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
-import { Settings, Eye, Trash2, LogOut, User, Share2, Plus, Upload, Clipboard, Download, X, Folder, Table, FileText, Share, RefreshCw, Mail } from "lucide-react"
+import { Settings, Eye, Trash2, LogOut, User, Share2, Plus, Upload, Clipboard, Download, X, Folder, Table, FileText, Share, RefreshCw, Mail, EyeOff } from "lucide-react"
 import { useAuth } from "./AuthProvider"
 import { CustomColumnDialog } from './CustomColumnDialog'
 
@@ -1750,39 +1750,6 @@ export function QAApplication() {
                   <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                   <h3 className="text-lg font-semibold text-slate-900">Column Management</h3>
                 </div>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {/* Default Columns */}
-                {Object.entries(tableColumns).map(([key, column]) => (
-                  <div key={key} className="flex items-center justify-between p-4 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
-                    <div className="flex-1">
-                      <Label className="font-medium capitalize text-slate-900">{key.replace(/([A-Z])/g, ' $1').trim()}</Label>
-                      <p className="text-sm text-slate-600 mt-1">Show/hide column</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Checkbox
-                        checked={column.visible}
-                        onCheckedChange={(checked) => {
-                          setTableColumns(prev => ({
-                            ...prev,
-                            [key]: { ...prev[key as keyof typeof tableColumns], visible: checked as boolean }
-                          }))
-                        }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            
-            {/* Custom Columns Management */}
-            <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                  <h3 className="text-lg font-semibold text-slate-900">Custom Columns</h3>
-                </div>
                 <Button
                   onClick={() => setIsAddCustomColumnDialogOpen(true)}
                   className="bg-purple-600 hover:bg-purple-700"
@@ -1792,26 +1759,58 @@ export function QAApplication() {
                 </Button>
               </div>
               
-              {customColumnsList.length === 0 ? (
-                <div className="text-center py-8">
-                  <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Table className="w-6 h-6 text-purple-600" />
+              <div className="space-y-2">
+                {/* Default Columns */}
+                {Object.entries(tableColumns).map(([key, column]) => (
+                  <div key={key} className="flex items-center justify-between p-3 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
+                    <div className="flex items-center gap-3 flex-1">
+                      <Checkbox
+                        checked={column.visible}
+                        onCheckedChange={(checked) => {
+                          setTableColumns(prev => ({
+                            ...prev,
+                            [key]: { ...prev[key as keyof typeof tableColumns], visible: checked as boolean }
+                          }))
+                        }}
+                      />
+                      <div className="flex-1">
+                        <Label className="font-medium capitalize text-slate-900">{key.replace(/([A-Z])/g, ' $1').trim()}</Label>
+                        <p className="text-sm text-slate-600">Default column</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">
+                        Default
+                      </Badge>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          // Hide the column instead of deleting (for default columns)
+                          setTableColumns(prev => ({
+                            ...prev,
+                            [key]: { ...prev[key as keyof typeof tableColumns], visible: false }
+                          }))
+                        }}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        title="Hide column"
+                      >
+                        <EyeOff className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
-                  <h4 className="text-lg font-medium text-slate-900 mb-2">No Custom Columns</h4>
-                  <p className="text-slate-600 mb-4">Create custom columns to track additional data for your test cases.</p>
-                  <Button
-                    onClick={() => setIsAddCustomColumnDialogOpen(true)}
-                    variant="outline"
-                    className="border-purple-200 text-purple-700 hover:bg-purple-50"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Your First Column
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {customColumnsList.map((column) => (
-                    <div key={column.id} className="flex items-center justify-between p-4 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
+                ))}
+                
+                {/* Custom Columns */}
+                {customColumnsList.map((column) => (
+                  <div key={column.id} className="flex items-center justify-between p-3 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
+                    <div className="flex items-center gap-3 flex-1">
+                      <Checkbox
+                        checked={column.visible}
+                        onCheckedChange={(checked) => 
+                          handleUpdateCustomColumn(column.id, { visible: checked as boolean })
+                        }
+                      />
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
                           <Label className="font-medium text-slate-900">{column.label}</Label>
@@ -1824,40 +1823,58 @@ export function QAApplication() {
                             </Badge>
                           )}
                         </div>
-                        <p className="text-sm text-slate-600 mt-1">
+                        <p className="text-sm text-slate-600">
                           {column.name} • {column.width} • {column.options?.length || 0} options
                         </p>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Checkbox
-                          checked={column.visible}
-                          onCheckedChange={(checked) => 
-                            handleUpdateCustomColumn(column.id, { visible: checked as boolean })
-                          }
-                        />
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setEditingCustomColumn(column)
-                            setIsAddCustomColumnDialogOpen(true)
-                          }}
-                        >
-                          <Settings className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteCustomColumn(column.id)}
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
                     </div>
-                  ))}
-                </div>
-              )}
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700">
+                        Custom
+                      </Badge>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setEditingCustomColumn(column)
+                          setIsAddCustomColumnDialogOpen(true)
+                        }}
+                        title="Edit column"
+                      >
+                        <Settings className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteCustomColumn(column.id)}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        title="Delete column"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+                
+                {/* Empty State */}
+                {customColumnsList.length === 0 && (
+                  <div className="text-center py-8 border border-dashed border-slate-300 rounded-lg">
+                    <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Table className="w-6 h-6 text-purple-600" />
+                    </div>
+                    <h4 className="text-lg font-medium text-slate-900 mb-2">No Custom Columns</h4>
+                    <p className="text-slate-600 mb-4">Create custom columns to track additional data for your test cases.</p>
+                    <Button
+                      onClick={() => setIsAddCustomColumnDialogOpen(true)}
+                      variant="outline"
+                      className="border-purple-200 text-purple-700 hover:bg-purple-50"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Your First Column
+                    </Button>
+                  </div>
+                )}
+              </div>
             </div>
             
             {/* Data Options */}
