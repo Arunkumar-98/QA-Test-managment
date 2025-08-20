@@ -15,12 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion"
+
 import type { 
   TestSuite, 
   CreateTestSuiteInput, 
@@ -32,10 +27,12 @@ import type {
   TestCase,
   SharedProjectReference
 } from "@/types/qa-types"
-import { Folder, Link, Plus, BarChart3, Globe, BookOpen, FileSpreadsheet, Target, X, Settings, Table, Share2, Upload, Download, Clipboard, FileText, Users } from "lucide-react"
+import { Folder, Link, Plus, BarChart3, BookOpen, FileSpreadsheet, Target, X, Settings, Table, Share2, Upload, Download, Clipboard, FileText, Users, Database, ChevronDown } from "lucide-react"
 import { PRDToTestCases } from './PRDToTestCases'
 
 interface QASidebarProps {
+  isCollapsed?: boolean
+  onToggleCollapse?: () => void
   testSuites: TestSuite[]
   onAddTestSuite: (suite: CreateTestSuiteInput) => Promise<TestSuite>
   onDeleteTestSuite: (id: string) => Promise<void>
@@ -74,9 +71,12 @@ interface QASidebarProps {
   onOpenProjectMembers: () => void
   isPasteDialogOpen?: boolean
   setIsPasteDialogOpen?: (open: boolean) => void
+  onSetupDatabase?: () => Promise<void>
 }
 
 export function QASidebar({
+  isCollapsed = false,
+  onToggleCollapse,
   testSuites,
   onAddTestSuite,
   onDeleteTestSuite,
@@ -115,20 +115,82 @@ export function QASidebar({
   onOpenProjectMembers,
   isPasteDialogOpen,
   setIsPasteDialogOpen,
+  onSetupDatabase,
 }: QASidebarProps) {
   const [newSuite, setNewSuite] = useState({ name: "", description: "", tags: [] as string[], owner: "" })
   const [newDocument, setNewDocument] = useState({ title: "", url: "", type: "requirement" as const, description: "" })
   const [newLink, setNewLink] = useState({ title: "", url: "", description: "", category: "general" as const })
-  const [newPlatform, setNewPlatform] = useState("")
   const [newProject, setNewProject] = useState("")
   const [isProjectDialogOpen, setIsProjectDialogOpen] = useState(false)
   const [isAddSuiteDialogOpen, setIsAddSuiteDialogOpen] = useState(false)
   const [isAddDocumentDialogOpen, setIsAddDocumentDialogOpen] = useState(false)
   const [isAddLinkDialogOpen, setIsAddLinkDialogOpen] = useState(false)
-  const [isAddPlatformDialogOpen, setIsAddPlatformDialogOpen] = useState(false)
-  const [accordionValue, setAccordionValue] = useState<string[]>([])
   const [isDeleteSuiteDialogOpen, setIsDeleteSuiteDialogOpen] = useState(false)
   const [suiteToDelete, setSuiteToDelete] = useState<TestSuite | null>(null)
+  const [projectQuery, setProjectQuery] = useState("")
+  const [showAllProjects, setShowAllProjects] = useState(false)
+  // Accordion state: start with Projects open, others closed
+  const [isProjectsCollapsed, setIsProjectsCollapsed] = useState(false)
+  const [isTestSuitesCollapsed, setIsTestSuitesCollapsed] = useState(true)
+  const [isResourcesCollapsed, setIsResourcesCollapsed] = useState(true)
+  const [isNotesCollapsed, setIsNotesCollapsed] = useState(true)
+  const [isMembersCollapsed, setIsMembersCollapsed] = useState(true)
+  // Collapsed-rail icon menu state (hoisted to top-level to keep hook order stable)
+  const [openMenu, setOpenMenu] = useState<string | null>(null)
+
+  // Ensure only one accordion section is open at a time
+  const openOnly = (section: 'projects' | 'suites' | 'resources') => {
+    setIsProjectsCollapsed(section !== 'projects')
+    setIsTestSuitesCollapsed(section !== 'suites')
+    setIsResourcesCollapsed(section !== 'resources')
+    setIsNotesCollapsed(true)
+    setIsMembersCollapsed(true)
+  }
+
+  const handleToggleProjectsSection = () => {
+    if (isProjectsCollapsed) {
+      openOnly('projects')
+    } else {
+      setIsProjectsCollapsed(true)
+    }
+  }
+
+  const handleToggleSuitesSection = () => {
+    if (isTestSuitesCollapsed) {
+      openOnly('suites')
+    } else {
+      setIsTestSuitesCollapsed(true)
+    }
+  }
+
+  const handleToggleResourcesSection = () => {
+    if (isResourcesCollapsed) {
+      openOnly('resources')
+    } else {
+      setIsResourcesCollapsed(true)
+    }
+  }
+
+  const handleToggleNotesSection = () => {
+    // independent accordion but close others for cleanliness
+    setIsNotesCollapsed(v => !v)
+    if (isNotesCollapsed) {
+      setIsProjectsCollapsed(true)
+      setIsTestSuitesCollapsed(true)
+      setIsResourcesCollapsed(true)
+      setIsMembersCollapsed(true)
+    }
+  }
+
+  const handleToggleMembersSection = () => {
+    setIsMembersCollapsed(v => !v)
+    if (isMembersCollapsed) {
+      setIsProjectsCollapsed(true)
+      setIsTestSuitesCollapsed(true)
+      setIsResourcesCollapsed(true)
+      setIsNotesCollapsed(true)
+    }
+  }
 
   const handleAddTestSuite = () => {
     if (newSuite.name.trim()) {
@@ -165,13 +227,7 @@ export function QASidebar({
     }
   }
 
-  const handleAddPlatform = () => {
-    if (newPlatform.trim() && !platforms.includes(newPlatform.trim())) {
-      onAddPlatform(newPlatform.trim())
-      setNewPlatform("")
-      setIsAddPlatformDialogOpen(false)
-    }
-  }
+
 
   const handleAddProject = async () => {
     if (newProject.trim()) {
@@ -194,9 +250,7 @@ export function QASidebar({
     }
   }
 
-  const handleAccordionChange = (value: string[]) => {
-    setAccordionValue(value)
-  }
+
 
   // Only show test suites for the current project
   const filteredTestSuites = useMemo(() => 
@@ -229,6 +283,13 @@ export function QASidebar({
   // Separate regular projects from shared projects
   const regularProjects = projectsWithStats.filter(project => !project.tags || !project.tags.includes('Shared Project'))
   
+  // Filtered projects by search query
+  const filteredRegularProjects = useMemo(() => {
+    const query = projectQuery.trim().toLowerCase()
+    if (!query) return regularProjects
+    return regularProjects.filter(p => p.name.toLowerCase().includes(query))
+  }, [regularProjects, projectQuery])
+  
   // Create shared projects from references (Live Sync)
   const sharedProjects = sharedProjectReferences.map(ref => ({
     id: ref.originalProjectId,
@@ -240,99 +301,238 @@ export function QASidebar({
     lastSyncedAt: ref.lastSyncedAt
   }))
 
+  // Compact rail when collapsed (icon-only)
+  if (isCollapsed) {
   return (
-    <div className="h-full bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900 border-r border-white/20 flex flex-col shadow-lg relative overflow-hidden">
-      {/* Animated Background */}
-      <div className="absolute inset-0">
-        <div className="absolute top-0 left-0 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute top-1/2 right-0 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
-        <div className="absolute bottom-0 left-1/3 w-80 h-80 bg-green-500/10 rounded-full blur-3xl animate-pulse delay-2000"></div>
+      <div className="h-full w-18 md:w-20 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-800 flex flex-col items-center py-4 gap-4 relative">
+        {/* Collapse/expand */}
+        {onToggleCollapse && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onToggleCollapse}
+            className="h-8 w-8 p-0 text-slate-300 hover:text-white"
+            title="Expand sidebar"
+          >
+            <ChevronDown className="w-4 h-4 -rotate-90" />
+          </Button>
+        )}
+        {/* Rail icons */}
+        {/* Projects menu */}
+        <div className="relative">
+          <Button variant="ghost" size="icon" className="h-10 w-10 text-blue-300" title="Projects" onClick={()=>setOpenMenu(openMenu==='projects'?null:'projects')}>
+            <Folder className="w-5 h-5" />
+          </Button>
+          {openMenu==='projects' && (
+            <div className="absolute left-12 top-0 w-60 bg-slate-900/95 border border-white/15 rounded-xl shadow-xl p-2 z-50">
+              <button className="w-full text-left px-3 py-2 rounded-lg text-blue-200 hover:bg-white/5" onClick={()=>{setOpenMenu(null);}}>
+                Projects List
+              </button>
+              <button className="w-full text-left px-3 py-2 rounded-lg text-blue-200 hover:bg-white/5" onClick={()=>{setOpenMenu(null); setIsProjectDialogOpen(true);}}>
+                Create Project
+              </button>
+            </div>
+          )}
       </div>
 
-      {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto relative z-10">
-        {/* Fixed Sections */}
-        <div className="px-4 py-6 space-y-5">
-
-          {/* Test Cases Header Section - Enhanced */}
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-white/20 shadow-lg p-4">
-            <div className="space-y-3">
-              <div className="flex items-center space-x-2">
-                <div className="w-2.5 h-2.5 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full shadow-sm"></div>
-                <span className="text-sm font-semibold text-white">{currentProject}</span>
+        {/* Suites menu */}
+        <div className="relative">
+          <Button variant="ghost" size="icon" className="h-10 w-10 text-emerald-300" title="Test Suites" onClick={()=>setOpenMenu(openMenu==='suites'?null:'suites')}>
+            <FileSpreadsheet className="w-5 h-5" />
+          </Button>
+          {openMenu==='suites' && (
+            <div className="absolute left-12 top-0 w-60 bg-slate-900/95 border border-white/15 rounded-xl shadow-xl p-2 z-50">
+              <button className="w-full text-left px-3 py-2 rounded-lg text-emerald-200 hover:bg-white/5" onClick={()=>{setOpenMenu(null);}}>
+                Suites List
+              </button>
+              <button className="w-full text-left px-3 py-2 rounded-lg text-emerald-200 hover:bg-white/5" onClick={()=>{setOpenMenu(null); setIsAddSuiteDialogOpen(true);}}>
+                Create Suite
+              </button>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-blue-100 font-medium">
-                  {testCasesCount} test case{testCasesCount !== 1 ? 's' : ''}
-                </span>
-                {testCasesCount > 0 && (
-                  <div className="flex items-center space-x-3 text-xs">
-                    <span className="flex items-center space-x-1.5 px-2 py-1 bg-green-500/20 rounded-full border border-green-400/30">
-                      <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                      <span className="text-green-100 font-medium">{passedCount}</span>
-                    </span>
-                    <span className="flex items-center space-x-1.5 px-2 py-1 bg-red-500/20 rounded-full border border-red-400/30">
-                      <div className="w-2 h-2 bg-red-400 rounded-full"></div>
-                      <span className="text-red-100 font-medium">{failedCount}</span>
-                    </span>
-                    <span className="flex items-center space-x-1.5 px-2 py-1 bg-yellow-500/20 rounded-full border border-yellow-400/30">
-                      <div className="w-2 h-2 bg-yellow-400 rounded-full"></div>
-                      <span className="text-yellow-100 font-medium">{pendingCount}</span>
-                    </span>
+          )}
+        </div>
+
+        {/* Resources menu */}
+        <div className="relative">
+          <Button variant="ghost" size="icon" className="h-10 w-10 text-indigo-300" title="Resources" onClick={()=>setOpenMenu(openMenu==='resources'?null:'resources')}>
+            <BookOpen className="w-5 h-5" />
+          </Button>
+          {openMenu==='resources' && (
+            <div className="absolute left-12 top-0 w-60 bg-slate-900/95 border border-white/15 rounded-xl shadow-xl p-2 z-50">
+              <button className="w-full text-left px-3 py-2 rounded-lg text-indigo-200 hover:bg-white/5" onClick={()=>{setOpenMenu(null); setIsAddLinkDialogOpen(true);}}>
+                Add Link
+              </button>
+              <button className="w-full text-left px-3 py-2 rounded-lg text-indigo-200 hover:bg-white/5" onClick={()=>{setOpenMenu(null); setIsAddDocumentDialogOpen(true);}}>
+                Add Document
+              </button>
                   </div>
                 )}
               </div>
+        {/* bottom spacer */}
+        <div className="mt-auto pb-2" />
             </div>
+    )
+  }
+
+  return (
+    <div className={`h-full transition-all duration-300 ${isCollapsed ? 'w-18 md:w-20' : 'w-full'} bg-gradient-to-b from-slate-950 via-slate-900 to-slate-800 flex flex-col relative`}>
+      {/* Subtle background pattern */}
+      <div className="absolute inset-0 opacity-5">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.15)_1px,transparent_0)] bg-[length:20px_20px]"></div>
           </div>
 
-          {/* Projects Section */}
-          <Accordion 
-            type="multiple" 
-            value={accordionValue} 
-            onValueChange={handleAccordionChange}
-          >
-            {/* Projects Section */}
-            <AccordionItem value="projects" className="border-none">
-              <AccordionTrigger className="px-4 py-3 hover:bg-white/10 rounded-lg transition-all duration-200 group text-white">
-                <div className="flex items-center justify-between w-full pr-2">
-                  <div className="flex items-center space-x-3 min-w-0">
-                    <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm group-hover:shadow-md transition-shadow">
-                      <Folder className="w-3.5 h-3.5 text-white" />
+            {/* Navigation Sections */}
+      <div className={`flex-1 overflow-y-auto relative z-10 ${isCollapsed ? 'px-2' : 'px-6'}`}>
+        <div className="space-y-4 py-6">
+          {/* Collapse Toggle */}
+          <div className="flex justify-end">
+            {onToggleCollapse && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onToggleCollapse}
+                className="h-8 w-8 p-0 text-slate-300 hover:text-white"
+                title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              >
+                <ChevronDown className={`w-4 h-4 transition-transform ${isCollapsed ? '-rotate-90' : 'rotate-90'}`} />
+              </Button>
+            )}
                     </div>
-                    <span className="text-sm font-semibold text-white truncate">Projects</span>
+
+          {/* Database Setup Button */}
+          {onSetupDatabase && (
+            <div className="bg-amber-500/10 backdrop-blur-sm rounded-xl border border-amber-400/20 p-4">
+              <div className="flex items-center space-x-3 mb-2">
+                <Database className="w-5 h-5 text-amber-400" />
+                <span className="text-sm font-semibold text-amber-300">Database Setup</span>
+              </div>
+              <p className="text-xs text-amber-200/80 mb-3">
+                Custom columns feature requires database setup
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onSetupDatabase}
+                className="w-full bg-amber-500/20 border-amber-400/30 text-amber-300 hover:bg-amber-500/30 hover:border-amber-400/50 rounded-lg"
+              >
+                <Database className="w-4 h-4 mr-2" />
+                Setup Database
+              </Button>
+                  </div>
+                )}
+
+          {/* Projects Section - Top Level */}
+          <div className="bg-gradient-to-br from-blue-600/10 via-indigo-600/10 to-purple-600/10 backdrop-blur-sm rounded-2xl border border-blue-400/20 p-5 shadow-xl">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/25">
+                  <Folder className="w-5 h-5 text-white" />
+              </div>
+                <div>
+                  <h2 className="text-white font-bold text-lg">Projects</h2>
+                  <p className="text-blue-200/80 text-xs">Workspace organization</p>
+            </div>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <Badge variant="secondary" className="bg-blue-500/20 text-blue-100 border-blue-400/30 flex-shrink-0 text-xs font-medium">
+                <Badge className="bg-blue-500/30 text-blue-100 border-blue-400/40 text-xs px-3 py-1 font-semibold">
                       {regularProjects.length}
                     </Badge>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => { e.stopPropagation(); setIsProjectDialogOpen(true) }}
+                  className="w-8 h-8 p-0 hover:bg-blue-500/20 text-blue-200 hover:text-white rounded-lg transition-all duration-200"
+                  aria-label="Add Project"
+                  title="Add Project"
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+                <button
+                  onClick={handleToggleProjectsSection}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-blue-500/20"
+                  aria-expanded={!isProjectsCollapsed}
+                >
+                  <ChevronDown className={`w-4 h-4 text-blue-200 transition-transform duration-200 ${isProjectsCollapsed ? '-rotate-90' : 'rotate-0'}`} />
+                </button>
                   </div>
                 </div>
-              </AccordionTrigger>
-              <AccordionContent className="px-4 pb-3">
-                <div className="max-h-56 overflow-y-auto pr-2">
-                  <div className="flex flex-col space-y-2.5">
+            {/* Search and controls */}
+            {!isProjectsCollapsed && (
+            <div className="sticky top-0 z-10 -mx-5 px-5 pb-3 bg-gradient-to-b from-slate-900/60 to-transparent backdrop-blur-md">
+                  <div className="flex items-center space-x-2">
+                <div className="relative flex-1">
+                  <Input
+                    value={projectQuery}
+                    onChange={(e) => setProjectQuery(e.target.value)}
+                    placeholder="Search projects..."
+                    className="h-9 bg-slate-800/60 border-slate-600/50 text-slate-200 placeholder:text-slate-400 pr-8"
+                  />
+                  {projectQuery && (
+                    <button
+                      onClick={() => setProjectQuery("")}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
+                      aria-label="Clear search"
+                    >
+                      ×
+                    </button>
+                  )}
+                  </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowAllProjects((v) => !v)}
+                  className="h-9 bg-slate-800/60 border-slate-600/50 text-slate-200 hover:bg-slate-700/60"
+                >
+                  {showAllProjects ? 'Collapse' : 'Show all'}
+                </Button>
+                </div>
+            </div>
+            )}
+
+            {/* Project list with capped height and smooth scroll */}
+            {!isProjectsCollapsed && (
+            <div className="space-y-3 max-h-80 overflow-y-auto pr-1 custom-scrollbars">
                     {regularProjects.length > 0 ? (
-                      regularProjects.map((project) => (
+                (showAllProjects ? filteredRegularProjects : filteredRegularProjects.slice(0, 6)).map((project) => (
                         <div
                           key={project.id}
-                          className={`group relative p-3 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 hover:border-white/40 hover:shadow-lg transition-all duration-200 cursor-pointer ${currentProject === project.name ? 'ring-2 ring-blue-400/50 border-blue-400/50 bg-blue-500/20' : 'hover:bg-white/20'}`}
+                    className={`group relative p-4 rounded-xl border-2 transition-all duration-300 cursor-pointer transform hover:scale-[1.02] ${
+                      currentProject === project.name 
+                        ? 'bg-gradient-to-r from-blue-500/20 via-indigo-500/20 to-purple-500/20 border-blue-400/60 shadow-lg shadow-blue-500/20' 
+                        : 'bg-slate-800/40 border-slate-600/40 hover:bg-slate-700/50 hover:border-slate-500/60 hover:shadow-md'
+                    }`}
                           onClick={() => onProjectChange(project.name)}
                         >
                           <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-3 min-w-0 flex-1">
-                              <div className="w-6 h-6 bg-gradient-to-br from-white/20 to-white/30 rounded-md flex items-center justify-center flex-shrink-0">
-                                <Folder className="w-3.5 h-3.5 text-white" />
+                      <div className="flex items-center space-x-4 min-w-0 flex-1">
+                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                          currentProject === project.name 
+                            ? 'bg-gradient-to-br from-blue-400/30 to-indigo-500/30 border border-blue-300/40' 
+                            : 'bg-slate-600/50 border border-slate-500/30'
+                        }`}>
+                          <Folder className={`w-4 h-4 ${
+                            currentProject === project.name ? 'text-blue-200' : 'text-slate-300'
+                          }`} />
                               </div>
                               <div className="flex-1 min-w-0">
-                                <h4 className="font-medium text-sm text-white truncate">{project.name}</h4>
-                                <p className="text-xs text-blue-200 truncate">
+                          <h3 className={`font-bold text-base truncate ${
+                            currentProject === project.name ? 'text-white' : 'text-slate-200'
+                          }`}>
+                            {project.name}
+                          </h3>
+                          <p className={`text-sm truncate ${
+                            currentProject === project.name ? 'text-blue-200/80' : 'text-slate-400'
+                          }`}>
                                   {project.testSuiteCount} test suites
                                 </p>
                               </div>
                             </div>
-                            <div className="flex items-center space-x-1">
+                      <div className="flex items-center space-x-2">
                               {currentProject === project.name && (
-                                <div className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0"></div>
+                          <div className="flex items-center space-x-1">
+                            <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+                            <span className="text-xs text-emerald-300 font-medium">Active</span>
+                          </div>
                               )}
                               <Button
                                 variant="ghost"
@@ -341,175 +541,120 @@ export function QASidebar({
                                   e.stopPropagation()
                                   onRemoveProject(project.name)
                                 }}
-                                className="h-6 w-6 p-0 hover:bg-red-500/20 hover:text-red-300 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                          className="h-7 w-7 p-0 hover:bg-red-500/20 hover:text-red-300 opacity-0 group-hover:opacity-100 transition-all duration-200 rounded-lg"
                               >
-                                <X className="w-3 h-3" />
+                          <X className="w-3.5 h-3.5" />
                               </Button>
                             </div>
                           </div>
                         </div>
                       ))
                     ) : (
-                      <div className="flex flex-col items-center justify-center py-6 px-4 text-center">
-                        <div className="w-10 h-10 bg-gradient-to-br from-blue-500/20 to-blue-600/30 rounded-xl flex items-center justify-center mb-3 flex-shrink-0 border border-blue-400/30">
-                          <Folder className="w-5 h-5 text-blue-300" />
+                <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
+                  <div className="w-16 h-16 bg-gradient-to-br from-blue-500/20 to-indigo-600/20 rounded-2xl flex items-center justify-center mb-4 border border-blue-400/30">
+                    <Folder className="w-8 h-8 text-blue-300" />
                         </div>
-                        <h3 className="text-sm font-semibold text-white mb-1">No Projects</h3>
-                        <p className="text-xs text-blue-200 mb-4 text-center">Create your first project to get started</p>
+                  <h3 className="text-base font-bold text-white mb-2">No Projects Yet</h3>
+                  <p className="text-sm text-blue-200/70 mb-6 max-w-48">Create your first project to start organizing your test cases</p>
                         <Button
-                          variant="outline"
-                          size="sm"
                           onClick={() => setIsProjectDialogOpen(true)}
-                          className="text-xs h-7 px-3 border-blue-400/50 text-blue-200 hover:bg-blue-500/20 hover:border-blue-400"
+                    className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold px-6 py-2 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
                         >
-                          <Plus className="w-3 h-3 mr-1 flex-shrink-0" />
+                    <Plus className="w-4 h-4 mr-2" />
                           Create First Project
                         </Button>
                       </div>
                     )}
                   </div>
-                  
-                  {/* Add Project Button */}
+            )}
+            {/* Footer reveal button when truncated */}
+            {!isProjectsCollapsed && !showAllProjects && filteredRegularProjects.length > 6 && (
+              <div className="mt-3 text-center">
                   <Button
-                    variant="outline"
+                  variant="ghost"
                     size="sm"
-                    onClick={() => setIsProjectDialogOpen(true)}
-                    className="w-full h-8 border-dashed border-blue-400/50 hover:border-blue-400 hover:bg-blue-500/20 transition-all duration-200 group mt-3 rounded-lg"
-                  >
-                    <div className="flex items-center space-x-2.5">
-                      <div className="w-5 h-5 rounded-md bg-blue-500/20 group-hover:bg-blue-500/30 flex items-center justify-center transition-colors duration-200 flex-shrink-0">
-                        <Plus className="w-3 h-3 text-blue-300" />
-                      </div>
-                      <span className="text-sm font-medium text-blue-200 group-hover:text-blue-100 transition-colors duration-200 truncate">
-                        Add Project
-                      </span>
-                    </div>
+                  onClick={() => setShowAllProjects(true)}
+                  className="text-blue-300 hover:text-white hover:bg-blue-500/20"
+                >
+                  Show all {filteredRegularProjects.length} projects
                   </Button>
                 </div>
-              </AccordionContent>
-            </AccordionItem>
-
-            {/* Shared Projects Section */}
-            {sharedProjects.length > 0 && (
-              <AccordionItem value="shared-projects" className="border-none">
-                <AccordionTrigger className="px-4 py-3 hover:bg-white/10 rounded-lg transition-all duration-200 group text-white">
-                  <div className="flex items-center justify-between w-full pr-2">
-                    <div className="flex items-center space-x-3 min-w-0">
-                      <div className="w-6 h-6 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm group-hover:shadow-md transition-shadow">
-                        <Share2 className="w-3.5 h-3.5 text-white" />
+            )}
                       </div>
-                      <span className="text-sm font-semibold text-white truncate">Shared Projects</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Badge variant="secondary" className="bg-green-500/20 text-green-100 border-green-400/30 flex-shrink-0 text-xs font-medium">
-                        {sharedProjects.length}
-                      </Badge>
-                    </div>
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent className="px-4 pb-3">
-                  <div className="max-h-64 overflow-y-auto pr-2">
-                    <div className="flex flex-col space-y-2.5">
-                      {sharedProjects.map((project) => (
-                        <div
-                          key={project.id}
-                          className={`group relative p-3 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 hover:border-white/40 hover:shadow-lg transition-all duration-200 cursor-pointer ${currentProject === project.name ? 'ring-2 ring-green-400/50 border-green-400/50 bg-green-400/20' : 'hover:bg-white/20'}`}
-                          onClick={() => onProjectChange(project.name)}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-2.5 min-w-0 flex-1">
-                              <div className="w-6 h-6 bg-gradient-to-br from-green-500/20 to-green-600/30 rounded-md flex items-center justify-center flex-shrink-0">
-                                <Share2 className="w-3.5 h-3.5 text-green-300" />
+          {/* Test Suites Section */}
+          <div className="space-y-3">
+            <div
+              className="w-full flex items-center justify-between px-1 group cursor-pointer"
+              onClick={handleToggleSuitesSection}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setIsTestSuitesCollapsed(v => !v) } }}
+              role="button"
+              tabIndex={0}
+              aria-expanded={!isTestSuitesCollapsed}
+            >
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-emerald-500/20 rounded-xl flex items-center justify-center border border-emerald-400/20">
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-300" />
                               </div>
-                              <div className="flex-1 min-w-0">
-                                <h4 className="font-medium text-sm text-white truncate">{project.name}</h4>
-                                <p className="text-xs text-green-200 truncate">
-                                  {project.testSuiteCount} test suites • Live Sync
-                                </p>
+                <span className="text-white font-semibold">Test Suites</span>
                               </div>
-                            </div>
-                            <div className="flex items-center space-x-1">
-                              {currentProject === project.name && (
-                                <div className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0"></div>
-                              )}
+              <div className="flex items-center space-x-2">
+                <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-400/20 text-xs px-2 py-1">
+                  {testSuitesWithStats.length}
+                </Badge>
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  onRemoveProject(project.name)
-                                }}
-                                className="h-6 w-6 p-0 hover:bg-red-500/20 hover:text-red-300 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-                              >
-                                <X className="w-3 h-3" />
+                  onClick={(e) => { e.stopPropagation(); setIsAddSuiteDialogOpen(true) }}
+                  className="w-6 h-6 p-0 hover:bg-emerald-500/20 text-emerald-300"
+                >
+                  <Plus className="w-3 h-3" />
                               </Button>
+                <ChevronDown className={`w-4 h-4 text-emerald-300 transition-transform duration-200 ${isTestSuitesCollapsed ? '-rotate-90' : 'rotate-0'}`} />
                             </div>
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            )}
 
-
-
-            {/* Test Suites Section */}
-            <AccordionItem value="test-suites" className="border-none">
-              <AccordionTrigger className="px-6 py-3 hover:bg-white/10 transition-colors text-white">
-                <div className="flex items-center justify-between w-full pr-4">
-                  <div className="flex items-center space-x-2 min-w-0">
-                    <div className="w-5 h-5 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-md flex items-center justify-center flex-shrink-0">
-                      <FileSpreadsheet className="w-3 h-3 text-white" />
-                    </div>
-                    <span className="text-xs font-semibold text-white/80 uppercase tracking-wider truncate">Test Suites</span>
-                  </div>
-                  <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-100 border-emerald-400/30 flex-shrink-0">
-                    {testSuitesWithStats.length}
-                  </Badge>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent className="px-4 pb-3">
-                <div className="max-h-56 overflow-y-auto pr-2">
-                <div className="flex flex-col space-y-2.5">
-                  <div className="space-y-2.5">
+            {!isTestSuitesCollapsed && (
+                  <div className="space-y-2">
                       {testSuitesWithStats.length > 0 ? (
                         testSuitesWithStats.map((suiteWithStats) => {
                           const { stats } = suiteWithStats
                         return (
                           <div
                               key={suiteWithStats.id}
-                              className={`group relative p-3 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 hover:border-white/40 hover:shadow-lg transition-all duration-200 cursor-pointer ${selectedSuiteId === suiteWithStats.id ? 'ring-2 ring-emerald-400/50 border-emerald-400/50 bg-emerald-500/20' : 'hover:bg-white/20'}`}
+                      className={`group relative p-3 rounded-xl border transition-all duration-200 cursor-pointer ${
+                        selectedSuiteId === suiteWithStats.id 
+                          ? 'bg-emerald-500/20 border-emerald-400/40 shadow-lg shadow-emerald-500/10' 
+                          : 'bg-slate-800/30 border-slate-700/30 hover:bg-slate-800/50 hover:border-slate-600/40'
+                      }`}
                               onClick={() => onSuiteClick(suiteWithStats.id)}
                           >
                             <div className="flex items-start justify-between">
                               <div className="flex items-start space-x-3 min-w-0 flex-1">
-                                <div className="w-7 h-7 bg-gradient-to-br from-white/20 to-white/30 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
-                                  <FileSpreadsheet className="w-4 h-4 text-white" />
+                          <div className="w-6 h-6 bg-slate-700/50 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                            <FileSpreadsheet className="w-3.5 h-3.5 text-slate-300" />
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <h4 className="font-medium text-sm text-white truncate">{suiteWithStats.name}</h4>
-                                  <p className="text-xs text-emerald-200 mt-1 truncate">{stats.total} test cases</p>
+                            <p className="text-xs text-slate-400 mt-1 truncate">{stats.total} test cases</p>
                                   {stats.total > 0 && (
-                                    <div className="flex items-center space-x-2 mt-2 flex-wrap">
+                              <div className="flex items-center space-x-2 mt-2">
                                       <div className="flex items-center space-x-1">
-                                        <div className="w-2 h-2 bg-green-400 rounded-full flex-shrink-0"></div>
-                                        <span className="text-xs text-green-100">{stats.passed}</span>
+                                  <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full"></div>
+                                  <span className="text-xs text-emerald-300">{stats.passed}</span>
                                       </div>
                                       <div className="flex items-center space-x-1">
-                                        <div className="w-2 h-2 bg-red-400 rounded-full flex-shrink-0"></div>
-                                        <span className="text-xs text-red-100">{stats.failed}</span>
+                                  <div className="w-1.5 h-1.5 bg-red-400 rounded-full"></div>
+                                  <span className="text-xs text-red-300">{stats.failed}</span>
                                       </div>
                                       <div className="flex items-center space-x-1">
-                                        <div className="w-2 h-2 bg-yellow-400 rounded-full flex-shrink-0"></div>
-                                        <span className="text-xs text-yellow-100">{stats.pending}</span>
+                                  <div className="w-1.5 h-1.5 bg-amber-400 rounded-full"></div>
+                                  <span className="text-xs text-amber-300">{stats.pending}</span>
                                       </div>
                                     </div>
                                   )}
                                 </div>
                               </div>
-                                <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex-shrink-0 min-w-[60px] justify-end">
+                        <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -517,9 +662,9 @@ export function QASidebar({
                                   e.stopPropagation()
                                       onShareTestSuite(suiteWithStats)
                                     }}
-                                    className="h-6 w-6 p-0 hover:bg-blue-500/20 hover:text-blue-300 flex-shrink-0"
+                            className="h-6 w-6 p-0 hover:bg-blue-500/20 hover:text-blue-300"
                                   >
-                                    <Share2 className="w-3.5 h-3.5" />
+                            <Share2 className="w-3 h-3" />
                                   </Button>
                                   <Button
                                     variant="ghost"
@@ -528,9 +673,9 @@ export function QASidebar({
                                       e.stopPropagation()
                                       handleDeleteSuite(suiteWithStats)
                                     }}
-                                    className="h-6 w-6 p-0 hover:bg-red-500/20 hover:text-red-300 flex-shrink-0"
+                            className="h-6 w-6 p-0 hover:bg-red-500/20 hover:text-red-300"
                               >
-                                <X className="w-3.5 h-3.5" />
+                            <X className="w-3 h-3" />
                               </Button>
                                 </div>
                             </div>
@@ -538,152 +683,159 @@ export function QASidebar({
                         )
                       })
                     ) : (
-                      <div className="flex flex-col items-center justify-center py-6 px-4 text-center">
-                        <div className="w-10 h-10 bg-gradient-to-br from-emerald-500/20 to-emerald-600/30 rounded-xl flex items-center justify-center mb-3 flex-shrink-0 border border-emerald-400/30">
-                          <FileSpreadsheet className="w-5 h-5 text-emerald-300" />
+                      <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
+                  <div className="w-12 h-12 bg-emerald-500/10 rounded-xl flex items-center justify-center mb-3 border border-emerald-400/20">
+                          <FileSpreadsheet className="w-6 h-6 text-emerald-300" />
                         </div>
-                        <h3 className="text-sm font-semibold text-white mb-1">No Test Suites</h3>
-                        <p className="text-xs text-emerald-200 mb-4 text-center">Create test suites to organize your test cases by feature or functionality</p>
+                  <h3 className="text-sm font-semibold text-white mb-2">No Test Suites</h3>
+                  <p className="text-xs text-slate-400 mb-4">Create test suites to organize your test cases</p>
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => setIsAddSuiteDialogOpen(true)}
-                          className="text-xs h-7 px-3 border-emerald-400/50 text-emerald-200 hover:bg-emerald-500/20 hover:border-emerald-400"
+                    className="text-xs bg-emerald-500/10 border-emerald-400/30 text-emerald-300 hover:bg-emerald-500/20"
                         >
-                          <Plus className="w-3 h-3 mr-1 flex-shrink-0" />
-                          Create First Suite
-                        </Button>
-                      </div>
-                    )}
-                    
-                    {/* Add Suite button when there are existing test suites */}
-                    {testSuitesWithStats.length > 0 && (
-                      <div className="pt-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setIsAddSuiteDialogOpen(true)}
-                          className="w-full text-xs h-7 px-3 border-emerald-400/50 text-emerald-200 hover:bg-emerald-500/20 hover:border-emerald-400"
-                        >
-                          <Plus className="w-3 h-3 mr-1 flex-shrink-0" />
-                          Add Suite
+                    <Plus className="w-3 h-3 mr-1" />
+                    Create Suite
                         </Button>
                       </div>
                     )}
                   </div>
-                </div>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
+            )}
 
-            {/* Platforms Section */}
-            <AccordionItem value="platforms" className="border-none">
-              <AccordionTrigger className="px-6 py-3 hover:bg-white/10 transition-colors text-white">
-                <div className="flex items-center justify-between w-full pr-4">
-                  <div className="flex items-center space-x-2 min-w-0">
-                    <div className="w-5 h-5 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-md flex items-center justify-center flex-shrink-0">
-                      <Globe className="w-3 h-3 text-white" />
+          {/* Shared Projects Section */}
+          {sharedProjects.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between px-1">
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 bg-emerald-500/20 rounded-xl flex items-center justify-center border border-emerald-400/20">
+                    <Share2 className="w-4 h-4 text-emerald-300" />
                     </div>
-                    <span className="text-xs font-semibold text-white/80 uppercase tracking-wider truncate">Platforms</span>
+                  <span className="text-white font-semibold">Shared Projects</span>
                   </div>
-                  <Badge variant="secondary" className="bg-purple-500/20 text-purple-100 border-purple-400/30 flex-shrink-0">
-                    {platforms.length}
+                <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-400/20 text-xs px-2 py-1">
+                  {sharedProjects.length}
                   </Badge>
                 </div>
-              </AccordionTrigger>
-              <AccordionContent className="px-4 pb-3">
-                <div className="max-h-56 overflow-y-auto pr-2">
-                <div className="flex flex-col space-y-2.5">
-                  <div className="space-y-2.5">
-                    {platforms.length > 0 ? (
-                      platforms.map((platform) => (
-                        <div
-                          key={platform}
-                          className="group flex items-center justify-between p-3 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 hover:border-white/40 hover:shadow-lg transition-all duration-200"
-                        >
-                          <div className="flex items-center space-x-3">
-                            <div className="w-6 h-6 bg-gradient-to-br from-white/20 to-white/30 rounded-md flex items-center justify-center">
-                              <Globe className="w-3.5 h-3.5 text-white" />
+              
+                  <div className="space-y-2">
+                {sharedProjects.map((project) => (
+                  <div
+                    key={project.id}
+                    className={`group relative p-3 rounded-xl border transition-all duration-200 cursor-pointer ${
+                      currentProject === project.name 
+                        ? 'bg-emerald-500/20 border-emerald-400/40 shadow-lg shadow-emerald-500/10' 
+                        : 'bg-slate-800/30 border-slate-700/30 hover:bg-slate-800/50 hover:border-slate-600/40'
+                    }`}
+                    onClick={() => onProjectChange(project.name)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3 min-w-0 flex-1">
+                        <div className="w-6 h-6 bg-slate-700/50 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <Share2 className="w-3.5 h-3.5 text-emerald-300" />
                             </div>
-                            <div>
-                              <span className="text-sm font-medium text-white">{platform}</span>
-                              <p className="text-xs text-purple-200">Testing Platform</p>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-medium text-sm text-white truncate">{project.name}</h4>
+                          <p className="text-xs text-slate-400 truncate">
+                            {project.testSuiteCount} test suites • Live Sync
+                          </p>
                             </div>
                           </div>
+                      <div className="flex items-center space-x-1">
+                        {currentProject === project.name && (
+                          <div className="w-2 h-2 bg-emerald-400 rounded-full"></div>
+                        )}
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => onDeletePlatform(platform)}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-6 w-6 p-0 hover:bg-red-500/20 hover:text-red-300"
-                          >
-                            <X className="w-3.5 h-3.5" />
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onRemoveProject(project.name)
+                          }}
+                          className="h-6 w-6 p-0 hover:bg-red-500/20 hover:text-red-300 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X className="w-3 h-3" />
                           </Button>
                         </div>
-                      ))
-                    ) : (
-                      <div className="flex flex-col items-center justify-center py-6 px-4 text-center">
-                        <div className="w-10 h-10 bg-gradient-to-br from-purple-500/20 to-purple-600/30 rounded-xl flex items-center justify-center mb-3 border border-purple-400/30">
-                          <Globe className="w-5 h-5 text-purple-300" />
                         </div>
-                        <h3 className="text-sm font-semibold text-white mb-1">No Platforms</h3>
-                        <p className="text-xs text-purple-200 mb-4">Add testing platforms to categorize your test cases</p>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={handleAddPlatform}
-                          className="text-xs h-7 px-3 border-purple-400/50 text-purple-200 hover:bg-purple-500/20 hover:border-purple-400"
-                        >
-                          <Plus className="w-3 h-3 mr-1" />
-                          Add Platform
-                        </Button>
                       </div>
-                    )}
+                ))}
                   </div>
                 </div>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
+          )}
 
-            {/* Important Links Section */}
-            <AccordionItem value="important-links" className="border-none">
-              <AccordionTrigger className="px-6 py-3 hover:bg-white/10 transition-colors text-white">
-                <div className="flex items-center justify-between w-full pr-4">
-                  <div className="flex items-center space-x-2 min-w-0">
-                    <div className="w-5 h-5 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-md flex items-center justify-center flex-shrink-0">
-                      <Link className="w-3 h-3 text-white" />
+
+
+          {/* Resources Section (Links + Documents) */}
+          <div className="space-y-3">
+            <div
+              className="w-full flex items-center justify-between px-1 group cursor-pointer"
+              onClick={handleToggleResourcesSection}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setIsResourcesCollapsed(v => !v) } }}
+              role="button"
+              tabIndex={0}
+              aria-expanded={!isResourcesCollapsed}
+            >
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-indigo-500/20 rounded-xl flex items-center justify-center border border-indigo-400/20">
+                  <BookOpen className="w-4 h-4 text-indigo-300" />
                     </div>
-                    <span className="text-xs font-semibold text-white/80 uppercase tracking-wider truncate">Important Links</span>
+                <span className="text-white font-semibold">Resources</span>
                   </div>
-                  <Badge variant="secondary" className="bg-blue-500/20 text-blue-100 border-blue-400/30 flex-shrink-0">
-                    {importantLinks.length}
+              <div className="flex items-center space-x-2">
+                <Badge className="bg-indigo-500/20 text-indigo-300 border-indigo-400/20 text-xs px-2 py-1">
+                  {importantLinks.length + documents.length}
                   </Badge>
+                <div className="flex items-center space-x-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => { e.stopPropagation(); setIsAddLinkDialogOpen(true) }}
+                    className="w-6 h-6 p-0 hover:bg-indigo-500/20 text-indigo-300"
+                    title="Add Link"
+                  >
+                    <Link className="w-3 h-3" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => { e.stopPropagation(); setIsAddDocumentDialogOpen(true) }}
+                    className="w-6 h-6 p-0 hover:bg-indigo-500/20 text-indigo-300"
+                    title="Add Document"
+                  >
+                    <Plus className="w-3 h-3" />
+                  </Button>
                 </div>
-              </AccordionTrigger>
-              <AccordionContent className="px-4 pb-3">
-                <div className="max-h-56 overflow-y-auto pr-2">
-                <div className="flex flex-col space-y-2.5">
-                  <div className="space-y-2.5">
-                    {importantLinks.length > 0 ? (
-                      importantLinks.map((link) => (
-                        <div
-                          key={link.id}
-                          className="group relative p-3 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 hover:border-white/40 hover:shadow-lg transition-all duration-200"
+                <ChevronDown className={`w-4 h-4 text-indigo-300 transition-transform duration-200 ${isResourcesCollapsed ? '-rotate-90' : 'rotate-0'}`} />
+              </div>
+            </div>
+            
+            {!isResourcesCollapsed && (
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {/* Important Links */}
+              {importantLinks.map((link) => (
+                <div
+                  key={`link-${link.id}`}
+                  className="group relative p-3 bg-slate-800/30 border border-slate-700/30 hover:bg-slate-800/50 hover:border-slate-600/40 rounded-xl transition-all duration-200"
                         >
                           <div className="flex items-start space-x-3">
-                            <div className="w-6 h-6 bg-gradient-to-br from-white/20 to-white/30 rounded-md flex items-center justify-center flex-shrink-0 mt-0.5">
-                              <Link className="w-3.5 h-3.5 text-white" />
+                    <div className="w-6 h-6 bg-slate-700/50 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <Link className="w-3.5 h-3.5 text-cyan-300" />
                             </div>
                             <div className="flex-1 min-w-0">
                               <a
                                 href={link.url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="block hover:text-blue-300 transition-colors duration-200"
+                        className="block hover:text-cyan-300 transition-colors duration-200"
                               >
                                 <h4 className="font-medium text-sm text-white truncate">{link.title}</h4>
-                                <p className="text-xs text-blue-200 truncate mt-1">{link.url}</p>
-                                <div className="flex items-center mt-2">
-                                  <Badge variant="outline" className="text-xs bg-blue-500/20 text-blue-100 border-blue-400/30">
+                        <p className="text-xs text-slate-400 truncate mt-1">{link.url}</p>
+                        <div className="flex items-center space-x-2 mt-2">
+                          <Badge className="bg-cyan-500/10 text-cyan-300 border-cyan-400/20 text-xs">
+                            Link
+                          </Badge>
+                          <Badge className="bg-slate-500/10 text-slate-400 border-slate-400/20 text-xs">
                                     {link.category}
                                   </Badge>
                                 </div>
@@ -693,65 +845,23 @@ export function QASidebar({
                               variant="ghost"
                               size="sm"
                               onClick={() => onDeleteImportantLink(link.id)}
-                              className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-6 w-6 p-0 hover:bg-red-500/20 hover:text-red-300"
+                      className="opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0 hover:bg-red-500/20 hover:text-red-300"
                             >
-                              <X className="w-3.5 h-3.5" />
+                      <X className="w-3 h-3" />
                             </Button>
                           </div>
                         </div>
-                      ))
-                    ) : (
-                      <div className="flex flex-col items-center justify-center py-6 px-4 text-center">
-                        <div className="w-10 h-10 bg-gradient-to-br from-blue-500/20 to-blue-600/30 rounded-xl flex items-center justify-center mb-3 border border-blue-400/30">
-                          <Link className="w-5 h-5 text-blue-300" />
-                        </div>
-                        <h3 className="text-sm font-semibold text-white mb-1">No Important Links</h3>
-                        <p className="text-xs text-blue-200 mb-4">Add important links for quick access to resources</p>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setIsAddLinkDialogOpen(true)}
-                          className="text-xs h-7 px-3 border-blue-400/50 text-blue-200 hover:bg-blue-500/20 hover:border-blue-400"
-                        >
-                          <Plus className="w-3 h-3 mr-1" />
-                          Add Link
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
+              ))}
 
-            {/* Documents Section */}
-            <AccordionItem value="documents" className="border-none">
-              <AccordionTrigger className="px-6 py-3 hover:bg-white/10 transition-colors text-white">
-                <div className="flex items-center justify-between w-full pr-4">
-                  <div className="flex items-center space-x-2 min-w-0">
-                    <div className="w-5 h-5 bg-gradient-to-br from-orange-500 to-red-600 rounded-md flex items-center justify-center flex-shrink-0">
-                      <BookOpen className="w-3 h-3 text-white" />
-                    </div>
-                    <span className="text-xs font-semibold text-white/80 uppercase tracking-wider truncate">Documents</span>
-                  </div>
-                  <Badge variant="secondary" className="bg-orange-500/20 text-orange-100 border-orange-400/30 flex-shrink-0">
-                    {documents.length}
-                  </Badge>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent className="px-4 pb-3">
-                <div className="max-h-56 overflow-y-auto pr-2">
-                <div className="flex flex-col space-y-2.5">
-                  <div className="space-y-2.5">
-                    {documents.length > 0 ? (
-                      documents.map((doc) => (
-                        <div
-                          key={doc.id}
-                          className="group relative p-3 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 hover:border-white/40 hover:shadow-lg transition-all duration-200"
+              {/* Documents */}
+              {documents.map((doc) => (
+                <div
+                  key={`doc-${doc.id}`}
+                  className="group relative p-3 bg-slate-800/30 border border-slate-700/30 hover:bg-slate-800/50 hover:border-slate-600/40 rounded-xl transition-all duration-200"
                         >
                           <div className="flex items-start space-x-3">
-                            <div className="w-6 h-6 bg-gradient-to-br from-white/20 to-white/30 rounded-md flex items-center justify-center flex-shrink-0 mt-0.5">
-                              <BookOpen className="w-3.5 h-3.5 text-white" />
+                    <div className="w-6 h-6 bg-slate-700/50 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <BookOpen className="w-3.5 h-3.5 text-orange-300" />
                             </div>
                             <div className="flex-1 min-w-0">
                               <a
@@ -761,12 +871,12 @@ export function QASidebar({
                                 className="block hover:text-orange-300 transition-colors duration-200"
                               >
                                 <h4 className="font-medium text-sm text-white truncate">{doc.title}</h4>
-                                <p className="text-xs text-orange-200 truncate mt-1">{doc.url}</p>
-                                <div className="flex items-center mt-2">
-                                  <Badge
-                                    variant="outline"
-                                    className="text-xs bg-orange-500/20 text-orange-100 border-orange-400/30 capitalize"
-                                  >
+                        <p className="text-xs text-slate-400 truncate mt-1">{doc.url}</p>
+                        <div className="flex items-center space-x-2 mt-2">
+                          <Badge className="bg-orange-500/10 text-orange-300 border-orange-400/20 text-xs">
+                            Document
+                          </Badge>
+                          <Badge className="bg-slate-500/10 text-slate-400 border-slate-400/20 text-xs capitalize">
                                     {doc.type}
                                   </Badge>
                                 </div>
@@ -776,161 +886,130 @@ export function QASidebar({
                               variant="ghost"
                               size="sm"
                               onClick={() => onDeleteDocument(doc.id)}
-                              className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-6 w-6 p-0 hover:bg-red-500/20 hover:text-red-300"
+                      className="opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0 hover:bg-red-500/20 hover:text-red-300"
                             >
-                              <X className="w-3.5 h-3.5" />
+                      <X className="w-3 h-3" />
                             </Button>
                           </div>
                         </div>
-                      ))
-                    ) : (
-                      <div className="flex flex-col items-center justify-center py-6 px-4 text-center">
-                        <div className="w-10 h-10 bg-gradient-to-br from-orange-500/20 to-orange-600/30 rounded-xl flex items-center justify-center mb-3 border border-orange-400/30">
-                          <BookOpen className="w-5 h-5 text-orange-300" />
+              ))}
+
+              {/* Empty State */}
+              {importantLinks.length === 0 && documents.length === 0 && (
+                      <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
+                  <div className="w-12 h-12 bg-indigo-500/10 rounded-xl flex items-center justify-center mb-3 border border-indigo-400/20">
+                    <BookOpen className="w-6 h-6 text-indigo-300" />
                         </div>
-                        <h3 className="text-sm font-semibold text-white mb-1">No Documents</h3>
-                        <p className="text-xs text-orange-200 mb-4">Add important documents for reference</p>
+                  <h3 className="text-sm font-semibold text-white mb-2">No Resources</h3>
+                  <p className="text-xs text-slate-400 mb-4">Add links and documents for quick access</p>
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsAddLinkDialogOpen(true)}
+                      className="text-xs bg-cyan-500/10 border-cyan-400/30 text-cyan-300 hover:bg-cyan-500/20"
+                    >
+                      <Link className="w-3 h-3 mr-1" />
+                      Add Link
+                    </Button>
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => setIsAddDocumentDialogOpen(true)}
-                          className="text-xs h-7 px-3 border-orange-400/50 text-orange-200 hover:bg-orange-500/20 hover:border-orange-400"
+                      className="text-xs bg-orange-500/10 border-orange-400/30 text-orange-300 hover:bg-orange-500/20"
                         >
-                          <Plus className="w-3 h-3 mr-1" />
+                      <BookOpen className="w-3 h-3 mr-1" />
                           Add Document
                         </Button>
+                  </div>
                       </div>
                     )}
                   </div>
+            )}
                 </div>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
 
-            {/* AI Test Case Generator Section - Temporarily Commented Out */}
-            {/* 
-            <AccordionItem value="ai-test-case-generator" className="border-none">
-              <AccordionTrigger className="px-6 py-3 hover:bg-white/10 transition-colors text-white">
-                <div className="flex items-center justify-between w-full pr-4">
-                  <div className="flex items-center space-x-2 min-w-0">
-                    <div className="w-5 h-5 bg-gradient-to-br from-blue-500 to-purple-600 rounded-md flex items-center justify-center flex-shrink-0">
-                      <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                      </svg>
+          {/* Notes Section */}
+          <div className="space-y-3">
+            <div
+              className="w-full flex items-center justify-between px-1 group cursor-pointer"
+              onClick={handleToggleNotesSection}
+              role="button"
+              tabIndex={0}
+              aria-expanded={!isNotesCollapsed}
+            >
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-emerald-500/20 rounded-xl flex items-center justify-center border border-emerald-400/20">
+                  <FileText className="w-4 h-4 text-emerald-300" />
                     </div>
-                    <span className="text-xs font-semibold text-sidebar-foreground/80 uppercase tracking-wider truncate">AI Test Case Generator</span>
+                <span className="text-white font-semibold">Notes</span>
                   </div>
-                  <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200 flex-shrink-0">
-                    
-                  </Badge>
+              <ChevronDown className={`w-4 h-4 text-emerald-300 transition-transform duration-200 ${isNotesCollapsed ? '-rotate-90' : 'rotate-0'}`} />
                 </div>
-              </AccordionTrigger>
-              <AccordionContent className="px-6 pb-3">
-                <PRDToTestCases 
-                  onAddTestCases={onAddTestCases}
-                  currentProject={currentProject}
-                />
-              </AccordionContent>
-            </AccordionItem>
-            */}
-          </Accordion>
 
-          {/* Test Case Actions - Enhanced */}
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-white/20 p-4">
-            <div className="flex flex-col space-y-3">
-              {/* Primary Action - Add Test Case */}
-              <Button
-                onClick={onAddTestCase}
-                className="w-full h-11 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold text-sm transition-all duration-200 shadow-md hover:shadow-lg rounded-lg"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Add Test Case
-              </Button>
-              
-              {/* Secondary Actions - Compact Row */}
-              <div className="grid grid-cols-2 gap-2.5">
+            {!isNotesCollapsed && (
+              <div className="space-y-2">
                 <Button
                   variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    const input = document.createElement('input')
-                    input.type = 'file'
-                    input.accept = '.csv,.xlsx'
-                    input.onchange = (e) => onFileUpload(e as any)
-                    input.click()
-                  }}
-                  className="h-9 text-sm font-medium border-blue-400/50 bg-blue-500/20 hover:border-blue-400 hover:bg-blue-500/30 rounded-lg transition-all duration-200 !text-white"
+                  onClick={onOpenNotes}
+                  disabled={!currentProjectId || currentProjectId.trim() === ''}
+                  className={`w-full h-10 rounded-lg transition-all duration-200 ${
+                    currentProjectId && currentProjectId.trim() !== ''
+                      ? 'bg-emerald-500/10 border-emerald-400/30 text-emerald-300 hover:bg-emerald-500/20 hover:border-emerald-400/50'
+                      : 'bg-slate-800/30 border-slate-700/30 text-slate-500 cursor-not-allowed'
+                  }`}
                 >
-                  <Upload className="w-3.5 h-3.5 mr-1.5" />
-                  Import
-                </Button>
-                
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsPasteDialogOpen?.(true)}
-                  className="h-9 text-sm font-medium border-blue-400/50 bg-blue-500/20 hover:border-blue-400 hover:bg-blue-500/30 rounded-lg transition-all duration-200 !text-white"
-                >
-                  <Clipboard className="w-3.5 h-3.5 mr-1.5" />
-                  Paste
+                  <FileText className="w-4 h-4 mr-2" />
+                  Open Notes
                 </Button>
               </div>
-              
-              {/* Tertiary Actions - Compact Row */}
-              <div className="grid grid-cols-2 gap-2.5">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => window.location.reload()}
-                  className="h-9 text-sm font-medium border-blue-400/50 bg-blue-500/20 hover:border-blue-400 hover:bg-blue-500/30 rounded-lg transition-all duration-200 !text-white"
-                >
-                  <BarChart3 className="w-3.5 h-3.5 mr-1.5" />
-                  Refresh
-                </Button>
-                
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={onExportToExcel}
-                  className="h-9 text-sm font-medium border-blue-400/50 bg-blue-500/20 hover:border-blue-400 hover:bg-blue-500/30 rounded-lg transition-all duration-200 !text-white"
-                >
-                  <Download className="w-3.5 h-3.5 mr-1.5" />
-                  Export
-                </Button>
+            )}
               </div>
               
-              {/* Notes Action */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onOpenNotes}
-                disabled={!currentProjectId || currentProjectId.trim() === ''}
-                className={`w-full h-9 text-sm font-medium rounded-lg transition-all duration-200 ${
-                  currentProjectId && currentProjectId.trim() !== ''
-                    ? 'border-green-400/50 bg-green-500/20 hover:border-green-400 hover:bg-green-500/30 !text-white'
-                    : 'border-gray-400/30 bg-gray-500/10 text-gray-400 cursor-not-allowed'
-                }`}
-              >
-                <FileText className="w-3.5 h-3.5 mr-1.5" />
-                Notes
-              </Button>
+          {/* Members Section */}
+          <div className="space-y-3">
+            <div
+              className="w-full flex items-center justify-between px-1 group cursor-pointer"
+              onClick={handleToggleMembersSection}
+              role="button"
+              tabIndex={0}
+              aria-expanded={!isMembersCollapsed}
+            >
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-purple-500/20 rounded-xl flex items-center justify-center border border-purple-400/20">
+                  <Users className="w-4 h-4 text-purple-300" />
+                </div>
+                <span className="text-white font-semibold">Members</span>
+              </div>
+              <ChevronDown className={`w-4 h-4 text-purple-300 transition-transform duration-200 ${isMembersCollapsed ? '-rotate-90' : 'rotate-0'}`} />
+              </div>
               
-              {/* Manage Members Action */}
+            {!isMembersCollapsed && (
+              <div className="space-y-2">
               <Button
                 variant="outline"
-                size="sm"
                 onClick={onOpenProjectMembers}
                 disabled={!currentProjectId || currentProjectId.trim() === ''}
-                className={`w-full h-9 text-sm font-medium rounded-lg transition-all duration-200 ${
+                  className={`w-full h-10 rounded-lg transition-all duration-200 ${
                   currentProjectId && currentProjectId.trim() !== ''
-                    ? 'border-purple-400/50 bg-purple-500/20 hover:border-purple-400 hover:bg-purple-500/30 !text-white'
-                    : 'border-gray-400/30 bg-gray-500/10 text-gray-400 cursor-not-allowed'
+                      ? 'bg-purple-500/10 border-purple-400/30 text-purple-300 hover:bg-purple-500/20 hover:border-purple-400/50'
+                      : 'bg-slate-800/30 border-slate-700/30 text-slate-500 cursor-not-allowed'
                 }`}
               >
-                <Users className="w-3.5 h-3.5 mr-1.5" />
-                Members
+                  <Users className="w-4 h-4 mr-2" />
+                  Manage Members
               </Button>
             </div>
+            )}
+          </div>
+
+      {/* Action Buttons Section */}
+      <div className="relative z-10 p-6 border-t border-slate-700/50 bg-slate-900/50 backdrop-blur-sm">
+        <div className="space-y-3">
+          {/* moved Import, Paste, Export to table header */}
+          {/* Tertiary Actions moved into accordions */}
+            </div>
+          </div>
+      {/* End navigation sections */}
           </div>
         </div>
       </div>
@@ -1146,31 +1225,7 @@ export function QASidebar({
         </DialogContent>
       </Dialog>
 
-      <Dialog open={isAddPlatformDialogOpen} onOpenChange={setIsAddPlatformDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add Platform</DialogTitle>
-            <DialogDescription>Add a new platform to your project.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="platform-name">Platform Name</Label>
-              <Input
-                id="platform-name"
-                value={newPlatform}
-                onChange={(e) => setNewPlatform(e.target.value)}
-                placeholder="Enter platform name"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddPlatformDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleAddPlatform}>Add Platform</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+
 
       <Dialog open={isDeleteSuiteDialogOpen} onOpenChange={setIsDeleteSuiteDialogOpen}>
         <DialogContent>

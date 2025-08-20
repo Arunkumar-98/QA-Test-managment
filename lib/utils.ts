@@ -1,6 +1,8 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 import { TestCase, Comment, TestSuite, TestCaseStatus, TestCasePriority, TestCaseCategory } from "@/types/qa-types"
+import { ImportFormat } from "@/types/import-types"
+import { parseHierarchicalTestCases } from "./hierarchical-parser"
 import { STATUS_COLORS, PRIORITY_COLORS, COMMENT_TYPE_COLORS, COMMENT_TYPE_ICONS, AUTOMATION_STATUS_ICONS, AUTOMATION_STATUS_COLORS, STATUS_ICONS, PRIORITY_ICONS } from "./constants"
 import { MessageSquare, AlertTriangle, HelpCircle, Lightbulb, Activity, CheckCircle, XCircle, Loader2, Circle, Clock, Ban, Minus, ArrowDown } from "lucide-react"
 
@@ -756,7 +758,7 @@ export const parseTSVEnhanced = (tsvContent: string): {
 
 // Smart text parsing for various formats
 export const parseTextIntelligently = (text: string): {
-  format: 'csv' | 'structured' | 'freeform' | 'tsv'
+  format: ImportFormat
   data: any[]
   confidence: number
 } => {
@@ -764,6 +766,46 @@ export const parseTextIntelligently = (text: string): {
   
   if (lines.length === 0) {
     return { format: 'freeform', data: [], confidence: 0 }
+  }
+
+  // Check if it's a hierarchical test case format
+  if (lines.length > 1) {
+    // Check for section headers (e.g., "1. BASIC FUNCTIONALITY")
+    const hasSectionHeaders = lines.some(line => /^\d+\.\s+[A-Z][A-Z\s]+$/.test(line))
+    // Check for subsection headers (e.g., "1.1 User Authentication")
+    const hasSubsectionHeaders = lines.some(line => /^\d+\.\d+\s+[A-Z]/.test(line))
+    // Check for test case IDs (e.g., "TC001:")
+    const hasTestCaseIds = lines.some(line => /^TC\d{3}:/.test(line))
+    // Check for expected results
+    const hasExpectedResults = lines.some(line => line.trim().startsWith('Expected Result:'))
+
+    // Count test cases
+    const testCaseCount = lines.filter(line => /^TC\d{3}:/.test(line)).length
+
+    // Debug logging
+    console.log('Format detection:', {
+      hasSectionHeaders,
+      hasSubsectionHeaders,
+      hasTestCaseIds,
+      hasExpectedResults,
+      testCaseCount,
+      firstLine: lines[0],
+      sectionMatch: /^\d+\.\s+[A-Z][A-Z\s]+$/.test(lines[0]),
+      subsectionMatch: /^\d+\.\d+\s+[A-Z]/.test(lines[0])
+    })
+
+    // Check for hierarchical format
+    if (hasTestCaseIds && hasExpectedResults && (hasSectionHeaders || hasSubsectionHeaders)) {
+      try {
+        const result = parseHierarchicalTestCases(text)
+        if (result.testCases.length > 0) {
+          return { format: 'hierarchical', data: result.testCases, confidence: 0.98 }
+        }
+      } catch (error) {
+        console.error('Error parsing hierarchical format:', error)
+        // Fall through to other formats
+      }
+    }
   }
 
   // Check if it's TSV (Tab-Separated Values) - common format for copied tables
@@ -788,8 +830,8 @@ export const parseTextIntelligently = (text: string): {
 
   // Check if it's structured text (with keywords)
   const structuredKeywords = [
-    'test case:', 'description:', 'steps:', 'expected:', 'priority:', 'status:',
-    'test case name:', 'test steps:', 'expected result:', 'test priority:', 'test status:'
+    'test case:', 'description:', 'steps:', 'priority:', 'status:',
+    'test case name:', 'test steps:', 'test priority:', 'test status:'
   ]
   
   const hasStructuredFormat = structuredKeywords.some(keyword => 

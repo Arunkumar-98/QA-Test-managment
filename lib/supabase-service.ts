@@ -1376,9 +1376,17 @@ export const sharedProjectReferenceService = {
   }
 }
 
+// Utility: simple UUID validator to prevent 22P02 errors when projectId is empty
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+const isValidUuid = (v: string | null | undefined): boolean => !!v && UUID_REGEX.test(v)
+
 // Notes Service
 export const noteService = {
   async getAll(projectId: string): Promise<Note[]> {
+    // Guard against invalid projectId -> avoids 22P02 from PostgREST
+    if (!isValidUuid(projectId)) {
+      return []
+    }
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
       throw new Error('User not authenticated')
@@ -1397,6 +1405,9 @@ export const noteService = {
   },
 
   async create(note: CreateNoteInput): Promise<Note> {
+    if (!isValidUuid(note.projectId)) {
+      throw new Error('Invalid projectId when creating note')
+    }
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
       throw new Error('User not authenticated')
@@ -1508,7 +1519,7 @@ export const projectMembershipService = {
     
     if (error) throw error
     
-    return (data || []).map(row => ({
+    return (data || []).map((row: any) => ({
       id: row.project_id,
       name: row.project_name,
       description: row.project_description,
@@ -1668,32 +1679,42 @@ export const projectMembershipService = {
       throw new Error('User not authenticated')
     }
 
+    // Safer implementation without cross-schema joins that often fail on client
     const { data, error } = await supabase
       .from('project_memberships')
-      .select(`
-        id,
-        project_id,
-        role,
-        invited_at,
-        status,
-        projects!inner(name),
-        auth.users!invited_by(email)
-      `)
+      .select('id, project_id, role, invited_at, status, invited_by')
       .eq('user_id', user.id)
       .eq('status', 'pending')
       .order('invited_at', { ascending: false })
-    
+
     if (error) throw error
-    
-    return (data || []).map(row => ({
-      id: row.id,
-      projectId: row.project_id,
-      projectName: row.projects.name,
-      invitedBy: row.invited_by,
-      invitedByEmail: row.auth?.users?.email || 'Unknown',
-      role: row.role,
-      invitedAt: row.invited_at,
-      status: row.status
+
+    const projectIds = Array.from(new Set((data || []).map(r => r.project_id).filter(Boolean)))
+    let projectNameById: Record<string, string> = {}
+    if (projectIds.length > 0) {
+      const { data: projectsData } = await supabase
+        .from('projects')
+        .select('id, name')
+        .in('id', projectIds as string[])
+      projectNameById = Object.fromEntries((projectsData || []).map(p => [p.id, p.name]))
+    }
+
+    return (data || []).map((row: {
+      id: string
+      project_id: string
+      role: ProjectRole
+      invited_at: string
+      status: any
+      invited_by: string
+    }) => ({
+      id: row.id as string,
+      projectId: row.project_id as string,
+      projectName: projectNameById[row.project_id as string] || 'Project',
+      invitedBy: row.invited_by as string,
+      invitedByEmail: '',
+      role: row.role as any,
+      invitedAt: row.invited_at as any,
+      status: row.status as any
     }))
   },
 
@@ -1792,12 +1813,28 @@ export const customColumnService = {
           message: error.message,
           details: error.details,
           hint: error.hint,
-          code: error.code
+          code: error.code,
+          fullError: JSON.stringify(error, null, 2)
         })
         
         // Check if it's a table doesn't exist error
         if (error.code === '42P01') { // PostgreSQL table doesn't exist error
           throw new Error('Custom columns table does not exist. Please run the database migration: create-custom-columns-table.sql')
+        }
+        
+        // Check if it's a column doesn't exist error
+        if (error.code === '42703') { // PostgreSQL column doesn't exist error
+          throw new Error(`Database column missing. Please run: ${error.message}`)
+        }
+        
+        // Check if it's a foreign key constraint violation
+        if (error.code === '23503') { // PostgreSQL foreign key violation
+          throw new Error(`Project not found or user does not have access: ${error.message}`)
+        }
+        
+        // Check if it's a unique constraint violation
+        if (error.code === '23505') { // PostgreSQL unique violation
+          throw new Error(`Custom column with this name already exists: ${error.message}`)
         }
         
         throw error

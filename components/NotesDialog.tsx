@@ -61,6 +61,8 @@ export function NotesDialog({ isOpen, onClose, projectId, projectName }: NotesDi
   const [newTag, setNewTag] = useState('')
 
   const { toast } = useToast()
+  const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+  const isValidUuid = (v: string | null | undefined) => !!v && UUID_REGEX.test(v)
 
   // Color options for notes
   const colorOptions = [
@@ -95,10 +97,10 @@ export function NotesDialog({ isOpen, onClose, projectId, projectName }: NotesDi
   }, [notes, searchTerm])
 
   const loadNotes = async () => {
-    if (!projectId || projectId.trim() === '') {
+    if (!isValidUuid(projectId)) {
       toast({
         title: "Error",
-        description: "No project selected. Please select a project first.",
+        description: "No valid project selected. Please select a project first.",
         variant: "destructive",
       })
       onClose()
@@ -149,10 +151,10 @@ export function NotesDialog({ isOpen, onClose, projectId, projectName }: NotesDi
   }
 
   const handleSaveNote = async () => {
-    if (!projectId || projectId.trim() === '') {
+    if (!isValidUuid(projectId)) {
       toast({
         title: "Validation Error",
-        description: "No project selected. Please select a project first.",
+        description: "No valid project selected. Please select a project first.",
         variant: "destructive",
       })
       return
@@ -208,11 +210,12 @@ export function NotesDialog({ isOpen, onClose, projectId, projectName }: NotesDi
       resetForm()
       setIsCreating(false)
       setIsEditing(false)
-    } catch (error) {
-      console.error('Error saving note:', error)
+    } catch (error: any) {
+      const message = error?.message || error?.error?.message || 'Failed to save note'
+      console.error('Error saving note:', message, error)
       toast({
         title: "Error",
-        description: "Failed to save note. Please try again.",
+        description: message,
         variant: "destructive",
       })
     } finally {

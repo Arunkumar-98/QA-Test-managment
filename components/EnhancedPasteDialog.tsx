@@ -22,7 +22,9 @@ import {
   Eye
 } from 'lucide-react'
 import { TestCase } from '@/types/qa-types'
+import { ImportFormat } from '@/types/import-types'
 import { parseTextIntelligently, mapImportedDataToTestCase, validateImportedTestCase } from '@/lib/utils'
+import { parseHierarchicalTestCases } from '@/lib/hierarchical-parser'
 import { toast } from '@/hooks/use-toast'
 
 interface EnhancedPasteDialogProps {
@@ -43,10 +45,11 @@ export function EnhancedPasteDialog({
   const [pastedText, setPastedText] = useState('')
   const [parsedData, setParsedData] = useState<any[]>([])
   const [parsedTestCases, setParsedTestCases] = useState<Partial<TestCase>[]>([])
-  const [detectedFormat, setDetectedFormat] = useState<'csv' | 'structured' | 'freeform' | 'tsv'>('freeform')
+  const [detectedFormat, setDetectedFormat] = useState<ImportFormat>('freeform')
   const [confidence, setConfidence] = useState(0)
   const [validationErrors, setValidationErrors] = useState<string[]>([])
   const [activeTab, setActiveTab] = useState('paste')
+  const [hierarchicalData, setHierarchicalData] = useState<any>(null)
 
   // Auto-parse when text changes
   useEffect(() => {
@@ -56,28 +59,59 @@ export function EnhancedPasteDialog({
       setConfidence(result.confidence)
       setParsedData(result.data)
 
-      // Convert to test cases
-      const testCases = result.data.map((row, index) => {
-        const mappedTestCase = mapImportedDataToTestCase(row, index, currentProject, selectedSuiteId)
-        const validation = validateImportedTestCase(mappedTestCase)
-        return validation.cleanedTestCase
-      })
+      if (result.format === 'hierarchical') {
+        try {
+          const hierarchical = parseHierarchicalTestCases(pastedText)
+          setHierarchicalData(hierarchical)
+          
+          // Convert hierarchical test cases to flat test cases
+          const testCases = hierarchical.testCases.map(tc => ({
+            testCase: `${tc.id}: ${tc.title}`,
+            description: tc.description || '',
+            expectedResult: tc.expectedResult || '',
+            status: tc.status || 'Pending',
+            priority: tc.priority || 'Medium',
+            category: tc.category || 'Functional',
+            stepsToReproduce: tc.stepsToReproduce || '',
+            projectId: currentProject,
+            suiteId: selectedSuiteId,
+            customFields: {
+              section: tc.section || '',
+              subsection: tc.subsection || '',
+              automationStatus: tc.automationStatus || null
+            } as { [key: string]: string | number | boolean | null }
+          }))
 
-      setParsedTestCases(testCases)
-
-      // Collect validation errors
-      const errors: string[] = []
-      testCases.forEach((testCase, index) => {
-        const validation = validateImportedTestCase(testCase)
-        if (!validation.isValid) {
-          errors.push(`Row ${index + 1}: ${validation.errors.join(', ')}`)
+          setParsedTestCases(testCases)
+          setValidationErrors([]) // Hierarchical format has built-in validation
+        } catch (error) {
+          setValidationErrors([`Failed to parse hierarchical format: ${error instanceof Error ? error.message : 'Unknown error'}`])
         }
-      })
-      setValidationErrors(errors)
+      } else {
+        // Convert to test cases for other formats
+        const testCases = result.data.map((row, index) => {
+          const mappedTestCase = mapImportedDataToTestCase(row, index, currentProject, selectedSuiteId)
+          const validation = validateImportedTestCase(mappedTestCase)
+          return validation.cleanedTestCase
+        })
+
+        setParsedTestCases(testCases)
+
+        // Collect validation errors
+        const errors: string[] = []
+        testCases.forEach((testCase, index) => {
+          const validation = validateImportedTestCase(testCase)
+          if (!validation.isValid) {
+            errors.push(`Row ${index + 1}: ${validation.errors.join(', ')}`)
+          }
+        })
+        setValidationErrors(errors)
+      }
     } else {
       setParsedData([])
       setParsedTestCases([])
       setValidationErrors([])
+      setHierarchicalData(null)
     }
   }, [pastedText, currentProject, selectedSuiteId])
 
@@ -223,40 +257,109 @@ export function EnhancedPasteDialog({
 
                 <div className="flex-1 overflow-auto">
                   <div className="space-y-3">
-                    {parsedTestCases.slice(0, 5).map((testCase, index) => (
-                      <Card key={index} className="border-l-4 border-l-blue-500">
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-base flex items-center justify-between">
-                            <span>{testCase.testCase || `Test Case ${index + 1}`}</span>
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline">{testCase.priority || 'Medium'}</Badge>
-                              <Badge variant={testCase.status === 'Pass' ? 'default' : 'secondary'}>
-                                {testCase.status || 'Pending'}
-                              </Badge>
-                            </div>
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="pt-0">
-                          <p className="text-sm text-muted-foreground mb-2">
-                            {testCase.description || 'No description'}
-                          </p>
-                          {testCase.stepsToReproduce && (
-                            <div className="text-xs text-muted-foreground">
-                              <strong>Steps:</strong> {testCase.stepsToReproduce}
-                            </div>
-                          )}
-                          {testCase.expectedResult && (
-                            <div className="text-xs text-muted-foreground">
-                              <strong>Expected:</strong> {testCase.expectedResult}
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
-                    ))}
-                    {parsedTestCases.length > 5 && (
-                      <div className="text-center text-sm text-muted-foreground">
-                        ... and {parsedTestCases.length - 5} more test cases
+                    {detectedFormat === 'hierarchical' && hierarchicalData ? (
+                      // Hierarchical preview
+                      <div className="space-y-6">
+                        {Object.entries(hierarchicalData.sections).slice(0, 2).map(([sectionKey, section]: [string, any]) => (
+                          <Card key={sectionKey} className="border-l-4 border-l-indigo-500">
+                            <CardHeader className="pb-2">
+                              <CardTitle className="text-base">{section.title}</CardTitle>
+                            </CardHeader>
+                            <CardContent className="pt-0">
+                              <div className="space-y-4">
+                                {Object.entries(section.subsections).slice(0, 2).map(([subsectionKey, subsection]: [string, any]) => (
+                                  <div key={subsectionKey} className="pl-4 border-l-2 border-l-indigo-200">
+                                    <h4 className="font-medium text-sm mb-2">{subsection.title}</h4>
+                                    <div className="space-y-3">
+                                      {subsection.testCases.slice(0, 2).map((testCase: any, index: number) => (
+                                        <Card key={index} className="border-l-4 border-l-blue-500">
+                                          <CardHeader className="pb-2">
+                                            <CardTitle className="text-base flex items-center justify-between">
+                                              <span>{testCase.id}: {testCase.title}</span>
+                                              <div className="flex items-center gap-2">
+                                                <Badge variant="outline">{testCase.priority || 'Medium'}</Badge>
+                                                {testCase.automationStatus && (
+                                                  <Badge variant="secondary">
+                                                    {testCase.automationStatus}
+                                                  </Badge>
+                                                )}
+                                              </div>
+                                            </CardTitle>
+                                          </CardHeader>
+                                          <CardContent className="pt-0">
+                                            <p className="text-sm text-muted-foreground mb-2">
+                                              {testCase.description || 'No description'}
+                                            </p>
+                                            {testCase.expectedResult && (
+                                              <div className="text-xs text-muted-foreground">
+                                                <strong>Expected:</strong> {testCase.expectedResult}
+                                              </div>
+                                            )}
+                                          </CardContent>
+                                        </Card>
+                                      ))}
+                                      {subsection.testCases.length > 2 && (
+                                        <div className="text-xs text-muted-foreground pl-4">
+                                          ... and {subsection.testCases.length - 2} more test cases in this subsection
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                                {Object.keys(section.subsections).length > 2 && (
+                                  <div className="text-sm text-muted-foreground pl-4">
+                                    ... and {Object.keys(section.subsections).length - 2} more subsections
+                                  </div>
+                                )}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                        {Object.keys(hierarchicalData.sections).length > 2 && (
+                          <div className="text-center text-sm text-muted-foreground">
+                            ... and {Object.keys(hierarchicalData.sections).length - 2} more sections
+                          </div>
+                        )}
                       </div>
+                    ) : (
+                      // Regular preview
+                      <>
+                        {parsedTestCases.slice(0, 5).map((testCase, index) => (
+                          <Card key={index} className="border-l-4 border-l-blue-500">
+                            <CardHeader className="pb-2">
+                              <CardTitle className="text-base flex items-center justify-between">
+                                <span>{testCase.testCase || `Test Case ${index + 1}`}</span>
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="outline">{testCase.priority || 'Medium'}</Badge>
+                                  <Badge variant={testCase.status === 'Pass' ? 'default' : 'secondary'}>
+                                    {testCase.status || 'Pending'}
+                                  </Badge>
+                                </div>
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent className="pt-0">
+                              <p className="text-sm text-muted-foreground mb-2">
+                                {testCase.description || 'No description'}
+                              </p>
+                              {testCase.stepsToReproduce && (
+                                <div className="text-xs text-muted-foreground">
+                                  <strong>Steps:</strong> {testCase.stepsToReproduce}
+                                </div>
+                              )}
+                              {testCase.expectedResult && (
+                                <div className="text-xs text-muted-foreground">
+                                  <strong>Expected:</strong> {testCase.expectedResult}
+                                </div>
+                              )}
+                            </CardContent>
+                          </Card>
+                        ))}
+                        {parsedTestCases.length > 5 && (
+                          <div className="text-center text-sm text-muted-foreground">
+                            ... and {parsedTestCases.length - 5} more test cases
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
@@ -365,6 +468,40 @@ Status: Pending`}
 {`Login Test
 Verify user can log in with valid credentials. 
 The system should authenticate the user and redirect to the dashboard.`}
+                  </pre>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="w-5 h-5" />
+                    Hierarchical Test Cases Format
+                  </CardTitle>
+                  <CardDescription>
+                    Comprehensive format with sections, subsections, and test case metadata
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <pre className="bg-muted p-3 rounded text-sm overflow-x-auto">
+{`1. BASIC FUNCTIONALITY TEST CASES
+1.1 User Authentication
+TC001: Verify user login with valid credentials
+Expected Result: User is logged in and redirected to dashboard
+
+TC002: Verify user login with invalid credentials
+Expected Result: Error message displayed, login denied
+
+2. ADVANCED FEATURES
+2.1 Profile Management
+TC003: Update user profile picture
+Expected Result: Profile picture updated and displayed correctly
+
+TEST EXECUTION PRIORITY
+P0 - Critical (Must Pass)
+- TC001, TC002
+P1 - High Priority
+- TC003`}
                   </pre>
                 </CardContent>
               </Card>

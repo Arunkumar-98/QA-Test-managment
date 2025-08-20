@@ -52,10 +52,49 @@ export function CustomColumnDialog({
   useEffect(() => {
     if (defaultColumn) {
       // Handle default column editing
+      const key = defaultColumn.key
+      let label = key
+      
+      // Convert common column keys to proper labels
+      const labelMap: { [key: string]: string } = {
+        'testCase': 'Test Case',
+        'description': 'Description',
+        'status': 'Status',
+        'priority': 'Priority',
+        'assignedTo': 'Assigned To',
+        'createdAt': 'Created At',
+        'updatedAt': 'Updated At',
+        'date': 'Date',
+        'ios_status': 'iOS Status',
+        'android_status': 'Android Status',
+        'automation': 'Automation',
+        'testSuite': 'Test Suite',
+        'platform': 'Platform',
+        'browser': 'Browser',
+        'environment': 'Environment'
+      }
+      
+      if (labelMap[key]) {
+        label = labelMap[key]
+      } else {
+        // Fallback: convert camelCase to Title Case
+        label = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()).trim()
+      }
+      
+      // Determine the column type based on the key
+      let columnType: CustomColumnType = "text"
+      if (key === 'date' || key === 'createdAt' || key === 'updatedAt') {
+        columnType = "date"
+      } else if (key === 'status' || key === 'priority' || key === 'ios_status' || key === 'android_status') {
+        columnType = "select"
+      } else if (key === 'automation') {
+        columnType = "boolean"
+      }
+      
       setFormData({
-        name: defaultColumn.key,
-        label: defaultColumn.key.replace(/([A-Z])/g, ' $1').trim(),
-        type: "text" as CustomColumnType,
+        name: key,
+        label: label,
+        type: columnType,
         visible: defaultColumn.column.visible,
         width: defaultColumn.column.width,
         minWidth: defaultColumn.column.minWidth,
@@ -95,7 +134,17 @@ export function CustomColumnDialog({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     
+    // Validate required fields
     if (!formData.name.trim() || !formData.label.trim()) {
+      console.error('❌ Form validation failed: name or label is empty')
+      console.error('Form data:', formData)
+      return
+    }
+
+    // Validate form data structure
+    if (!formData.type || !formData.width || !formData.minWidth) {
+      console.error('❌ Form validation failed: missing required fields')
+      console.error('Form data:', formData)
       return
     }
 
@@ -103,9 +152,8 @@ export function CustomColumnDialog({
       ...formData,
       defaultValue: formData.type === 'boolean' ? formData.defaultValue === 'true' : 
                    formData.type === 'number' ? Number(formData.defaultValue) || 0 : 
-                   formData.defaultValue,
-      // Add projectId for custom columns (will be set in the parent component)
-      ...(defaultColumn ? {} : { projectId: 'temp' })
+                   formData.defaultValue
+      // Note: projectId will be set in the parent component for custom columns
     }
 
     onSubmit(columnData as Omit<CustomColumn, 'id' | 'createdAt' | 'updatedAt'>)
@@ -352,7 +400,7 @@ export function CustomColumnDialog({
               Cancel
             </Button>
             <Button type="submit">
-              {isEditMode ? "Update Column" : "Add Column"}
+              {defaultColumn ? "Save Changes" : isEditMode ? "Update Column" : "Add Column"}
             </Button>
           </DialogFooter>
         </form>

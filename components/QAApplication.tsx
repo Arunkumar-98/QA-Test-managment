@@ -58,7 +58,7 @@ export function QAApplication() {
   const { user, signOut } = useAuth()
   
   // UI state - declare these first
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true)
   const [showUserMenu, setShowUserMenu] = useState(false)
   const userMenuRef = useRef<HTMLDivElement>(null)
   const [currentProject, setCurrentProject] = useState(DEFAULT_PROJECT)
@@ -1124,7 +1124,7 @@ export function QAApplication() {
   }
 
   const handleOpenNotes = () => {
-    if (!currentProjectId || currentProjectId.trim() === '') {
+    if (!currentProjectId || currentProjectId.trim() === '' || currentProjectId.trim().length !== 36) {
       toast({
         title: "No Project Selected",
         description: "Please select a project first before opening notes.",
@@ -1136,6 +1136,14 @@ export function QAApplication() {
   }
 
   const handleOpenProjectMembers = () => {
+    if (!currentProjectId || currentProjectId.trim() === '' || currentProjectId.trim().length !== 36) {
+      toast({
+        title: 'No Project Selected',
+        description: 'Please select a project first before opening members.',
+        variant: 'destructive',
+      })
+      return
+    }
     setIsProjectMembersDialogOpen(true)
   }
 
@@ -1157,25 +1165,56 @@ export function QAApplication() {
     setIsProjectSettingsOpen(true)
   }
 
+  // Update a single custom field value on a test case
+  const handleUpdateCustomField = async (testCaseId: string, fieldKey: string, value: any) => {
+    try {
+      const target = testCases.find(tc => tc.id === testCaseId)
+      const nextCustom = { ...(target?.customFields || {}), [fieldKey]: value }
+      await updateTestCase(testCaseId, { customFields: nextCustom })
+    } catch (e) {
+      console.error('Failed to update custom field', { testCaseId, fieldKey, value, e })
+      toast({ title: 'Update failed', description: 'Could not save custom field', variant: 'destructive' })
+    }
+  }
+
   // Custom Columns Management
   const loadCustomColumns = async (projectId: string) => {
     try {
       // Validate project ID
       if (!projectId || projectId.trim() === '') {
         console.log('⚠️ No project ID provided, skipping custom columns load')
+        setCustomColumnsList([])
+        return
+      }
+
+      // Check if user is authenticated
+      if (!user) {
+        console.log('⚠️ User not authenticated, skipping custom columns load')
+        setCustomColumnsList([])
         return
       }
 
       console.log('🔄 Loading custom columns for project:', projectId)
+      
+      // First try to ensure the database table exists
+      try {
+        const setupResponse = await fetch('/api/setup-custom-columns', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({})
+        })
+        
+        if (setupResponse.ok) {
+          const setupResult = await setupResponse.json()
+          console.log('✅ Database setup verified:', setupResult.message)
+        }
+      } catch (setupError) {
+        console.warn('⚠️ Database setup check failed:', setupError)
+      }
+      
       const columns = await customColumnService.getAll(projectId)
       console.log('✅ Custom columns loaded:', columns.length, 'columns')
       setCustomColumnsList(columns)
-      
-      // If no custom columns exist, create default iOS and Android columns
-      if (columns.length === 0) {
-        console.log('📝 No custom columns found, creating defaults...')
-        await createDefaultCustomColumns(projectId)
-      }
     } catch (error) {
       console.error('❌ Failed to load custom columns:', {
         error,
@@ -1186,82 +1225,74 @@ export function QAApplication() {
         errorKeys: error && typeof error === 'object' ? Object.keys(error) : 'Not an object'
       })
       
-      // Don't show error toast for this as it might be expected if table doesn't exist yet
-      // The createDefaultCustomColumns function will show the appropriate error message
+      // Check if it's a database structure issue
+      if (error instanceof Error && (
+        error.message.includes('table') || 
+        error.message.includes('column') ||
+        error.message.includes('does not exist')
+      )) {
+        console.log('🔧 Database structure issue detected during load')
+        // Try to create the table structure
+        try {
+          const setupResponse = await fetch('/api/setup-custom-columns', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+          })
+          
+          if (setupResponse.ok) {
+            console.log('✅ Database structure created, retrying load...')
+            // Retry loading after setup
+            const retryColumns = await customColumnService.getAll(projectId)
+            setCustomColumnsList(retryColumns)
+            return
+          }
+        } catch (retryError) {
+          console.warn('⚠️ Database setup retry failed:', retryError)
+        }
+      }
+      
+      // Don't show error toast - just log the error and continue
+      // Custom columns are optional and shouldn't break the application
+      console.log('⚠️ Custom columns feature is not available - continuing without custom columns')
+      setCustomColumnsList([])
     }
   }
 
   const createDefaultCustomColumns = async (projectId: string) => {
-    try {
-      // Validate project ID
-      if (!projectId || projectId.trim() === '') {
-        console.log('⚠️ No project ID provided, skipping default custom columns creation')
-        return
-      }
-
-      console.log('🔄 Creating default custom columns for project:', projectId)
-
-      const iosColumn = await customColumnService.create({
-        name: 'ios_status',
-        label: 'iOS Status',
-        type: 'select',
-        visible: true,
-        width: 'w-32',
-        minWidth: 'min-w-[120px]',
-        options: ['Pending', 'Pass', 'Fail', 'In Progress', 'Blocked'],
-        defaultValue: 'Pending',
-        required: false,
-        projectId
-      })
-
-      const androidColumn = await customColumnService.create({
-        name: 'android_status',
-        label: 'Android Status',
-        type: 'select',
-        visible: true,
-        width: 'w-32',
-        minWidth: 'min-w-[120px]',
-        options: ['Pending', 'Pass', 'Fail', 'In Progress', 'Blocked'],
-        defaultValue: 'Pending',
-        required: false,
-        projectId
-      })
-
-      console.log('✅ Default custom columns created successfully:', { iosColumn, androidColumn })
-      setCustomColumnsList([iosColumn, androidColumn])
-    } catch (error) {
-      console.error('❌ Failed to create default custom columns:', {
-        error,
-        message: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : 'No stack trace',
-        projectId,
-        errorType: typeof error,
-        errorKeys: error && typeof error === 'object' ? Object.keys(error) : 'Not an object'
-      })
-      
-      // Show user-friendly error message
-      toast({
-        title: "Database Setup Required",
-        description: "Please run the database migration for custom columns feature. Check the SQL file: create-custom-columns-table.sql",
-        variant: "destructive",
-      })
-    }
+    // Intentionally left empty: default custom column seeding removed per new requirements
   }
 
   const handleAddCustomColumn = async (column: Omit<CustomColumn, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
+      // Validate column object
+      if (!column || typeof column !== 'object') {
+        throw new Error('Invalid column object provided')
+      }
+      
+      if (!column.name || !column.label) {
+        throw new Error('Column name and label are required')
+      }
       // Check if we're editing a default column
       if (editingDefaultColumn) {
         // Update default column properties
-        setTableColumns(prev => ({
-          ...prev,
-          [editingDefaultColumn.key]: {
-            ...prev[editingDefaultColumn.key as keyof typeof tableColumns],
-            width: column.width,
-            minWidth: column.minWidth,
-            visible: column.visible
+        setTableColumns(prev => {
+          const currentColumn = prev[editingDefaultColumn.key as keyof typeof tableColumns]
+          if (!currentColumn) {
+            console.warn(`Column ${editingDefaultColumn.key} not found in tableColumns`)
+            return prev
           }
-        }))
+          
+          return {
+            ...prev,
+            [editingDefaultColumn.key]: {
+              ...currentColumn,
+              width: column.width,
+              minWidth: column.minWidth,
+              visible: column.visible
+            }
+          }
+        })
         
         setIsAddCustomColumnDialogOpen(false)
         setEditingDefaultColumn(null)
@@ -1307,7 +1338,17 @@ export function QAApplication() {
         description: `Column "${column.label}" has been added successfully.`,
       })
     } catch (error) {
-      console.error('Failed to handle column operation:', error)
+      // Log error details separately for better debugging
+      console.error('❌ Failed to handle column operation')
+      console.error('Error object:', error)
+      console.error('Error message:', error instanceof Error ? error.message : 'Unknown error')
+      console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace')
+      console.error('Column data:', column)
+      console.error('Current project ID:', currentProjectId)
+      console.error('Editing default column:', editingDefaultColumn)
+      console.error('Editing custom column:', editingCustomColumn)
+      console.error('Error type:', typeof error)
+      console.error('Error keys:', error && typeof error === 'object' ? Object.keys(error) : 'Not an object')
       toast({
         title: "Error",
         description: "Failed to complete column operation. Please try again.",
@@ -1321,10 +1362,18 @@ export function QAApplication() {
       const updatedColumn = await customColumnService.update(id, updates)
       setCustomColumnsList(prev => prev.map(col => col.id === id ? updatedColumn : col))
     } catch (error) {
-      console.error('Failed to update custom column visibility:', error)
+      // Log error details separately for better debugging
+      console.error('❌ Failed to update custom column')
+      console.error('Error object:', error)
+      console.error('Error message:', error instanceof Error ? error.message : 'Unknown error')
+      console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace')
+      console.error('Column ID:', id)
+      console.error('Updates:', updates)
+      console.error('Error type:', typeof error)
+      console.error('Error keys:', error && typeof error === 'object' ? Object.keys(error) : 'Not an object')
       toast({
         title: "Error",
-        description: "Failed to update column visibility. Please try again.",
+        description: "Failed to update column. Please try again.",
         variant: "destructive",
       })
     }
@@ -1380,14 +1429,14 @@ export function QAApplication() {
 
   return (
     <>
-      <div className="min-h-screen bg-slate-50">
+      <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-800">
         {/* Mobile Sidebar Toggle */}
-        <div className="lg:hidden fixed top-4 left-4 z-50">
+          <div className="lg:hidden fixed top-4 left-4 z-50">
           <Button
             variant="outline"
             size="sm"
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="bg-white shadow-lg"
+              className="bg-slate-800 text-white border-slate-600 shadow-lg"
           >
             {isSidebarOpen ? "×" : "☰"}
           </Button>
@@ -1402,7 +1451,7 @@ export function QAApplication() {
         )}
 
         {/* Header */}
-        <div className="bg-gradient-to-r from-slate-900 via-blue-900 to-purple-900 border-b border-white/20 shadow-lg relative z-50">
+        <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-800 border-b border-slate-700/50 shadow-lg relative z-50">
           <div className="w-full px-6 lg:px-8 xl:px-12">
             <div className="flex items-center justify-between h-20">
               <div className="flex items-center space-x-6">
@@ -1434,10 +1483,10 @@ export function QAApplication() {
                   size="sm"
                   onClick={handleOpenShareProject}
                   disabled={!currentProjectId || !currentProject}
-                  className={`flex items-center space-x-2 h-10 px-5 border-white/20 transition-all duration-200 shadow-sm ${
+                  className={`flex items-center space-x-2 h-10 px-5 border-slate-700/60 transition-all duration-200 shadow-sm ${
                     currentProjectId && currentProject 
-                      ? 'bg-white/10 hover:bg-white/20 hover:border-white/40 text-white' 
-                      : 'bg-white/5 text-white/50 cursor-not-allowed'
+                      ? 'bg-slate-900/50 hover:bg-slate-800/70 text-slate-200' 
+                      : 'bg-slate-900/30 text-slate-500 cursor-not-allowed'
                   }`}
                 >
                   <Share2 className="w-4 h-4" />
@@ -1451,13 +1500,13 @@ export function QAApplication() {
                     variant="ghost"
                     size="sm"
                     onClick={() => setShowUserMenu(!showUserMenu)}
-                    className="h-10 w-10 p-0 hover:bg-white/10 rounded-xl transition-all duration-200"
+                    className="h-10 w-10 p-0 hover:bg-slate-800/60 rounded-xl transition-all duration-200"
                   >
                     <Settings className="w-5 h-5 text-white" />
                   </Button>
                   
                   {showUserMenu && (
-                    <div className="absolute right-0 top-full mt-2 w-64 bg-slate-900/95 backdrop-blur-sm rounded-xl shadow-lg border border-white/20 py-2 z-[60]">
+                    <div className="absolute right-0 top-full mt-2 w-64 bg-slate-900/95 backdrop-blur-sm rounded-xl shadow-lg border border-slate-700/60 py-2 z-[60]">
                       <div className="px-4 py-2 border-b border-white/10">
                         <p className="text-xs font-medium text-blue-200 uppercase tracking-wide">User Profile</p>
                       </div>
@@ -1489,25 +1538,24 @@ export function QAApplication() {
                         <Folder className="w-4 h-4 text-blue-300" />
                         <span className="font-medium">Project Settings</span>
                       </button>
-                      
-                      <Button
-                        variant="ghost"
-                        size="sm"
+                      <button
                         onClick={() => {
                           if (!currentProjectId || currentProjectId.trim() === '') {
                             toast({
-                              title: "No Project Selected",
-                              description: "Please select a project first to configure table settings.",
-                              variant: "destructive",
+                              title: 'No Project Selected',
+                              description: 'Please select a project first to configure table settings.',
+                              variant: 'destructive',
                             })
                             return
                           }
                           setIsTableSettingsOpen(true)
                         }}
-                        className="text-slate-600 hover:text-slate-900"
+                        className="w-full px-4 py-3 text-left text-sm text-white hover:bg-white/10 flex items-center space-x-3 transition-colors"
                       >
-                        <Settings className="w-4 h-4" />
-                      </Button>
+                        <Settings className="w-4 h-4 text-amber-300" />
+                        <span className="font-medium">Table Settings</span>
+                      </button>
+
                       
                       <div className="px-4 py-2 border-t border-white/10">
                         <p className="text-xs font-medium text-blue-200 uppercase tracking-wide">Other</p>
@@ -1537,8 +1585,13 @@ export function QAApplication() {
         </div>
 
         {/* Main Content with Sidebar Grid Layout */}
-        <div className="grid grid-cols-[20rem_1fr] h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
+        <div
+          className="grid h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800"
+          style={{ gridTemplateColumns: (isSidebarOpen ? '24rem 1fr' : '4.5rem 1fr') }}
+        >
           <QASidebar
+            isCollapsed={isSidebarOpen === false}
+            onToggleCollapse={() => setIsSidebarOpen((v) => !v)}
             currentProject={currentProject}
             currentProjectId={currentProjectId}
             projects={projects}
@@ -1613,33 +1666,7 @@ export function QAApplication() {
             
 
 
-            {/* Suite Filter Banner */}
-            {selectedSuiteId && (
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-200 px-6 py-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
-                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                      </svg>
-                    </div>
-                    <div>
-                      <span className="text-sm font-semibold text-blue-900">Test Suite Active</span>
-                      <p className="text-sm text-blue-700">{testSuites.find(s => s.id === selectedSuiteId)?.name}</p>
-                    </div>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={clearSuite}
-                    className="text-blue-600 hover:text-blue-800 hover:bg-blue-100 px-3"
-                  >
-                    <X className="w-4 h-4 mr-1" />
-                    Clear Suite
-                  </Button>
-                </div>
-              </div>
-            )}
+            {/* Suite Filter Banner - moved out of table area; now shown via sidebar indicator only */}
 
             {/* Main Content */}
             <div className="flex-1 flex flex-col">
@@ -1661,34 +1688,7 @@ export function QAApplication() {
               ) : (
                 /* Main Content Area */
                 <div className="flex-1 flex flex-col overflow-hidden">
-                  {/* View Toggle Buttons - Always show to allow switching between views */}
-                  <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-white">
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        variant={currentView === 'dashboard' ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={handleShowDashboard}
-                        className="flex items-center space-x-2"
-                      >
-                        <BarChart3 className="w-4 h-4" />
-                        <span>Dashboard</span>
-                      </Button>
-                      <Button
-                        variant={currentView === 'test-cases' ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={handleShowTestCases}
-                        className="flex items-center space-x-2"
-                      >
-                        <FileText className="w-4 h-4" />
-                        <span>Test Cases</span>
-                      </Button>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Badge variant="outline" className="text-sm">
-                        {currentProject}
-                      </Badge>
-                    </div>
-                  </div>
+                  {/* Removed top section header per request */}
 
                   {/* Dashboard or Test Cases Content */}
                   {currentView === 'dashboard' ? (
@@ -1728,6 +1728,7 @@ export function QAApplication() {
                       onViewTestCase={handleViewTestCase}
                       onRemoveTestCase={removeTestCase}
                       onRemoveSelectedTestCases={removeSelectedTestCases}
+                      onUpdateTestCase={(testCase) => updateTestCase(testCase.id, testCase)}
                       deleteLoading={deleteLoading}
                       onUpdateTestCaseStatus={updateTestCaseStatus}
                       onBulkUpdateStatus={bulkUpdateStatus}
@@ -1746,6 +1747,8 @@ export function QAApplication() {
                       currentProject={currentProject}
                       isPasteDialogOpen={isPasteDialogOpen}
                       setIsPasteDialogOpen={setIsPasteDialogOpen}
+                      customColumns={customColumnsList}
+                      onUpdateCustomField={handleUpdateCustomField}
                     />
                   )}
                 </div>
@@ -1893,54 +1896,7 @@ export function QAApplication() {
               </div>
               
               <div className="space-y-2">
-                {/* Default Columns */}
-                {Object.entries(tableColumns).map(([key, column]) => (
-                  <div key={key} className="flex items-center justify-between p-3 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
-                    <div className="flex items-center gap-3 flex-1">
-                      <Checkbox
-                        checked={column.visible}
-                        onCheckedChange={(checked) => {
-                          setTableColumns(prev => ({
-                            ...prev,
-                            [key]: { ...prev[key as keyof typeof tableColumns], visible: checked as boolean }
-                          }))
-                        }}
-                      />
-                      <div className="flex-1">
-                        <Label className="font-medium capitalize text-slate-900">{key.replace(/([A-Z])/g, ' $1').trim()}</Label>
-                        <p className="text-sm text-slate-600">Default column</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">
-                        Default
-                      </Badge>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEditDefaultColumn(key, column)}
-                        title="Edit column"
-                      >
-                        <Settings className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          // Hide the column instead of deleting (for default columns)
-                          setTableColumns(prev => ({
-                            ...prev,
-                            [key]: { ...prev[key as keyof typeof tableColumns], visible: false }
-                          }))
-                        }}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                        title="Hide column"
-                      >
-                        <EyeOff className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                {/* Default columns UI removed per new requirement: user defines all columns */}
                 
                 {/* Custom Columns */}
                 {customColumnsList.map((column) => (

@@ -29,349 +29,22 @@ import {
   History,
   GripVertical,
   Sparkles,
-  RefreshCw
+  RefreshCw,
+  
+  AlignJustify,
+  AlertCircle
 } from 'lucide-react'
-import { TestCase, TestCaseStatus, TestCasePriority, TestCaseCategory } from '@/types/qa-types'
+import { TestCase, TestCaseStatus, TestCasePriority, TestCaseCategory, CustomColumn } from '@/types/qa-types'
 import { SavedFilter } from '@/hooks/useSearchAndFilter'
 import { getStatusBadgeVariant, getStatusBadgeStyle, getPriorityBadgeVariant, getPriorityBadgeStyle, getAutomationStatusIcon, getAutomationStatusColor, getAutomationStatusText, getUnresolvedCommentsCount, formatTestSteps, getStatusIcon, getPriorityIcon, mapImportedDataToTestCase, validateImportedTestCase, parseCSV } from "@/lib/utils"
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import { StatusHistoryDialog } from './StatusHistoryDialog'
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-} from '@dnd-kit/core'
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable'
-import {
-  useSortable,
-} from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
 
 const STATUS_OPTIONS: TestCaseStatus[] = ['Pass', 'Fail', 'Pending', 'In Progress', 'Blocked']
 const PRIORITY_OPTIONS: TestCasePriority[] = ['High', 'Medium', 'Low']
 const CATEGORY_OPTIONS: TestCaseCategory[] = ['Functional', 'Non-Functional', 'Regression', 'Smoke', 'Integration', 'Unit']
-
-// Sortable Drag Handle Component
-interface SortableDragHandleProps {
-  testCase: TestCase
-  columnWidths: any
-}
-
-function SortableDragHandle({ testCase, columnWidths }: SortableDragHandleProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: testCase.id })
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  }
-
-  return (
-    <TableCell 
-      ref={setNodeRef}
-      style={{ ...style, width: `${columnWidths.dragHandle}px` }}
-      className="p-4 border-r border-slate-200"
-    >
-      <div
-        {...attributes}
-        {...listeners}
-        className="cursor-grab active:cursor-grabbing p-1 hover:bg-slate-100 rounded transition-colors"
-      >
-        <GripVertical className="w-4 h-4 text-slate-400" />
-      </div>
-    </TableCell>
-  )
-}
-
-// Sortable Table Row Component
-interface SortableTableRowProps {
-  testCase: TestCase
-  index: number
-  isSelected: boolean
-  onToggleSelection: () => void
-  onViewTestCase: () => void
-  onEditTestCase: () => void
-  onOpenComments: () => void
-  onOpenAutomation: () => void
-  onOpenStatusHistory: () => void
-  onRemoveTestCase: () => void
-  onUpdateTestCaseStatus: (status: TestCaseStatus) => void
-  tableColumns: any
-  columnWidths: any
-  getUnresolvedCommentsCount: (testCase: TestCase) => number
-  isMobile: boolean
-  isDragEnabled: boolean
-}
-
-function SortableTableRow({
-  testCase,
-  index,
-  isSelected,
-  onToggleSelection,
-  onViewTestCase,
-  onEditTestCase,
-  onOpenComments,
-  onOpenAutomation,
-  onOpenStatusHistory,
-  onRemoveTestCase,
-  onUpdateTestCaseStatus,
-  tableColumns,
-  columnWidths,
-  getUnresolvedCommentsCount,
-  isMobile,
-  isDragEnabled
-}: SortableTableRowProps) {
-  const unresolvedComments = getUnresolvedCommentsCount(testCase)
-
-  return (
-    <TableRow
-      className={`hover:bg-slate-50/50 transition-colors cursor-pointer ${isSelected ? 'bg-blue-50' : ''}`}
-      onDoubleClick={onViewTestCase}
-    >
-      <TableCell className="p-4 border-r border-slate-200" style={{ width: `${columnWidths.checkbox}px` }}>
-        <Checkbox
-          checked={isSelected}
-          onCheckedChange={onToggleSelection}
-          onClick={(e) => e.stopPropagation()}
-        />
-      </TableCell>
-      
-      {isDragEnabled && (
-        <SortableDragHandle testCase={testCase} columnWidths={columnWidths} />
-      )}
-
-      {tableColumns.id?.visible && (
-        <TableCell className="p-4 border-r border-slate-200" style={{ width: `${columnWidths.id}px` }}>
-          <span className="text-sm text-slate-500">#{index + 1}</span>
-        </TableCell>
-      )}
-
-      {tableColumns.testCase?.visible && (
-        <TableCell className="p-4 border-r border-slate-200" style={{ width: `${columnWidths.testCase}px` }}>
-          <div className="font-medium text-slate-900">{testCase.testCase}</div>
-        </TableCell>
-      )}
-
-      {tableColumns.description?.visible && (
-        <TableCell className="p-4 border-r border-slate-200" style={{ width: `${columnWidths.description}px` }}>
-          <div className="text-sm text-slate-600 line-clamp-2">{testCase.description}</div>
-        </TableCell>
-      )}
-
-      {tableColumns.status?.visible && (
-        <TableCell className="p-4 border-r border-slate-200" style={{ width: `${columnWidths.status}px` }}>
-          <Select
-            value={testCase.status}
-            onValueChange={(value) => onUpdateTestCaseStatus(value as TestCaseStatus)}
-          >
-            <SelectTrigger className="w-full">
-              <Badge variant={getStatusBadgeVariant(testCase.status)} className={getStatusBadgeStyle(testCase.status)}>
-                {(() => {
-                  const StatusIcon = getStatusIcon(testCase.status)
-                  return (
-                    <>
-                      <StatusIcon className="w-3 h-3 mr-1" />
-                      {testCase.status}
-                    </>
-                  )
-                })()}
-              </Badge>
-            </SelectTrigger>
-            <SelectContent>
-              {STATUS_OPTIONS.map((status) => {
-                const StatusIcon = getStatusIcon(status)
-                return (
-                  <SelectItem key={status} value={status}>
-                    <div className="flex items-center gap-2">
-                      <StatusIcon className="w-4 h-4" />
-                      {status}
-                    </div>
-                  </SelectItem>
-                )
-              })}
-            </SelectContent>
-          </Select>
-        </TableCell>
-      )}
-
-      {tableColumns.priority?.visible && (
-        <TableCell className="p-4 border-r border-slate-200" style={{ width: `${columnWidths.priority}px` }}>
-          <Select
-            value={testCase.priority}
-            onValueChange={(value) => onUpdateTestCaseStatus(value as TestCaseStatus)}
-          >
-            <SelectTrigger className="w-full">
-              <Badge variant={getPriorityBadgeVariant(testCase.priority)} className={getPriorityBadgeStyle(testCase.priority)}>
-                {(() => {
-                  const PriorityIcon = getPriorityIcon(testCase.priority)
-                  return (
-                    <>
-                      <PriorityIcon className="w-3 h-3 mr-1" />
-                      {testCase.priority}
-                    </>
-                  )
-                })()}
-              </Badge>
-            </SelectTrigger>
-            <SelectContent>
-              {PRIORITY_OPTIONS.map((priority) => {
-                const PriorityIcon = getPriorityIcon(priority)
-                return (
-                  <SelectItem key={priority} value={priority}>
-                    <div className="flex items-center gap-2">
-                      <PriorityIcon className="w-4 h-4" />
-                      {priority}
-                    </div>
-                  </SelectItem>
-                )
-              })}
-            </SelectContent>
-          </Select>
-        </TableCell>
-      )}
-
-      {tableColumns.category?.visible && (
-        <TableCell className="p-4 border-r border-slate-200" style={{ width: `${columnWidths.category}px` }}>
-          <Badge variant="outline">{testCase.category || "Not set"}</Badge>
-        </TableCell>
-      )}
-
-      {tableColumns.platform?.visible && (
-        <TableCell className="p-4 border-r border-slate-200" style={{ width: `${columnWidths.platform}px` }}>
-          <Badge variant="outline">{testCase.platform || "Not set"}</Badge>
-        </TableCell>
-      )}
-
-      {tableColumns.suite?.visible && (
-        <TableCell className="p-4 border-r border-slate-200" style={{ width: `${columnWidths.suite}px` }}>
-          <Badge variant="outline">{testCase.suiteId || "No suite"}</Badge>
-        </TableCell>
-      )}
-
-      {tableColumns.date?.visible && (
-        <TableCell className="p-4 border-r border-slate-200" style={{ width: `${columnWidths.date}px` }}>
-          <span className="text-sm text-slate-600">{testCase.executionDate || "Not set"}</span>
-        </TableCell>
-      )}
-
-      {tableColumns.stepsToReproduce?.visible && (
-        <TableCell className="p-4 border-r border-slate-200 align-top" style={{ width: `${columnWidths.stepsToReproduce}px` }}>
-          <div className="break-words whitespace-pre-wrap leading-relaxed text-sm">{formatTestSteps(testCase.stepsToReproduce)}</div>
-        </TableCell>
-      )}
-
-      {tableColumns.expectedResult?.visible && (
-        <TableCell className="p-4 border-r border-slate-200 align-top" style={{ width: `${columnWidths.expectedResult}px` }}>
-          <div className="break-words whitespace-pre-wrap leading-relaxed text-sm">{testCase.expectedResult}</div>
-        </TableCell>
-      )}
-
-      {tableColumns.environment?.visible && (
-        <TableCell className="p-4 border-r border-slate-200" style={{ width: `${columnWidths.environment}px` }}>
-          <Badge variant="outline">{testCase.environment || "Not set"}</Badge>
-        </TableCell>
-      )}
-
-      {tableColumns.prerequisites?.visible && (
-        <TableCell className="p-4 border-r border-slate-200 align-top" style={{ width: `${columnWidths.prerequisites}px` }}>
-          <div className="break-words whitespace-normal leading-relaxed text-sm">{testCase.prerequisites}</div>
-        </TableCell>
-      )}
-
-      {tableColumns.automation?.visible && (
-        <TableCell className="p-4 border-r border-slate-200" style={{ width: `${columnWidths.automation}px` }}>
-          <Badge variant="outline" className="text-gray-500">
-            Manual
-          </Badge>
-        </TableCell>
-      )}
-
-      {tableColumns.actions?.visible && (
-        <TableCell className="p-4 border-r border-slate-200" style={{ width: `${columnWidths.actions}px` }}>
-          <div className="flex items-center justify-center gap-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onViewTestCase}
-              title="View Details"
-              className="h-8 w-8 p-0"
-            >
-              <Eye className="w-4 h-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onEditTestCase}
-              title="Edit"
-              className="h-8 w-8 p-0"
-            >
-              <Edit className="w-4 h-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onOpenComments}
-              title="Comments"
-              className="relative h-8 w-8 p-0"
-            >
-              <MessageSquare className="w-4 h-4" />
-              {unresolvedComments > 0 && (
-                <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 text-xs">
-                  {unresolvedComments}
-                </Badge>
-              )}
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onOpenAutomation}
-              title="Automation"
-              className="h-8 w-8 p-0"
-            >
-              <Code className="w-4 h-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onOpenStatusHistory}
-              title="Status History"
-              className="relative h-8 w-8 p-0"
-            >
-              <History className="w-4 h-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onRemoveTestCase}
-              title="Delete"
-              className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600"
-            >
-              <Trash2 className="w-4 h-4" />
-            </Button>
-          </div>
-        </TableCell>
-      )}
-    </TableRow>
-  )
-}
 
 interface TestCaseTableProps {
   testCases: TestCase[]
@@ -402,6 +75,7 @@ interface TestCaseTableProps {
   onViewTestCase: (testCase: TestCase) => void
   onRemoveTestCase: (id: string) => void
   onRemoveSelectedTestCases: () => void
+  onUpdateTestCase: (testCase: TestCase) => void
   onUpdateTestCaseStatus: (id: string, status: TestCase["status"]) => void
   onBulkUpdateStatus: (status: TestCase["status"]) => void
   onToggleTestCaseSelection: (id: string) => void
@@ -420,6 +94,9 @@ interface TestCaseTableProps {
   isPasteDialogOpen?: boolean
   setIsPasteDialogOpen?: (open: boolean) => void
   deleteLoading?: boolean
+  customColumns?: CustomColumn[]
+  onUpdateCustomField?: (testCaseId: string, fieldKey: string, value: any) => void
+  columnOrder?: string[]
 }
 
 export function TestCaseTable({
@@ -449,6 +126,7 @@ export function TestCaseTable({
   onViewTestCase,
   onRemoveTestCase,
   onRemoveSelectedTestCases,
+  onUpdateTestCase,
   onUpdateTestCaseStatus,
   onBulkUpdateStatus,
   onToggleTestCaseSelection,
@@ -466,79 +144,735 @@ export function TestCaseTable({
   currentProject,
   isPasteDialogOpen,
   setIsPasteDialogOpen,
-  deleteLoading
+  deleteLoading,
+  customColumns = [],
+  onUpdateCustomField,
+  columnOrder
 }: TestCaseTableProps) {
   const [isFiltersExpanded, setIsFiltersExpanded] = useState(false)
   const { toast } = useToast()
   const [isStatusHistoryOpen, setIsStatusHistoryOpen] = useState(false)
   const [selectedTestCaseForHistory, setSelectedTestCaseForHistory] = useState<TestCase | null>(null)
   const [sortedTestCases, setSortedTestCases] = useState<TestCase[]>(testCases)
-  const [isDragEnabled, setIsDragEnabled] = useState(false)
   const [isAdvancedSearchOpen, setIsAdvancedSearchOpen] = useState(false)
   const [isSaveFilterOpen, setIsSaveFilterOpen] = useState(false)
   const [isClearAllDialogOpen, setIsClearAllDialogOpen] = useState(false)
   const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false)
+  const [wrapMode, setWrapMode] = useState<'wrap' | 'truncate'>('truncate')
+  const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
+    const initial: Record<string, number> = {}
+    ;[
+      { key: 'index', width: 60 },
+      { key: 'testCase', width: 200 },
+      { key: 'description', width: 250 },
+      { key: 'status', width: 120 },
+      { key: 'priority', width: 100 },
+      { key: 'category', width: 120 },
+      { key: 'stepsToReproduce', width: 300 },
+      { key: 'expectedResult', width: 250 },
+      { key: 'actions', width: 220 }
+    ].forEach(c => { initial[c.key] = c.width })
+    return initial
+  })
+  const [resizing, setResizing] = useState<{ key: string; startX: number; startWidth: number } | null>(null)
+  const [isResizing, setIsResizing] = useState(false)
+  const RESIZE_HANDLE_PX = 14
+
+  // Persist wrap mode per project in localStorage
+  const wrapStorageKey = useMemo(() => `qa.wrapMode:${currentProject || 'global'}`, [currentProject])
+  const widthsStorageKey = useMemo(() => `qa.columnWidths:${currentProject || 'global'}`, [currentProject])
+
+  useEffect(() => {
+    try {
+      const saved = typeof window !== 'undefined' ? localStorage.getItem(wrapStorageKey) : null
+      if (saved === 'wrap' || saved === 'truncate') {
+        setWrapMode(saved)
+      }
+    } catch (err) {
+      // ignore storage errors
+    }
+  }, [wrapStorageKey])
+
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(wrapStorageKey, wrapMode)
+      }
+    } catch (err) {
+      // ignore storage errors
+    }
+  }, [wrapMode, wrapStorageKey])
+
+  // Load saved column widths
+  useEffect(() => {
+    try {
+      const raw = typeof window !== 'undefined' ? localStorage.getItem(widthsStorageKey) : null
+      if (raw) {
+        const parsed = JSON.parse(raw) as Record<string, number>
+        if (parsed && typeof parsed === 'object') {
+          setColumnWidths(prev => ({ ...prev, ...parsed }))
+        }
+      }
+    } catch {}
+  }, [widthsStorageKey])
+
+  // Save column widths
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(widthsStorageKey, JSON.stringify(columnWidths))
+      }
+    } catch {}
+  }, [columnWidths, widthsStorageKey])
+
+  const MIN_COL_WIDTH = 60
+  const startColumnResize = (key: string, clientX: number) => {
+    const startWidth = columnWidths[key] ?? MIN_COL_WIDTH
+    setResizing({ key, startX: clientX, startWidth })
+    setIsResizing(true)
+    try {
+      document.body.style.cursor = 'col-resize'
+      document.body.classList.add('select-none')
+    } catch {}
+  }
+
+  const autoFitColumn = (key: string) => {
+    // Estimate best width using header + sample cell contents
+    const canvas = document.createElement('canvas')
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    // Match approximate table font
+    ctx.font = '14px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial'
+
+    const headerText = spreadsheetColumns.find(c => c.key === key)?.label || key
+    let maxWidth = ctx.measureText(headerText).width
+
+    const sample = sortedTestCases.slice(0, 50)
+    for (const tc of sample) {
+      const value = getCellValue(tc, key) || ''
+      const w = ctx.measureText(String(value)).width
+      if (w > maxWidth) maxWidth = w
+    }
+
+    const padding = 28 // left+right padding
+    const target = Math.max(MIN_COL_WIDTH, Math.ceil(maxWidth) + padding)
+    setColumnWidths(prev => ({ ...prev, [key]: target }))
+  }
+
+  useEffect(() => {
+    if (!resizing) return
+    const onMove = (e: MouseEvent) => {
+      const delta = e.clientX - resizing.startX
+      const next = Math.max(MIN_COL_WIDTH, resizing.startWidth + delta)
+      setColumnWidths(prev => ({ ...prev, [resizing.key]: next }))
+    }
+    const onUp = () => {
+      setResizing(null)
+      setIsResizing(false)
+      try {
+        document.body.style.cursor = ''
+        document.body.classList.remove('select-none')
+      } catch {}
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+    return () => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+  }, [resizing])
+  
+  // Google Sheets-like state management
+  const [selectedCell, setSelectedCell] = useState<{rowIndex: number, columnKey: string} | null>(null)
+  const [selectedRange, setSelectedRange] = useState<{start: {rowIndex: number, columnKey: string}, end: {rowIndex: number, columnKey: string}} | null>(null)
+  const [isSelecting, setIsSelecting] = useState(false)
+  const [editingCell, setEditingCell] = useState<{rowIndex: number, columnKey: string} | null>(null)
+  const [editingValue, setEditingValue] = useState<string>('')
+  const [editingError, setEditingError] = useState<string>('')
+  const [copiedCell, setCopiedCell] = useState<{rowIndex: number, columnKey: string, value: string} | null>(null)
+  
+  // Build column list: core columns (user-configurable) + dynamic custom columns + actions
+  const defaultCoreSettings = {
+    testCase: { visible: true, width: 'w-64', label: 'Test Case' },
+    description: { visible: true, width: 'w-80', label: 'Description' },
+    status: { visible: true, width: 'w-32', label: 'Status' },
+    priority: { visible: true, width: 'w-24', label: 'Priority' },
+    category: { visible: true, width: 'w-32', label: 'Category' },
+    stepsToReproduce: { visible: true, width: 'w-80', label: 'Steps to Reproduce' },
+    expectedResult: { visible: true, width: 'w-64', label: 'Expected Result' }
+  }
+
+  // Hoisted function so it can be used before definition
+  function twWidthToPx(token?: string): number {
+    switch (token) {
+      case 'w-16': return 64
+      case 'w-24': return 96
+      case 'w-32': return 128
+      case 'w-40': return 160
+      case 'w-48': return 192
+      case 'w-64': return 256
+      case 'w-80': return 320
+      default: return 128
+    }
+  }
+
+  const selectedProjectId = typeof window !== 'undefined' ? localStorage.getItem('selectedProjectId') : null
+  const coreSettingsRaw = typeof window !== 'undefined' ? localStorage.getItem(`qa.coreColumns:${selectedProjectId || currentProject}`) : null
+  const coreSettings = coreSettingsRaw ? (() => { try { return JSON.parse(coreSettingsRaw) } catch { return defaultCoreSettings } })() : defaultCoreSettings
+
+  type CoreCol = { key: string; label: string; width: number; type: string; visible: boolean; options?: string[] }
+  const coreColumns: CoreCol[] = [
+    { key: 'index', label: '#', width: 60, type: 'number', visible: true },
+    ...(Object.entries(coreSettings) as Array<[string, any]>).map(([key, cfg]) => ({
+      key,
+      label: cfg?.label || (defaultCoreSettings as any)[key]?.label || key,
+      width: twWidthToPx(cfg?.width || (defaultCoreSettings as any)[key]?.width),
+      type: key === 'status' ? 'select' : key === 'priority' ? 'select' : key === 'category' ? 'select' : 'text',
+      options: key === 'status' ? (STATUS_OPTIONS as unknown as string[]) : key === 'priority' ? (PRIORITY_OPTIONS as unknown as string[]) : key === 'category' ? (CATEGORY_OPTIONS as unknown as string[]) : undefined,
+      visible: cfg?.visible !== false
+    })).filter(col => col.visible)
+  ]
+
+  
+
+  const customDynamicColumns: { key: string; label: string; width: number; type: string; options?: string[] }[] = (customColumns || [])
+    .filter(c => c.visible)
+    .map(c => ({
+      key: `custom:${c.name}`,
+      label: c.label,
+      width: twWidthToPx(c.width),
+      type: c.type === 'select' ? 'select' : (c.type === 'boolean' ? 'boolean' : (c.type === 'number' ? 'number' : c.type)),
+      options: c.options
+    }))
+
+  const spreadsheetColumns = [
+    ...coreColumns,
+    ...customDynamicColumns,
+    { key: 'actions', label: 'Actions', width: 220, type: 'actions' }
+  ]
+
+  // Initialize width for any new dynamic custom columns once (do not override user-resized widths)
+  useEffect(() => {
+    const pending: Record<string, number> = {}
+    for (const col of customDynamicColumns) {
+      if (columnWidths[col.key] === undefined) pending[col.key] = col.width
+    }
+    if (Object.keys(pending).length > 0) setColumnWidths(prev => ({ ...prev, ...pending }))
+  }, [customDynamicColumns])
+
+  // Seed widths for core columns from settings when missing
+  useEffect(() => {
+    const pending: Record<string, number> = {}
+    for (const col of coreColumns) {
+      if (columnWidths[col.key] === undefined) pending[col.key] = col.width as number
+    }
+    if (Object.keys(pending).length > 0) setColumnWidths(prev => ({ ...prev, ...pending }))
+  }, [coreColumns])
+  
+  // Freeze first two columns: index and testCase
+  const pinnedColumns = useMemo(() => new Set<string>(['index', 'testCase']), [])
+  const columnLeftOffsets = useMemo(() => {
+    const offsets: Record<string, number> = {}
+    let acc = 0
+    for (const col of spreadsheetColumns) {
+      offsets[col.key] = acc
+      const width = columnWidths[col.key] ?? col.width
+      acc += width
+    }
+    return offsets
+  }, [spreadsheetColumns, columnWidths])
+  
+  // Generate column letters (A, B, C, D...)
+  const getColumnLetter = (index: number): string => {
+    let result = ''
+    while (index >= 0) {
+      result = String.fromCharCode(65 + (index % 26)) + result
+      index = Math.floor(index / 26) - 1
+    }
+    return result
+  }
+  
+  // Cell interaction handlers
+  const handleCellClick = (rowIndex: number, columnKey: string, e?: React.MouseEvent) => {
+    if (editingCell) {
+      handleSaveEdit()
+    }
+    
+    if (e?.shiftKey && selectedCell) {
+      // Shift+click for range selection
+      const startRow = Math.min(selectedCell.rowIndex, rowIndex)
+      const endRow = Math.max(selectedCell.rowIndex, rowIndex)
+      const startCol = Math.min(
+        spreadsheetColumns.findIndex(col => col.key === selectedCell.columnKey),
+        spreadsheetColumns.findIndex(col => col.key === columnKey)
+      )
+      const endCol = Math.max(
+        spreadsheetColumns.findIndex(col => col.key === selectedCell.columnKey),
+        spreadsheetColumns.findIndex(col => col.key === columnKey)
+      )
+      
+      setSelectedRange({
+        start: { rowIndex: startRow, columnKey: spreadsheetColumns[startCol].key },
+        end: { rowIndex: endRow, columnKey: spreadsheetColumns[endCol].key }
+      })
+    } else {
+      setSelectedCell({ rowIndex, columnKey })
+      setSelectedRange(null)
+    }
+  }
+  
+  const handleCellMouseDown = (rowIndex: number, columnKey: string) => {
+    if (!isSelecting) {
+      setIsSelecting(true)
+      setSelectedCell({ rowIndex, columnKey })
+      setSelectedRange(null)
+    }
+  }
+  
+  const handleCellMouseEnter = (rowIndex: number, columnKey: string) => {
+    if (isSelecting && selectedCell) {
+      const startRow = Math.min(selectedCell.rowIndex, rowIndex)
+      const endRow = Math.max(selectedCell.rowIndex, rowIndex)
+      const startCol = Math.min(
+        spreadsheetColumns.findIndex(col => col.key === selectedCell.columnKey),
+        spreadsheetColumns.findIndex(col => col.key === columnKey)
+      )
+      const endCol = Math.max(
+        spreadsheetColumns.findIndex(col => col.key === selectedCell.columnKey),
+        spreadsheetColumns.findIndex(col => col.key === columnKey)
+      )
+      
+      setSelectedRange({
+        start: { rowIndex: startRow, columnKey: spreadsheetColumns[startCol].key },
+        end: { rowIndex: endRow, columnKey: spreadsheetColumns[endCol].key }
+      })
+    }
+  }
+  
+  const handleMouseUp = () => {
+    setIsSelecting(false)
+  }
+  
+  // Check if cell is in selected range
+  const isCellInRange = (rowIndex: number, columnKey: string): boolean => {
+    if (!selectedRange) return false
+    
+    const rowInRange = rowIndex >= selectedRange.start.rowIndex && rowIndex <= selectedRange.end.rowIndex
+    const startColIndex = spreadsheetColumns.findIndex(col => col.key === selectedRange.start.columnKey)
+    const endColIndex = spreadsheetColumns.findIndex(col => col.key === selectedRange.end.columnKey)
+    const currentColIndex = spreadsheetColumns.findIndex(col => col.key === columnKey)
+    const colInRange = currentColIndex >= startColIndex && currentColIndex <= endColIndex
+    
+    return rowInRange && colInRange
+  }
+  
+  const handleCellDoubleClick = (rowIndex: number, columnKey: string) => {
+    const testCase = paginatedTestCases[rowIndex]
+    if (!testCase) return
+    // Do not enter edit mode for non-editable columns
+    if (columnKey === 'index' || columnKey === 'actions') return
+
+    setEditingCell({ rowIndex, columnKey })
+    const currentValue = getCellValue(testCase, columnKey)
+    setEditingValue(currentValue || '')
+    setEditingError('')
+  }
+  
+  const getCellValue = (testCase: TestCase, columnKey: string): string => {
+    switch (columnKey) {
+      case 'index': return ''
+      case 'testCase': return testCase.testCase || ''
+      case 'description': return testCase.description || ''
+      case 'status': return testCase.status || ''
+      case 'priority': return testCase.priority || ''
+      case 'category': return testCase.category || ''
+      case 'stepsToReproduce': return testCase.stepsToReproduce || ''
+      case 'expectedResult': return testCase.expectedResult || ''
+      default: {
+        if (columnKey.startsWith('custom:')) {
+          const field = columnKey.slice('custom:'.length)
+          return String((testCase.customFields || {})[field] ?? '')
+        }
+        return ''
+      }
+    }
+  }
+  
+  // Validation rules per column
+  const validateValue = (columnKey: string, value: string): { valid: boolean; message?: string } => {
+    const trimmed = value?.toString().trim() ?? ''
+    switch (columnKey) {
+      case 'testCase':
+        if (!trimmed) return { valid: false, message: 'Test Case is required.' }
+        if (trimmed.length > 200) return { valid: false, message: 'Max 200 characters.' }
+        return { valid: true }
+      case 'description':
+        if (trimmed.length > 2000) return { valid: false, message: 'Description max 2000 characters.' }
+        return { valid: true }
+      case 'status':
+        return { valid: STATUS_OPTIONS.includes(trimmed as TestCaseStatus), message: 'Invalid status.' }
+      case 'priority':
+        return { valid: PRIORITY_OPTIONS.includes(trimmed as TestCasePriority), message: 'Invalid priority.' }
+      case 'category':
+        return { valid: CATEGORY_OPTIONS.includes(trimmed as TestCaseCategory), message: 'Invalid category.' }
+      case 'stepsToReproduce':
+        if (trimmed.length > 5000) return { valid: false, message: 'Steps max 5000 characters.' }
+        return { valid: true }
+      case 'expectedResult':
+        if (trimmed.length > 2000) return { valid: false, message: 'Expected result max 2000 characters.' }
+        return { valid: true }
+      default:
+        return { valid: true }
+    }
+  }
+  
+  const handleSaveEdit = async () => {
+    if (!editingCell) return
+    
+    const testCase = paginatedTestCases[editingCell.rowIndex]
+    if (!testCase) return
+    
+    // Validate
+    const validation = validateValue(editingCell.columnKey, editingValue)
+    if (!validation.valid) {
+      setEditingError(validation.message || 'Invalid value')
+      toast({ title: 'Invalid value', description: validation.message || 'Please correct and try again.', variant: 'destructive' })
+      return
+    }
+
+    const updatedTestCase = { ...testCase }
+    
+    const columnKey = editingCell.columnKey
+    switch (columnKey) {
+      case 'testCase':
+        updatedTestCase.testCase = editingValue
+        break
+      case 'description':
+        updatedTestCase.description = editingValue
+        break
+      case 'status':
+        updatedTestCase.status = editingValue as TestCaseStatus
+        break
+      case 'priority':
+        updatedTestCase.priority = editingValue as TestCasePriority
+        break
+      case 'category':
+        updatedTestCase.category = editingValue as TestCaseCategory
+        break
+      case 'stepsToReproduce':
+        updatedTestCase.stepsToReproduce = editingValue
+        break
+      case 'expectedResult':
+        updatedTestCase.expectedResult = editingValue
+        break
+      default:
+        if (columnKey.startsWith('custom:')) {
+          const field = columnKey.slice('custom:'.length)
+          const nextCustom = { ...(updatedTestCase.customFields || {}), [field]: editingValue }
+          updatedTestCase.customFields = nextCustom
+        }
+    }
+    
+    if (columnKey.startsWith('custom:') && onUpdateCustomField) {
+      const field = columnKey.slice('custom:'.length)
+      await onUpdateCustomField(testCase.id, field, editingValue)
+    } else {
+      await onUpdateTestCase(updatedTestCase)
+    }
+    setEditingCell(null)
+    setEditingValue('')
+    setEditingError('')
+  }
+  
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!selectedCell) return
+    
+    const { rowIndex, columnKey } = selectedCell
+    const currentColIndex = spreadsheetColumns.findIndex(col => col.key === columnKey)
+    
+    switch (e.key) {
+      case 'ArrowUp':
+        e.preventDefault()
+        if (rowIndex > 0) {
+          setSelectedCell({ rowIndex: rowIndex - 1, columnKey })
+        }
+        break
+      case 'ArrowDown':
+        e.preventDefault()
+        if (rowIndex < paginatedTestCases.length - 1) {
+          setSelectedCell({ rowIndex: rowIndex + 1, columnKey })
+        }
+        break
+      case 'ArrowLeft':
+        e.preventDefault()
+        if (currentColIndex > 0) {
+          setSelectedCell({ rowIndex, columnKey: spreadsheetColumns[currentColIndex - 1].key })
+        }
+        break
+      case 'ArrowRight':
+        e.preventDefault()
+        if (currentColIndex < spreadsheetColumns.length - 1) {
+          setSelectedCell({ rowIndex, columnKey: spreadsheetColumns[currentColIndex + 1].key })
+        }
+        break
+      case 'Tab':
+        e.preventDefault()
+        if (e.shiftKey) {
+          // Shift+Tab - move left
+          if (currentColIndex > 0) {
+            setSelectedCell({ rowIndex, columnKey: spreadsheetColumns[currentColIndex - 1].key })
+          }
+        } else {
+          // Tab - move right
+          if (currentColIndex < spreadsheetColumns.length - 1) {
+            setSelectedCell({ rowIndex, columnKey: spreadsheetColumns[currentColIndex + 1].key })
+          }
+        }
+        break
+      case 'Enter':
+        e.preventDefault()
+        if (editingCell) {
+          handleSaveEdit()
+        } else {
+          handleCellDoubleClick(rowIndex, columnKey)
+        }
+        break
+      case 'Escape':
+        if (editingCell) {
+          setEditingCell(null)
+          setEditingValue('')
+        }
+        break
+      case 'c':
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault()
+          handleCopyCell()
+        }
+        break
+      case 'v':
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault()
+          handlePasteCell()
+        }
+        break
+    }
+  }
+  
+  // Copy/Paste functionality
+  const handleCopyCell = () => {
+    if (!selectedCell) return
+    
+    const testCase = paginatedTestCases[selectedCell.rowIndex]
+    if (!testCase) return
+    
+    const value = getCellValue(testCase, selectedCell.columnKey)
+    setCopiedCell({
+      rowIndex: selectedCell.rowIndex,
+      columnKey: selectedCell.columnKey,
+      value: value
+    })
+    
+    // Also copy to system clipboard
+    navigator.clipboard.writeText(value).catch(console.error)
+    
+    toast({
+      title: "Copied",
+      description: `Cell ${getColumnLetter(spreadsheetColumns.findIndex(col => col.key === selectedCell.columnKey))}${selectedCell.rowIndex + 1} copied`,
+      duration: 1000
+    })
+  }
+  
+  const handlePasteCell = async () => {
+    if (!selectedCell || !copiedCell) return
+    
+    const testCase = paginatedTestCases[selectedCell.rowIndex]
+    if (!testCase) return
+    
+    const updatedTestCase = { ...testCase }
+    
+    // Set the value from copied cell
+    switch (selectedCell.columnKey) {
+      case 'testCase':
+        if (!validateValue('testCase', copiedCell.value).valid) {
+          toast({ title: 'Invalid title', description: 'Test Case cannot be empty.', variant: 'destructive' })
+          return
+        }
+        updatedTestCase.testCase = copiedCell.value
+        break
+      case 'description':
+        if (!validateValue('description', copiedCell.value).valid) {
+          toast({ title: 'Too long', description: 'Description is too long.', variant: 'destructive' })
+          return
+        }
+        updatedTestCase.description = copiedCell.value
+        break
+      case 'status':
+        if (STATUS_OPTIONS.includes(copiedCell.value as TestCaseStatus)) {
+          updatedTestCase.status = copiedCell.value as TestCaseStatus
+        }
+        break
+      case 'priority':
+        if (PRIORITY_OPTIONS.includes(copiedCell.value as TestCasePriority)) {
+          updatedTestCase.priority = copiedCell.value as TestCasePriority
+        }
+        break
+      case 'category':
+        if (CATEGORY_OPTIONS.includes(copiedCell.value as TestCaseCategory)) {
+          updatedTestCase.category = copiedCell.value as TestCaseCategory
+        }
+        break
+      case 'stepsToReproduce':
+        if (!validateValue('stepsToReproduce', copiedCell.value).valid) {
+          toast({ title: 'Too long', description: 'Steps content is too long.', variant: 'destructive' })
+          return
+        }
+        updatedTestCase.stepsToReproduce = copiedCell.value
+        break
+      case 'expectedResult':
+        if (!validateValue('expectedResult', copiedCell.value).valid) {
+          toast({ title: 'Too long', description: 'Expected Result is too long.', variant: 'destructive' })
+          return
+        }
+        updatedTestCase.expectedResult = copiedCell.value
+        break
+    }
+    
+    await onUpdateTestCase(updatedTestCase)
+    
+    toast({
+      title: "Pasted",
+      description: `Value pasted to cell ${getColumnLetter(spreadsheetColumns.findIndex(col => col.key === selectedCell.columnKey))}${selectedCell.rowIndex + 1}`,
+      duration: 1000
+    })
+  }
+  
   const [filterName, setFilterName] = useState('')
   const [pastedText, setPastedText] = useState('')
   const [parsedTestCase, setParsedTestCase] = useState<Partial<TestCase> | null>(null)
   const [isAIProcessing, setIsAIProcessing] = useState(false)
 
-
-  // DnD sensors
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  )
+  // Add keyboard event listener for table navigation
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // Only handle if we're not in an input field
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return
+      }
+      
+      handleKeyDown(e as any)
+    }
+    
+    const handleGlobalMouseUp = () => {
+      setIsSelecting(false)
+    }
+    
+    document.addEventListener('keydown', handleGlobalKeyDown)
+    document.addEventListener('mouseup', handleGlobalMouseUp)
+    
+    return () => {
+      document.removeEventListener('keydown', handleGlobalKeyDown)
+      document.removeEventListener('mouseup', handleGlobalMouseUp)
+    }
+  }, [selectedCell, editingCell, isSelecting])
 
   // Update sorted test cases when testCases prop changes
   useEffect(() => {
     setSortedTestCases(testCases)
   }, [testCases])
 
-  // Handle drag end
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event
-
-    if (active.id !== over?.id) {
-      setSortedTestCases((items) => {
-        const oldIndex = items.findIndex((item) => item.id === active.id)
-        const newIndex = items.findIndex((item) => item.id === over?.id)
-
-        const newOrder = arrayMove(items, oldIndex, newIndex)
-        
-        // TODO: Call database reorder function here
-        // For now, just update the local state
-        // testCaseService.reorderTestCase(active.id, newIndex + 1)
-        
-        return newOrder
-      })
-
-      toast({
-        title: "Test Case Reordered",
-        description: "The test case order has been updated.",
-      })
-    }
-  }
-
   // Reset to original order
-  const resetOrder = () => {
-    setSortedTestCases(testCases)
-    toast({
-      title: "Order Reset",
-      description: "Test cases have been reset to their original order.",
-    })
+  const resetOrder = () => {}
+
+  // Calculate pagination
+  const totalPages = Math.ceil(sortedTestCases.length / (rowsPerPage || 10))
+  const startIndex = (currentPage - 1) * (rowsPerPage || 10)
+  const endIndex = startIndex + (rowsPerPage || 10)
+  const paginatedTestCases = sortedTestCases.slice(startIndex, endIndex)
+
+  // Update current page if it exceeds total pages
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(totalPages)
+    }
+  }, [currentPage, totalPages, setCurrentPage])
+
+  const handleOpenStatusHistory = (testCase: TestCase) => {
+    setSelectedTestCaseForHistory(testCase)
+    setIsStatusHistoryOpen(true)
   }
 
-  const handlePasteData = () => {
-    if (setIsPasteDialogOpen) {
-      setIsPasteDialogOpen(true)
+  const handleCloseStatusHistory = () => {
+    setIsStatusHistoryOpen(false)
+    setSelectedTestCaseForHistory(null)
+  }
+
+  // AI Enhancement function for pasted test case content
+  const enhanceWithAI = async (text: string) => {
+    if (!text.trim()) {
+      toast({
+        title: "No content to enhance",
+        description: "Please paste some test case content first.",
+        variant: "destructive"
+      })
+      return
     }
+
+    setIsAIProcessing(true)
+    try {
+      const response = await fetch('/api/enhance-test-case', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          testCaseContent: text,
+          project: currentProject
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to enhance test case')
+      }
+
+      const data = await response.json()
+      setPastedText(data.enhancedContent)
+      
+    toast({
+        title: "Test Case Enhanced!",
+        description: "AI has improved the grammar, structure, and format of your test case.",
+      })
+    } catch (error) {
+      console.error('Error enhancing test case:', error)
+      toast({
+        title: "Enhancement Failed",
+        description: "Failed to enhance test case. Please try again.",
+        variant: "destructive"
+      })
+    } finally {
+      setIsAIProcessing(false)
+    }
+  }
+
+  const handleRowsPerPageChange = (value: string) => {
+    setRowsPerPage(parseInt(value))
+    setCurrentPage(1) // Reset to first page when changing rows per page
+  }
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+  }
+
+  const handleSaveFilter = () => {
+    if (filterName.trim()) {
+      onSaveFilter(filterName.trim())
+      setIsSaveFilterOpen(false)
+      setFilterName('')
+    }
+  }
+
+  const handleClearAll = () => {
+    onClearAllTestCases()
+    setIsClearAllDialogOpen(false)
   }
 
   const parsePastedText = (text: string): Partial<TestCase> => {
@@ -653,178 +987,22 @@ export function TestCaseTable({
     } else {
       setParsedTestCase(null)
     }
-  }, [pastedText])
-
-  const handleSaveFilter = () => {
-    if (filterName.trim()) {
-      onSaveFilter(filterName.trim())
-      setIsSaveFilterOpen(false)
-      setFilterName('')
-    }
-  }
-
-  const handleClearAll = () => {
-    onClearAllTestCases()
-    setIsClearAllDialogOpen(false)
-  }
-
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page)
-  }
-
-  const handleRowsPerPageChange = (newRowsPerPage: string) => {
-    const newRows = parseInt(newRowsPerPage)
-    setRowsPerPage(newRows)
-    setCurrentPage(1)
-  }
-
-  // Calculate optimal column widths based on content
-  const calculateColumnWidths = () => {
-    // Get viewport width for responsive calculations
-    const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1200
-    const isLargeScreen = viewportWidth >= 1400
-    const isMediumScreen = viewportWidth >= 1024
-    
-    const columnWidths: { [key: string]: number } = {
-      checkbox: 50, // Fixed width for checkbox
-      dragHandle: 50, // Fixed width for drag handle
-      id: 60, // Fixed width for ID
-      testCase: isLargeScreen ? 250 : isMediumScreen ? 200 : 180, // Responsive test case name
-      description: isLargeScreen ? 300 : isMediumScreen ? 250 : 200, // Responsive description
-      status: 100, // Fixed width for status badges
-      priority: 100, // Fixed width for priority badges
-      category: 120, // Fixed width for category
-      platform: 100, // Fixed width for platform
-      suite: 120, // Fixed width for suite
-      date: 100, // Fixed width for date
-      actions: 140, // Fixed width for action buttons
-      automationActions: 120, // Fixed width for automation
-      stepsToReproduce: isLargeScreen ? 350 : isMediumScreen ? 300 : 250, // Responsive steps
-      environment: 100, // Fixed width for environment
-      prerequisites: isLargeScreen ? 250 : isMediumScreen ? 200 : 180, // Responsive prerequisites
-      automation: 100, // Fixed width for automation
-      expectedResult: isLargeScreen ? 300 : isMediumScreen ? 250 : 200, // Responsive expected result
-    }
-
-    // Calculate dynamic widths based on content with better constraints
-    sortedTestCases.forEach(testCase => {
-      // Test Case name width with better text measurement
-      const testCaseText = testCase.testCase || ''
-      const testCaseWidth = Math.max(columnWidths.testCase, Math.min(testCaseText.length * 8, 400))
-      columnWidths.testCase = Math.min(testCaseWidth, isLargeScreen ? 400 : isMediumScreen ? 350 : 300)
-
-      // Description width with truncation consideration
-      const descText = testCase.description || ''
-      const descWidth = Math.max(columnWidths.description, Math.min(descText.length * 7, 500))
-      columnWidths.description = Math.min(descWidth, isLargeScreen ? 500 : isMediumScreen ? 400 : 300)
-
-      // Steps to Reproduce width
-      const stepsText = testCase.stepsToReproduce || ''
-      const stepsWidth = Math.max(columnWidths.stepsToReproduce, Math.min(stepsText.length * 6, 600))
-      columnWidths.stepsToReproduce = Math.min(stepsWidth, isLargeScreen ? 600 : isMediumScreen ? 450 : 350)
-
-      // Expected Result width
-      const expectedText = testCase.expectedResult || ''
-      const expectedWidth = Math.max(columnWidths.expectedResult, Math.min(expectedText.length * 7, 500))
-      columnWidths.expectedResult = Math.min(expectedWidth, isLargeScreen ? 500 : isMediumScreen ? 400 : 300)
-
-      // Prerequisites width
-      const prereqText = testCase.prerequisites || ''
-      const prereqWidth = Math.max(columnWidths.prerequisites, Math.min(prereqText.length * 6, 400))
-      columnWidths.prerequisites = Math.min(prereqWidth, isLargeScreen ? 400 : isMediumScreen ? 300 : 250)
-    })
-
-    return columnWidths
-  }
-
-  const columnWidths = calculateColumnWidths()
-
-  // Calculate pagination
-  const totalPages = Math.ceil(sortedTestCases.length / (rowsPerPage || 10))
-  const startIndex = (currentPage - 1) * (rowsPerPage || 10)
-  const endIndex = startIndex + (rowsPerPage || 10)
-  const paginatedTestCases = sortedTestCases.slice(startIndex, endIndex)
-
-  // Update current page if it exceeds total pages
-  useEffect(() => {
-    if (currentPage > totalPages && totalPages > 0) {
-      setCurrentPage(totalPages)
-    }
-  }, [currentPage, totalPages, setCurrentPage])
-
-
-
-  const handleOpenStatusHistory = (testCase: TestCase) => {
-    setSelectedTestCaseForHistory(testCase)
-    setIsStatusHistoryOpen(true)
-  }
-
-  const handleCloseStatusHistory = () => {
-    setIsStatusHistoryOpen(false)
-    setSelectedTestCaseForHistory(null)
-  }
-
-  // AI Enhancement function for pasted test case content
-  const enhanceWithAI = async (text: string) => {
-    if (!text.trim()) {
-      toast({
-        title: "No content to enhance",
-        description: "Please paste some test case content first.",
-        variant: "destructive"
-      })
-      return
-    }
-
-    setIsAIProcessing(true)
-    try {
-      const response = await fetch('/api/enhance-test-case', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          testCaseContent: text,
-          project: currentProject
-        }),
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to enhance test case')
-      }
-
-      const data = await response.json()
-      setPastedText(data.enhancedContent)
-      
-      toast({
-        title: "Test Case Enhanced!",
-        description: "AI has improved the grammar, structure, and format of your test case.",
-      })
-    } catch (error) {
-      console.error('Error enhancing test case:', error)
-      toast({
-        title: "Enhancement Failed",
-        description: "Failed to enhance test case. Please try again.",
-        variant: "destructive"
-      })
-    } finally {
-      setIsAIProcessing(false)
-    }
-  }
+  }, [pastedText, currentProject])
 
   return (
-    <div className="h-full flex flex-col pb-24">
-      {/* Search and Filters - Modern Professional Design */}
-      <div className="bg-gradient-to-r from-slate-50 to-blue-50/30 border-b border-slate-200/60 px-6 py-6">
+    <div className="h-full flex flex-col pb-24 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-800">
+      {/* Search and Filters - Dark theme */}
+      <div className="border-b border-slate-700/50 px-6 py-6 bg-slate-900/60 backdrop-blur">
         <div className="flex flex-col gap-6">
           {/* Main Search and Actions Row */}
           <div className="flex flex-col lg:flex-row lg:items-center gap-4">
             {/* Enhanced Search Bar */}
             <div className="flex-1 relative group">
               <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <Search className="h-5 w-5 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+                <Search className="h-5 w-5 text-slate-400 group-focus-within:text-blue-400 transition-colors" />
           </div>
             <Input
-                className="pl-12 pr-12 h-12 bg-white/80 backdrop-blur-sm border-slate-200/60 focus:border-blue-500/60 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 placeholder:text-slate-500"
+                className="pl-12 pr-12 h-12 bg-slate-900/70 border-slate-700/60 text-slate-200 placeholder:text-slate-400 focus:border-blue-500/60 focus:ring-2 focus:ring-blue-500/20"
                 placeholder="Search test cases by title, description, or status..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -832,63 +1010,84 @@ export function TestCaseTable({
               <Button 
               variant="ghost"
               size="sm"
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 hover:bg-slate-100/80 rounded-md transition-colors"
+                className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 p-0 hover:bg-slate-800/70 rounded-md"
               onClick={() => setIsAdvancedSearchOpen(!isAdvancedSearchOpen)}
                 title="Advanced Search Options"
             >
-                <Settings className="w-4 h-4 text-slate-500" />
+                <Settings className="w-4 h-4 text-slate-300" />
             </Button>
             </div>
             
-            {/* Modern Action Buttons */}
-            <div className="flex items-center gap-3">
-              {/* Drag & Drop Toggle */}
+            {/* Modern Action Buttons (reduced) */}
+            <div className="flex items-center gap-2">
+              {/* Wrap Toggle */}
+              <Button
+                variant={wrapMode === 'wrap' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setWrapMode(wrapMode === 'wrap' ? 'truncate' : 'wrap')}
+                className={`h-10 px-3 ${wrapMode === 'wrap' ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-slate-800/50 text-slate-200 hover:bg-slate-700/50'}`}
+                title={wrapMode === 'wrap' ? 'Disable text wrapping' : 'Enable text wrapping'}
+              >
+                <AlignJustify className="w-4 h-4 mr-2" />
+                {wrapMode === 'wrap' ? 'Wrap On' : 'Wrap Off'}
+              </Button>
+
+              {/* Import */}
               <Button 
                 variant="outline" 
-                size="lg"
-                onClick={() => setIsDragEnabled(!isDragEnabled)}
-                className={`flex items-center gap-2.5 h-12 px-4 backdrop-blur-sm border-slate-200/60 transition-all duration-200 ${
-                  isDragEnabled 
-                    ? 'bg-blue-50/80 border-blue-300/60 text-blue-700 hover:bg-blue-100/80' 
-                    : 'bg-white/80 hover:border-blue-500/60 hover:bg-blue-50/50'
-                }`}
+                size="sm"
+                onClick={() => {
+                  const input = document.createElement('input')
+                  input.type = 'file'
+                  input.accept = '.csv,.xlsx'
+                  input.onchange = (e) => onFileUpload(e as any)
+                  input.click()
+                }}
+                className="h-10 px-3 bg-slate-800/50 border-slate-600/50 text-slate-200 hover:bg-slate-700/50 hover:border-slate-500/50"
               >
-                <GripVertical className="w-4 h-4" />
-                <span className="font-medium">Drag & Drop</span>
+                <Upload className="w-4 h-4 mr-2" />
+                Import
               </Button>
               
-              {/* Reset Order Button */}
+              {/* Paste */}
               <Button 
                 variant="outline" 
-                size="lg"
-                onClick={resetOrder}
-                className="flex items-center gap-2.5 h-12 px-4 bg-white/80 backdrop-blur-sm border-slate-200/60 hover:border-orange-500/60 hover:bg-orange-50/50 transition-all duration-200"
-                title="Reset test case order to original arrangement"
+                size="sm"
+                onClick={() => setIsPasteDialogOpen?.(true)}
+                className="h-10 px-3 bg-slate-800/50 border-slate-600/50 text-slate-200 hover:bg-slate-700/50 hover:border-slate-500/50"
               >
-                <RefreshCw className="w-4 h-4 text-slate-600" />
-                <span className="font-medium text-slate-700">Reset Order</span>
+                <Clipboard className="w-4 h-4 mr-2" />
+                Paste
+              </Button>
+
+              {/* Export */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onExportToExcel}
+                className="h-10 px-3 bg-slate-800/50 border-slate-600/50 text-slate-200 hover:bg-slate-700/50 hover:border-slate-500/50"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Export
               </Button>
               
               {/* Filters Toggle */}
               <Button 
                 variant="outline" 
-                size="lg"
+                size="sm"
                 onClick={() => setIsFiltersExpanded(!isFiltersExpanded)}
-                className="flex items-center gap-2.5 h-12 px-4 bg-white/80 backdrop-blur-sm border-slate-200/60 hover:border-blue-500/60 hover:bg-blue-50/50 transition-all duration-200"
+                className="h-10 px-3 bg-slate-900/60 border-slate-700/60 text-slate-200 hover:bg-slate-800"
               >
-                <Filter className="w-4 h-4 text-slate-600" />
-                <span className="font-medium text-slate-700">Filters</span>
-                {isFiltersExpanded ? 
-                  <ChevronUp className="w-4 h-4 text-slate-600" /> : 
-                  <ChevronDown className="w-4 h-4 text-slate-600" />
-                }
+                <Filter className="w-4 h-4 mr-2" />
+                Filters
+                {isFiltersExpanded ? <ChevronUp className="w-4 h-4 ml-2" /> : <ChevronDown className="w-4 h-4 ml-2" />}
               </Button>
             </div>
           </div>
           
           {/* Expandable Filters - Modern Grid */}
           {isFiltersExpanded && (
-            <div className="bg-white/60 backdrop-blur-sm rounded-xl border border-slate-200/60 p-6 shadow-sm">
+            <div className="bg-slate-900/60 backdrop-blur-sm rounded-xl border border-slate-700/60 p-6 shadow-sm">
               {/* Filter Action Buttons */}
               <div className="flex items-center gap-3 mb-4">
                 {/* Save Filter */}
@@ -896,10 +1095,10 @@ export function TestCaseTable({
                   variant="outline" 
                   size="sm" 
                   onClick={() => setIsSaveFilterOpen(true)}
-                  className="h-8 px-3 bg-white/80 backdrop-blur-sm border-slate-200/60 hover:border-blue-500/60 hover:bg-blue-50/50 transition-all duration-200"
+                  className="h-8 px-3 bg-slate-900/60 border-slate-700/60 text-slate-200 hover:bg-slate-800"
                 >
-                  <Save className="w-3.5 h-3.5 mr-1.5 text-slate-600" />
-                  <span className="text-xs font-medium text-slate-700">Save Filter</span>
+                  <Save className="w-3.5 h-3.5 mr-1.5 text-slate-300" />
+                  <span className="text-xs font-medium text-slate-200">Save Filter</span>
                 </Button>
                 
                 {/* Load Filter */}
@@ -1042,232 +1241,254 @@ export function TestCaseTable({
       </div>
 
       {/* Table */}
-      <div className="bg-white flex-1 flex flex-col overflow-hidden">
-        <div className="flex-1 flex flex-col">
-          {/* Viewport Info Bar - Hidden but code preserved */}
-          {/* <div className="px-4 py-2 bg-slate-50 border-b border-slate-200">
-            <div className="flex items-center justify-between text-xs text-slate-600">
-              <div className="flex items-center gap-4">
-                <span>📊 {paginatedTestCases.length} of {sortedTestCases.length} test cases</span>
-                <span>📱 {typeof window !== 'undefined' ? `${window.innerWidth}px` : 'Desktop'} viewport</span>
-                <span>📋 {Object.keys(tableColumns).filter(key => tableColumns[key]?.visible).length} columns visible</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">
-                  {typeof window !== 'undefined' ?
-                    (window.innerWidth >= 1400 ? 'Large' : window.innerWidth >= 1024 ? 'Medium' : 'Small') :
-                    'Desktop'} View
-                </span>
-              </div>
-            </div>
-          </div> */}
-          
-          <div className="w-full px-4 py-4">
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={paginatedTestCases.map(testCase => testCase.id)}
-                strategy={verticalListSortingStrategy}
-              >
-                <div className="relative w-full overflow-auto border border-slate-200 rounded-lg shadow-sm" style={{ 
-                  maxHeight: 'calc(100vh - 350px)',
-                  minHeight: '500px'
-                }}>
-                  {/* Scroll Indicators */}
-                  <div className="absolute top-2 right-2 z-10">
-                    <div className="flex items-center gap-1 text-xs text-slate-500 bg-white/80 px-2 py-1 rounded border">
-                      <span>↔</span>
-                      <span>Scroll</span>
-                    </div>
-                  </div>
-                  <Table className="w-full border-collapse" style={{ 
-                    tableLayout: 'fixed', 
-                    minWidth: '100%',
-                    width: 'max-content'
-                  }}>
-                <TableHeader>
-                        <TableRow className="bg-gradient-to-r from-slate-900 via-blue-900 to-purple-900 border-b-2 border-white/20 sticky top-0 z-20">
-                          <TableHead className="p-2 lg:p-4 border-r border-white/20 bg-transparent" style={{ width: `${columnWidths.checkbox}px` }}>
-                      <Checkbox
-                        checked={selectedTestCases.size === paginatedTestCases.length && paginatedTestCases.length > 0}
-                        onCheckedChange={() => onToggleSelectAll(paginatedTestCases)}
-                      />
-                    </TableHead>
-                          {isDragEnabled && (
-                            <TableHead className="font-semibold text-white p-4 border-r border-white/20 bg-transparent" style={{ width: `${columnWidths.dragHandle}px` }}>
-                              <div className="flex items-center gap-2">
-                                <GripVertical className="w-4 h-4 text-white" />
-                                <span className="text-xs">Drag</span>
-                              </div>
-                            </TableHead>
-                          )}
-                    {tableColumns.id?.visible && (
-                            <TableHead className="font-semibold text-white p-4 border-r border-white/20 bg-transparent" style={{ width: `${columnWidths.id}px` }}>#</TableHead>
-                    )}
-                    {tableColumns.testCase?.visible && (
-                            <TableHead className="font-semibold text-white p-4 border-r border-white/20 bg-transparent" style={{ width: `${columnWidths.testCase}px` }}>Test Case</TableHead>
-                    )}
-                    {tableColumns.description?.visible && (
-                            <TableHead className="font-semibold text-white p-4 border-r border-white/20 bg-transparent" style={{ width: `${columnWidths.description}px` }}>Description</TableHead>
-                    )}
-                    {tableColumns.status?.visible && (
-                            <TableHead className="font-semibold text-white p-4 border-r border-white/20 bg-transparent" style={{ width: `${columnWidths.status}px` }}>Status</TableHead>
-                          )}
-                          {tableColumns.priority?.visible && (
-                            <TableHead className="font-semibold text-white p-4 border-r border-white/20 bg-transparent" style={{ width: `${columnWidths.priority}px` }}>Priority</TableHead>
-                    )}
-                    {tableColumns.category?.visible && (
-                            <TableHead className="font-semibold text-white p-4 border-r border-white/20 bg-transparent" style={{ width: `${columnWidths.category}px` }}>Category</TableHead>
-                    )}
-                    {tableColumns.platform?.visible && (
-                            <TableHead className="font-semibold text-white p-4 border-r border-white/20 bg-transparent" style={{ width: `${columnWidths.platform}px` }}>Platform</TableHead>
-                    )}
-                    {tableColumns.suite?.visible && (
-                            <TableHead className="font-semibold text-white p-4 border-r border-white/20 bg-transparent" style={{ width: `${columnWidths.suite}px` }}>Suite</TableHead>
-                    )}
-                    {tableColumns.date?.visible && (
-                            <TableHead className="font-semibold text-white p-4 border-r border-white/20 bg-transparent" style={{ width: `${columnWidths.date}px` }}>Date</TableHead>
-                    )}
-                    {tableColumns.stepsToReproduce?.visible && (
-                            <TableHead className="font-semibold text-white p-4 border-r border-white/20 bg-transparent" style={{ width: `${columnWidths.stepsToReproduce}px` }}>Steps to Reproduce</TableHead>
-                    )}
-                          {tableColumns.expectedResult?.visible && (
-                            <TableHead className="font-semibold text-white p-4 border-r border-white/20 bg-transparent" style={{ width: `${columnWidths.expectedResult}px` }}>Expected Result</TableHead>
-                    )}
-                    {tableColumns.environment?.visible && (
-                            <TableHead className="font-semibold text-white p-4 border-r border-white/20 bg-transparent" style={{ width: `${columnWidths.environment}px` }}>Environment</TableHead>
-                    )}
-                    {tableColumns.prerequisites?.visible && (
-                            <TableHead className="font-semibold text-white p-4 border-r border-white/20 bg-transparent" style={{ width: `${columnWidths.prerequisites}px` }}>Prerequisites</TableHead>
-                    )}
-                    {tableColumns.automation?.visible && (
-                            <TableHead className="font-semibold text-white p-4 border-r border-white/20 bg-transparent" style={{ width: `${columnWidths.automation}px` }}>Automation</TableHead>
-                    )}
-                    {tableColumns.actions?.visible && (
-                            <TableHead className="font-semibold text-white p-4 border-r border-white/20 bg-transparent" style={{ width: `${columnWidths.actions}px` }}>Actions</TableHead>
-                    )}
-                  </TableRow>
-                </TableHeader>
+      <div className="bg-white flex-1 min-h-0 flex flex-col overflow-hidden">
+        <div className="flex-1 min-h-0 flex flex-col">
+          <div className="w-full px-4 py-4 min-h-0">
+            <div className={`relative w-full overflow-x-auto overflow-y-auto rounded-xl focus:outline-none h-[70vh] min-h-0 ${isResizing ? 'cursor-col-resize select-none' : ''}`} 
+                 tabIndex={0} 
+                 onKeyDown={handleKeyDown}>
+              
+              {/* Google Sheets-like Spreadsheet */}
+              <div className="min-w-max w-max border border-slate-700/60 rounded-xl bg-white">
                 
-                <TableBody>
-                  {/* Desktop Bulk Delete Button */}
-                  {selectedTestCases.size > 0 && (
-                    <TableRow className="bg-red-50 border-b border-red-200">
-                      <TableCell 
-                        colSpan={Object.keys(tableColumns).filter(key => tableColumns[key]?.visible).length + 1 + (isDragEnabled ? 1 : 0)} 
-                        className="p-4"
+                {/* Sticky Headers Wrapper */}
+                <div className="sticky top-0 z-40 bg-white">
+                  {/* Column Letter Headers (A, B, C, D...) */}
+                  <div className="flex bg-slate-100 border-b border-slate-300 rounded-t-xl">
+                    {spreadsheetColumns.map((column, index) => (
+                      <div 
+                        key={column.key}
+                        className={`flex-shrink-0 h-8 flex items-center justify-center border-r border-slate-300 bg-slate-200 text-xs font-semibold text-slate-600 ${pinnedColumns.has(column.key) ? 'sticky' : ''}`}
+                        style={{ width: `${(columnWidths[column.key] ?? column.width)}px`, left: pinnedColumns.has(column.key) ? columnLeftOffsets[column.key] : undefined, zIndex: pinnedColumns.has(column.key) ? 60 : undefined }}
                       >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
-                              <Trash2 className="w-4 h-4 text-red-600" />
+                        {getColumnLetter(index)}
+              </div>
+                    ))}
+              </div>
+
+                  {/* Column Name Headers */}
+                  <div className="flex bg-slate-50 border-b border-slate-300">
+                    {spreadsheetColumns.map((column) => (
+                      <div 
+                        key={column.key}
+                        className={`group relative flex-shrink-0 h-10 flex items-center px-3 border-r border-slate-300 bg-slate-50 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors ${pinnedColumns.has(column.key) ? 'sticky' : ''}`}
+                        style={{ width: `${(columnWidths[column.key] ?? column.width)}px`, left: pinnedColumns.has(column.key) ? columnLeftOffsets[column.key] : undefined, zIndex: pinnedColumns.has(column.key) ? 50 : undefined }}
+                      >
+                        {column.label}
+                        {/* Hover affordance line */}
+                        <div className="pointer-events-none absolute top-0 right-0 h-full w-px bg-transparent group-hover:bg-slate-300" />
+                        {/* Resize handle - generous hit area with hover feedback */}
+                        <div
+                          className={`absolute top-0 right-0 h-full cursor-col-resize`} 
+                          style={{ width: RESIZE_HANDLE_PX, marginRight: -RESIZE_HANDLE_PX / 2 }}
+                          onMouseDown={(e) => {
+                            e.preventDefault(); e.stopPropagation()
+                            startColumnResize(column.key, e.clientX)
+                          }}
+                          onDoubleClick={(e) => {
+                            e.preventDefault(); e.stopPropagation()
+                            autoFitColumn(column.key)
+                          }}
+                          title="Drag to resize. Double-click to auto-fit"
+                        >
+                          {/* Grip icon for discoverability */}
+                          <div className="pointer-events-none absolute top-1/2 right-1 -translate-y-1/2 text-slate-300 group-hover:text-slate-500 transition-colors">
+                            <GripVertical className="w-3 h-3" />
+                    </div>
+                          <div className="h-full w-full hover:bg-blue-500/15 transition-colors" />
+                  </div>
+                              </div>
+                    ))}
                           </div>
-                            <div>
-                              <span className="text-sm font-semibold text-red-900">
-                                {selectedTestCases.size} test case{selectedTestCases.size !== 1 ? 's' : ''} selected
-                              </span>
-                              <p className="text-xs text-red-700">Click the button below to delete all selected test cases</p>
                           </div>
+
+                {/* Data Rows */}
+                <div className="divide-y divide-slate-200 rounded-b-xl">
+                  {paginatedTestCases.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16">
+                      <FileText className="w-10 h-10 text-slate-400" />
+                      <p className="mt-3 text-slate-600">No test cases found</p>
+                      <Button onClick={onAddTestCase} className="mt-4 bg-blue-600 hover:bg-blue-700">
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add Test Case
+                      </Button>
                         </div>
-                          <div className="flex items-center gap-2">
-                                <Button
-                              variant="outline" 
-                                  size="sm"
-                              onClick={() => {
-                                // Clear all selections by toggling select all if all are selected, or clearing all
-                                if (selectedTestCases.size === testCases.length) {
-                                  onToggleSelectAll()
-                                } else {
-                                  // Clear all selections by toggling each selected item
-                                  selectedTestCases.forEach(id => {
-                                    onToggleTestCaseSelection(id)
-                                  })
-                                }
-                              }}
-                              className="border-red-300 text-red-700 hover:bg-red-50"
+                  ) : (
+                    paginatedTestCases.map((testCase, rowIndex) => (
+                      <div key={testCase.id} className="flex">
+                        {spreadsheetColumns.map((column) => {
+                          const isSelected = selectedCell?.rowIndex === rowIndex && selectedCell?.columnKey === column.key
+                          const isInRange = isCellInRange(rowIndex, column.key)
+                          const isEditing = editingCell?.rowIndex === rowIndex && editingCell?.columnKey === column.key
+                          
+                          return (
+                            <div
+                              key={column.key}
+                              className={`
+                                flex-shrink-0 ${wrapMode === 'wrap' ? 'min-h-12 h-auto py-2' : 'h-12'} border-r border-slate-200 flex ${wrapMode === 'wrap' && column.key !== 'actions' && column.key !== 'index' ? 'items-start' : 'items-center'} px-3 ${column.key === 'actions' ? 'cursor-default' : 'cursor-cell'} transition-colors select-none ${pinnedColumns.has(column.key) ? 'sticky bg-white' : ''}
+                                ${isSelected ? 'bg-blue-100 border-2 border-blue-500' : isInRange ? 'bg-blue-50 border border-blue-300' : 'hover:bg-slate-50'}
+                                ${column.key === 'index' ? 'bg-slate-100 text-slate-600 font-medium justify-center' : ''}
+                              `}
+                              style={{ width: `${(columnWidths[column.key] ?? column.width)}px`, left: pinnedColumns.has(column.key) ? columnLeftOffsets[column.key] : undefined, zIndex: pinnedColumns.has(column.key) ? 25 : undefined }}
+                              onClick={(e) => handleCellClick(rowIndex, column.key, e)}
+                              onDoubleClick={() => handleCellDoubleClick(rowIndex, column.key)}
+                              onMouseDown={() => handleCellMouseDown(rowIndex, column.key)}
+                              onMouseEnter={() => handleCellMouseEnter(rowIndex, column.key)}
+                              onMouseUp={handleMouseUp}
                             >
-                              Cancel
+                              {column.key === 'actions' ? (
+                                <div className="flex items-center gap-2 w-full justify-start">
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    title="View"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      e.preventDefault()
+                                      onViewTestCase(testCase)
+                                    }}
+                                  >
+                                    <Eye className="w-4 h-4" />
                                 </Button>
                                 <Button
-                              variant="destructive" 
-                                  size="sm"
-                              onClick={() => setIsBulkDeleteDialogOpen(true)}
-                              className="bg-red-600 hover:bg-red-700"
-                              disabled={deleteLoading}
-                            >
-                              {deleteLoading ? (
-                                <>
-                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                  Deleting...
-                                </>
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    title="Edit"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      e.preventDefault()
+                                      onEditTestCase(testCase)
+                                    }}
+                                  >
+                                    <Edit className="w-4 h-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    title="Comments"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      e.preventDefault()
+                                      onOpenComments(testCase)
+                                    }}
+                                  >
+                                    <MessageSquare className="w-4 h-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    title="Automation"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      e.preventDefault()
+                                      onOpenAutomation(testCase)
+                                    }}
+                                  >
+                                    <Code className="w-4 h-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    title="Status History"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      e.preventDefault()
+                                      handleOpenStatusHistory(testCase)
+                                    }}
+                                  >
+                                    <History className="w-4 h-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-red-600 hover:text-red-700"
+                                    title="Delete"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      e.preventDefault()
+                                      onRemoveTestCase(testCase.id)
+                                    }}
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              ) : isEditing ? (
+                                column.type === 'select' ? (
+                                  <Select 
+                                    value={editingValue} 
+                                    onValueChange={setEditingValue}
+                                    onOpenChange={(open) => {
+                                      if (!open) {
+                                        handleSaveEdit()
+                                      }
+                                    }}
+                                  >
+                                    <SelectTrigger className="h-8 border-none shadow-none">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {column.options?.map((option: string) => (
+                                        <SelectItem key={option} value={option}>
+                                          {option}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                ) : (
+                                  <Input
+                                    value={editingValue}
+                                    onChange={(e) => setEditingValue(e.target.value)}
+                                    onBlur={handleSaveEdit}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        handleSaveEdit()
+                                      } else if (e.key === 'Escape') {
+                                        setEditingCell(null)
+                                        setEditingValue('')
+                                      }
+                                    }}
+                                    className="h-8 border-none shadow-none p-0"
+                                    autoFocus
+                                  />
+                                )
                               ) : (
-                                <>
-                                  <Trash2 className="w-4 h-4 mr-2" />
-                                  Delete {selectedTestCases.size} Test Case{selectedTestCases.size !== 1 ? 's' : ''}
-                                </>
+                                <div className={`w-full text-sm ${wrapMode === 'wrap' ? 'whitespace-pre-wrap break-words' : 'truncate'}`}>
+                                  {column.key === 'index' ? (
+                                    startIndex + rowIndex + 1
+                                  ) : column.key === 'status' ? (
+                                    <Badge variant={getStatusBadgeVariant(testCase.status)} className={getStatusBadgeStyle(testCase.status)}>
+                                      {testCase.status}
+                                    </Badge>
+                                  ) : column.key === 'priority' ? (
+                                    <Badge variant={getPriorityBadgeVariant(testCase.priority)} className={getPriorityBadgeStyle(testCase.priority)}>
+                                      {testCase.priority}
+                                    </Badge>
+                                  ) : (
+                                    getCellValue(testCase, column.key) || '-'
+                                  )}
+                          </div>
                               )}
-                              </Button>
                           </div>
-                            </div>
-                          </TableCell>
-                    </TableRow>
-                  )}
-                  
-                  {paginatedTestCases.length === 0 ? (
-                    <TableRow>
-                          <TableCell colSpan={Object.keys(tableColumns).filter(key => tableColumns[key]?.visible).length + 1 + (isDragEnabled ? 1 : 0)} className="text-center py-12">
-                            <div className="flex flex-col items-center gap-4">
-                              <FileText className="w-12 h-12 text-slate-300" />
-                              <div>
-                                <h3 className="text-lg font-medium text-slate-900 mb-2">No test cases found</h3>
-                                <p className="text-slate-600 mb-4">Try adjusting your search or filter criteria.</p>
-                            <Button onClick={onAddTestCase} className="bg-blue-600 hover:bg-blue-700">
-                              <Plus className="w-4 h-4 mr-2" />
-                              Add Test Case
-                            </Button>
-                          </div>
+                          )
+                        })}
                               </div>
-                            </TableCell>
-                        </TableRow>
-                  ) : (
-                        paginatedTestCases.map((testCase, idx) => (
-                          <SortableTableRow
-                            key={testCase.id}
-                            testCase={testCase}
-                            index={startIndex + idx}
-                            isSelected={selectedTestCases.has(testCase.id)}
-                            onToggleSelection={() => onToggleTestCaseSelection(testCase.id)}
-                            onViewTestCase={() => onViewTestCase(testCase)}
-                            onEditTestCase={() => onEditTestCase(testCase)}
-                            onOpenComments={() => onOpenComments(testCase)}
-                            onOpenAutomation={() => onOpenAutomation(testCase)}
-                            onOpenStatusHistory={() => handleOpenStatusHistory(testCase)}
-                            onRemoveTestCase={() => onRemoveTestCase(testCase.id)}
-                            onUpdateTestCaseStatus={(status) => onUpdateTestCaseStatus(testCase.id, status)}
-                            tableColumns={tableColumns}
-                            columnWidths={columnWidths}
-                            getUnresolvedCommentsCount={getUnresolvedCommentsCount}
-                            isMobile={false}
-                            isDragEnabled={isDragEnabled}
-                          />
-                        ))
+                    ))
                   )}
-                </TableBody>
-              </Table>
                 </div>
-              </SortableContext>
-            </DndContext>
+              </div>
             </div>
           </div>
         </div>
         
         {/* Mobile View */}
-        <div className="lg:hidden p-4 lg:pl-16 space-y-4">
+        <div className="lg:hidden p-4 lg:pl-16 space-y-4 bg-slate-900/60">
           {selectedTestCases.size > 0 && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="bg-red-900/20 border border-red-700/40 rounded-lg p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Trash2 className="w-5 h-5 text-red-600" />
@@ -1299,9 +1520,9 @@ export function TestCaseTable({
           )}
           {testCases.length === 0 ? (
             <div className="text-center py-12">
-              <FileText className="w-12 h-12 mx-auto mb-4 text-slate-300" />
-            <h3 className="text-lg font-medium text-slate-900 mb-2">No test cases available</h3>
-              <p className="text-slate-600 mb-4">Get started by adding your first test case.</p>
+              <FileText className="w-12 h-12 mx-auto mb-4 text-slate-400" />
+              <h3 className="text-lg font-medium text-slate-200 mb-2">No test cases available</h3>
+              <p className="text-slate-400 mb-4">Get started by adding your first test case.</p>
               <Button onClick={onAddTestCase} className="bg-blue-600 hover:bg-blue-700">
                 <Plus className="w-4 h-4 mr-2" />
                 Add Test Case
@@ -1312,7 +1533,7 @@ export function TestCaseTable({
             {paginatedTestCases.map((testCase, idx) => (
               <div 
                 key={testCase.id} 
-                className="bg-white border border-slate-200 rounded-lg p-4 cursor-pointer hover:bg-slate-50 transition-colors"
+                  className="bg-slate-900/60 border border-slate-700/60 rounded-lg p-4 cursor-pointer hover:bg-slate-800 transition-colors text-slate-200"
                 onDoubleClick={() => onViewTestCase(testCase)}
                 title="Double-click to view test case details"
               >
@@ -1323,8 +1544,8 @@ export function TestCaseTable({
                       onCheckedChange={() => onToggleTestCaseSelection(testCase.id)}
                     />
                   <div>
-                    <h4 className="font-medium text-slate-900">{testCase.testCase}</h4>
-                      <p className="text-sm text-slate-500">{testCase.category}</p>
+                        <h4 className="font-medium text-slate-200">{testCase.testCase}</h4>
+                        <p className="text-sm text-slate-400">{testCase.category}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-1">
@@ -1349,7 +1570,7 @@ export function TestCaseTable({
                     </Badge>
                 </div>
                   {testCase.description && (
-                    <p className="text-sm text-slate-600 line-clamp-2">{testCase.description}</p>
+                      <p className="text-sm text-slate-400 line-clamp-2">{testCase.description}</p>
                   )}
                 </div>
               </div>
@@ -1359,14 +1580,14 @@ export function TestCaseTable({
       </div>
 
       {/* Visual Separator */}
-      <div className="h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent mx-6"></div>
+        <div className="h-px bg-gradient-to-r from-transparent via-slate-700 to-transparent mx-6"></div>
 
-      {/* Pagination */}
-      <div className="px-6 py-6 border-t border-slate-200 bg-gradient-to-r from-slate-50/50 to-blue-50/30 shadow-sm">
+      {/* Pagination - match sidebar gradient */}
+        <div className="px-6 py-6 border-t border-slate-700/60 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-800">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2">
-              <span className="text-sm text-slate-600">Rows per page:</span>
+                <span className="text-sm text-slate-300">Rows per page:</span>
               <Select value={(rowsPerPage || 10).toString()} onValueChange={handleRowsPerPageChange}>
                 <SelectTrigger className="w-20 h-8">
                   <SelectValue />
@@ -1379,19 +1600,19 @@ export function TestCaseTable({
                 </SelectContent>
               </Select>
             </div>
-            <span className="text-sm text-slate-600">
+              <span className="text-sm text-slate-300">
               Showing {startIndex + 1} to {Math.min(endIndex, testCases.length)} of {testCases.length} results
             </span>
           </div>
           <div className="flex items-center gap-3">
             <Button 
-              variant="outline" 
+              variant={currentPage === 1 ? 'outline' : 'default'}
               size="sm" 
               disabled={currentPage === 1}
               onClick={() => handlePageChange(currentPage - 1)}
-              className="px-4 py-2"
+              className={currentPage === 1 ? 'px-4 py-2 bg-slate-800/70 border-slate-700 text-slate-400' : 'px-4 py-2 bg-blue-600 text-white hover:bg-blue-700'}
             >
-              Previous
+              Prev
             </Button>
             <div className="flex items-center gap-1">
               {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
@@ -1402,7 +1623,7 @@ export function TestCaseTable({
                     variant={currentPage === pageNum ? "default" : "outline"}
                     size="sm"
                     onClick={() => handlePageChange(pageNum)}
-                    className={currentPage === pageNum ? "bg-blue-600 text-white hover:bg-blue-700" : ""}
+                    className={currentPage === pageNum ? "bg-blue-600 text-white hover:bg-blue-700" : "bg-slate-800/70 border-slate-700 text-slate-300 hover:text-blue-300 hover:border-blue-600 hover:bg-slate-800"}
                   >
                     {pageNum}
                   </Button>
@@ -1430,11 +1651,11 @@ export function TestCaseTable({
               )}
             </div>
             <Button 
-              variant="outline" 
+              variant={currentPage === totalPages || totalPages === 0 ? 'outline' : 'default'} 
               size="sm"
               disabled={currentPage === totalPages || totalPages === 0}
               onClick={() => handlePageChange(currentPage + 1)}
-              className="px-4 py-2"
+              className={currentPage === totalPages || totalPages === 0 ? 'px-4 py-2 bg-slate-800/70 border-slate-700 text-slate-400' : 'px-4 py-2 bg-blue-600 text-white hover:bg-blue-700'}
             >
               Next
             </Button>
@@ -1706,7 +1927,7 @@ Status: Pending`
           </div>
         </div>
       )}
-      
+      </div>
     </div>
   )
 } 
