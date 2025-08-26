@@ -167,7 +167,7 @@ function SortableTableRow({
       case 'description':
         return (
           <TableCell key={columnName} className="p-4 border-r border-slate-200" style={{ width: `${columnWidths.description}px` }}>
-            <div className="text-sm text-slate-600 line-clamp-2">{testCase.description}</div>
+            <div className="text-sm text-slate-600 break-words whitespace-pre-wrap">{testCase.description}</div>
           </TableCell>
         )
       case 'status':

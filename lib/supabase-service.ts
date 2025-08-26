@@ -277,172 +277,39 @@ export const testCaseService = {
     console.log('🗑️ Attempting to delete test case:', id)
     
     try {
-      // Try to use the position-aware delete function first
-      const { error } = await supabase.rpc('delete_test_case_and_reorder', {
-        p_test_case_id: id
-      })
+      // Simple direct delete approach - more reliable
+      const { error } = await supabase
+        .from('test_cases')
+        .delete()
+        .eq('id', id)
       
       if (error) {
-        console.warn('⚠️ Atomic delete function failed, falling back to manual delete:', error.message)
-        throw error // This will trigger the fallback
+        console.error('❌ Failed to delete test case:', error)
+        throw error
       }
       
-      console.log('✅ Test case deleted successfully using atomic function:', id)
-      return
-    } catch (atomicError) {
-      console.log('🔄 Falling back to manual delete with position reordering...')
-      
-      // Fallback: Manual delete with position reordering
-      try {
-        // First, get the test case details to know its position and project
-        const { data: testCase, error: fetchError } = await supabase
-          .from('test_cases')
-          .select('position, project_id')
-          .eq('id', id)
-          .single()
-        
-        if (fetchError) {
-          console.error('❌ Failed to fetch test case for deletion:', fetchError)
-          throw fetchError
-        }
-        
-        if (!testCase) {
-          console.error('❌ Test case not found for deletion:', id)
-          throw new Error('Test case not found')
-        }
-        
-        console.log('📊 Test case details for deletion:', testCase)
-        
-        // Delete the test case
-        const { error: deleteError } = await supabase
-          .from('test_cases')
-          .delete()
-          .eq('id', id)
-        
-        if (deleteError) {
-          console.error('❌ Failed to delete test case:', deleteError)
-          throw deleteError
-        }
-        
-        // Reorder remaining test cases in the same project
-        // Get all test cases that need position adjustment
-        const { data: testCasesToUpdate, error: fetchUpdateError } = await supabase
-          .from('test_cases')
-          .select('id, position')
-          .eq('project_id', testCase.project_id)
-          .gte('position', testCase.position + 1)
-          .order('position', { ascending: true })
-        
-        if (fetchUpdateError) {
-          console.warn('⚠️ Failed to fetch test cases for position update:', fetchUpdateError)
-        } else if (testCasesToUpdate && testCasesToUpdate.length > 0) {
-          // Update positions one by one to avoid conflicts
-          for (const tc of testCasesToUpdate) {
-            const { error: updateError } = await supabase
-              .from('test_cases')
-              .update({ position: tc.position - 1 })
-              .eq('id', tc.id)
-            
-            if (updateError) {
-              console.warn(`⚠️ Failed to update position for test case ${tc.id}:`, updateError)
-            }
-          }
-        }
-        
-        console.log('✅ Test case deleted successfully with manual fallback:', id)
-      } catch (fallbackError) {
-        console.error('❌ Manual delete fallback also failed:', fallbackError)
-        throw fallbackError
-      }
+      console.log('✅ Test case deleted successfully:', id)
+    } catch (deleteError) {
+      console.error('❌ Delete operation failed:', deleteError)
+      throw deleteError
     }
   },
 
   async deleteMultiple(ids: string[]): Promise<void> {
-    // For multiple deletions, we need to handle position reordering properly
     console.log('🗑️ Starting bulk deletion of test cases:', { ids, count: ids.length })
     
     if (ids.length === 0) return
     
     try {
-      // Get all test cases to be deleted with their positions
-      const { data: testCasesToDelete, error: fetchError } = await supabase
+      // Simple bulk delete approach
+      const { error } = await supabase
         .from('test_cases')
-        .select('id, position, project_id')
+        .delete()
         .in('id', ids)
-        .order('position', { ascending: true })
       
-      if (fetchError) {
-        console.error('❌ Failed to fetch test cases for deletion:', fetchError)
-        throw fetchError
-      }
-      
-      if (!testCasesToDelete || testCasesToDelete.length === 0) {
-        console.warn('⚠️ No test cases found to delete')
-        return
-      }
-      
-      // Group by project to handle position reordering properly
-      const testCasesByProject = testCasesToDelete.reduce((acc, tc) => {
-        if (!acc[tc.project_id]) {
-          acc[tc.project_id] = []
-        }
-        acc[tc.project_id].push(tc)
-        return acc
-      }, {} as Record<string, typeof testCasesToDelete>)
-      
-      // Delete test cases and handle position reordering for each project
-      for (const [projectId, projectTestCases] of Object.entries(testCasesByProject)) {
-        console.log(`🗑️ Processing project ${projectId} with ${projectTestCases.length} test cases to delete`)
-        
-        // Delete test cases in reverse position order to minimize position conflicts
-        const sortedTestCases = [...projectTestCases].sort((a, b) => b.position - a.position)
-        
-        for (const testCase of sortedTestCases) {
-          try {
-            console.log(`🗑️ Deleting test case ${testCase.id} at position ${testCase.position}`)
-            
-            // Delete the test case
-            const { error: deleteError } = await supabase
-              .from('test_cases')
-              .delete()
-              .eq('id', testCase.id)
-            
-            if (deleteError) {
-              console.error(`❌ Failed to delete test case ${testCase.id}:`, deleteError)
-              throw deleteError
-            }
-            
-            // Update positions of remaining test cases in this project
-            // Get all test cases that need position adjustment
-            const { data: testCasesToUpdate, error: fetchUpdateError } = await supabase
-              .from('test_cases')
-              .select('id, position')
-              .eq('project_id', projectId)
-              .gt('position', testCase.position)
-              .order('position', { ascending: true })
-            
-            if (fetchUpdateError) {
-              console.warn(`⚠️ Failed to fetch test cases for position update:`, fetchUpdateError)
-            } else if (testCasesToUpdate && testCasesToUpdate.length > 0) {
-              // Update positions one by one to avoid conflicts
-              for (const tc of testCasesToUpdate) {
-                const { error: updateError } = await supabase
-                  .from('test_cases')
-                  .update({ position: tc.position - 1 })
-                  .eq('id', tc.id)
-                
-                if (updateError) {
-                  console.warn(`⚠️ Failed to update position for test case ${tc.id}:`, updateError)
-                }
-              }
-            }
-            
-            console.log(`✅ Successfully deleted test case ${testCase.id}`)
-          } catch (error) {
-            console.error(`❌ Failed to delete test case ${testCase.id}:`, error)
-            throw error
-          }
-        }
+      if (error) {
+        console.error('❌ Failed to delete test cases:', error)
+        throw error
       }
       
       console.log('✅ Bulk deletion completed successfully')
@@ -1798,8 +1665,10 @@ export const customColumnService = {
           width: column.width,
           min_width: column.minWidth,
           options: column.options,
+          option_colors: column.optionColors,
           default_value: column.defaultValue,
           required: column.required,
+          color: column.color,
           project_id: column.projectId,
           created_at: new Date(),
           updated_at: new Date()
@@ -1852,9 +1721,27 @@ export const customColumnService = {
   },
 
   async update(id: string, updates: Partial<CustomColumn>): Promise<CustomColumn> {
+    // Map frontend field names to database field names
+    const dbUpdates: any = {
+      updated_at: new Date()
+    }
+    
+    if (updates.name !== undefined) dbUpdates.name = updates.name
+    if (updates.label !== undefined) dbUpdates.label = updates.label
+    if (updates.type !== undefined) dbUpdates.type = updates.type
+    if (updates.visible !== undefined) dbUpdates.visible = updates.visible
+    if (updates.width !== undefined) dbUpdates.width = updates.width
+    if (updates.minWidth !== undefined) dbUpdates.min_width = updates.minWidth
+    if (updates.options !== undefined) dbUpdates.options = updates.options
+    if (updates.optionColors !== undefined) dbUpdates.option_colors = updates.optionColors
+    if (updates.defaultValue !== undefined) dbUpdates.default_value = updates.defaultValue
+    if (updates.required !== undefined) dbUpdates.required = updates.required
+    if (updates.color !== undefined) dbUpdates.color = updates.color
+    if (updates.projectId !== undefined) dbUpdates.project_id = updates.projectId
+
     const { data, error } = await supabase
       .from('custom_columns')
-      .update({ ...updates, updated_at: new Date() })
+      .update(dbUpdates)
       .eq('id', id)
       .select()
       .single()

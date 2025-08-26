@@ -158,7 +158,7 @@ export function TestCaseTable({
   const [isSaveFilterOpen, setIsSaveFilterOpen] = useState(false)
   const [isClearAllDialogOpen, setIsClearAllDialogOpen] = useState(false)
   const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false)
-  const [wrapMode, setWrapMode] = useState<'wrap' | 'truncate'>('truncate')
+  const [wrapMode, setWrapMode] = useState<'wrap' | 'truncate'>('wrap')
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
     const initial: Record<string, number> = {}
     ;[
@@ -187,6 +187,10 @@ export function TestCaseTable({
       const saved = typeof window !== 'undefined' ? localStorage.getItem(wrapStorageKey) : null
       if (saved === 'wrap' || saved === 'truncate') {
         setWrapMode(saved)
+      } else {
+        // Default to 'wrap' if no saved preference
+        setWrapMode('wrap')
+        localStorage.setItem(wrapStorageKey, 'wrap')
       }
     } catch (err) {
       // ignore storage errors
@@ -1461,13 +1465,131 @@ export function TestCaseTable({
                                   {column.key === 'index' ? (
                                     startIndex + rowIndex + 1
                                   ) : column.key === 'status' ? (
-                                    <Badge variant={getStatusBadgeVariant(testCase.status)} className={getStatusBadgeStyle(testCase.status)}>
-                                      {testCase.status}
-                                    </Badge>
+                                    <Select
+                                      value={testCase.status}
+                                      onValueChange={(value) => onUpdateTestCaseStatus(testCase.id, value as TestCaseStatus)}
+                                    >
+                                      <SelectTrigger className="w-full border-0 p-0 h-auto bg-transparent hover:bg-slate-50">
+                                        <Badge variant={getStatusBadgeVariant(testCase.status)} className={getStatusBadgeStyle(testCase.status)}>
+                                          {testCase.status}
+                                        </Badge>
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {STATUS_OPTIONS.map((status) => {
+                                          const StatusIcon = getStatusIcon(status)
+                                          return (
+                                            <SelectItem key={status} value={status}>
+                                              <div className="flex items-center gap-2">
+                                                <StatusIcon className="w-4 h-4" />
+                                                {status}
+                                              </div>
+                                            </SelectItem>
+                                          )
+                                        })}
+                                      </SelectContent>
+                                    </Select>
                                   ) : column.key === 'priority' ? (
-                                    <Badge variant={getPriorityBadgeVariant(testCase.priority)} className={getPriorityBadgeStyle(testCase.priority)}>
-                                      {testCase.priority}
-                                    </Badge>
+                                    <Select
+                                      value={testCase.priority}
+                                      onValueChange={(value) => onUpdateTestCase({ ...testCase, priority: value as TestCasePriority })}
+                                    >
+                                      <SelectTrigger className="w-full border-0 p-0 h-auto bg-transparent hover:bg-slate-50">
+                                        <Badge variant={getPriorityBadgeVariant(testCase.priority)} className={getPriorityBadgeStyle(testCase.priority)}>
+                                          {testCase.priority}
+                                        </Badge>
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {PRIORITY_OPTIONS.map((priority) => {
+                                          const PriorityIcon = getPriorityIcon(priority)
+                                          return (
+                                            <SelectItem key={priority} value={priority}>
+                                              <div className="flex items-center gap-2">
+                                                <PriorityIcon className="w-4 h-4" />
+                                                {priority}
+                                              </div>
+                                            </SelectItem>
+                                          )
+                                        })}
+                                      </SelectContent>
+                                    </Select>
+                                  ) : column.type === 'select' && column.key.startsWith('custom:') ? (
+                                    (() => {
+                                      const fieldName = column.key.slice('custom:'.length)
+                                      const value = (testCase.customFields || {})[fieldName]
+                                      const stringValue = value != null ? String(value) : ''
+                                      // Find the custom column to get its color and option colors
+                                      const customColumn = customColumns.find(col => col.name === fieldName)
+                                      const columnColor = customColumn?.color || '#3b82f6'
+                                      const optionColor = customColumn?.optionColors?.[stringValue] || columnColor
+                                      return (
+                                        <Select
+                                          value={stringValue}
+                                          onValueChange={(newValue) => {
+                                            if (onUpdateCustomField) {
+                                              onUpdateCustomField(testCase.id, fieldName, newValue)
+                                            }
+                                          }}
+                                        >
+                                          <SelectTrigger className="w-full border-0 p-0 h-auto bg-transparent hover:bg-slate-50">
+                                            <Badge 
+                                              variant="outline" 
+                                              className="text-sm"
+                                              style={{
+                                                borderColor: optionColor,
+                                                color: optionColor,
+                                                backgroundColor: `${optionColor}10`
+                                              }}
+                                            >
+                                              {value || 'Not Set'}
+                                            </Badge>
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            {column.options?.map((option) => (
+                                              <SelectItem key={option} value={option}>
+                                                {option}
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                      )
+                                    })()
+                                  ) : column.type === 'boolean' && column.key.startsWith('custom:') ? (
+                                    (() => {
+                                      const fieldName = column.key.slice('custom:'.length)
+                                      const value = (testCase.customFields || {})[fieldName]
+                                      const boolValue = value === true || value === 'true'
+                                      // Find the custom column to get its color
+                                      const customColumn = customColumns.find(col => col.name === fieldName)
+                                      const columnColor = customColumn?.color || '#3b82f6'
+                                      return (
+                                        <Select
+                                          value={boolValue ? 'true' : 'false'}
+                                          onValueChange={(newValue) => {
+                                            if (onUpdateCustomField) {
+                                              onUpdateCustomField(testCase.id, fieldName, newValue === 'true')
+                                            }
+                                          }}
+                                        >
+                                          <SelectTrigger className="w-full border-0 p-0 h-auto bg-transparent hover:bg-slate-50">
+                                            <Badge 
+                                              variant={boolValue ? 'default' : 'secondary'} 
+                                              className="text-sm"
+                                              style={{
+                                                backgroundColor: boolValue ? columnColor : `${columnColor}20`,
+                                                color: boolValue ? 'white' : columnColor,
+                                                borderColor: columnColor
+                                              }}
+                                            >
+                                              {boolValue ? 'Yes' : 'No'}
+                                            </Badge>
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="true">Yes</SelectItem>
+                                            <SelectItem value="false">No</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      )
+                                    })()
                                   ) : (
                                     getCellValue(testCase, column.key) || '-'
                                   )}
@@ -1562,15 +1684,143 @@ export function TestCaseTable({
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                  <Badge variant={getStatusBadgeVariant(testCase.status)} className={getStatusBadgeStyle(testCase.status)}>
-                    {testCase.status}
-                  </Badge>
-                    <Badge variant={getPriorityBadgeVariant(testCase.priority)} className={getPriorityBadgeStyle(testCase.priority)}>
-                      {testCase.priority}
-                    </Badge>
+                    <Select
+                      value={testCase.status}
+                      onValueChange={(value) => onUpdateTestCaseStatus(testCase.id, value as TestCaseStatus)}
+                    >
+                      <SelectTrigger className="w-auto border-0 p-0 h-auto bg-transparent">
+                        <Badge variant={getStatusBadgeVariant(testCase.status)} className={getStatusBadgeStyle(testCase.status)}>
+                          {testCase.status}
+                        </Badge>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {STATUS_OPTIONS.map((status) => {
+                          const StatusIcon = getStatusIcon(status)
+                          return (
+                            <SelectItem key={status} value={status}>
+                              <div className="flex items-center gap-2">
+                                <StatusIcon className="w-4 h-4" />
+                                {status}
+                              </div>
+                            </SelectItem>
+                          )
+                        })}
+                      </SelectContent>
+                    </Select>
+                    <Select
+                      value={testCase.priority}
+                      onValueChange={(value) => onUpdateTestCase({ ...testCase, priority: value as TestCasePriority })}
+                    >
+                      <SelectTrigger className="w-auto border-0 p-0 h-auto bg-transparent">
+                        <Badge variant={getPriorityBadgeVariant(testCase.priority)} className={getPriorityBadgeStyle(testCase.priority)}>
+                          {testCase.priority}
+                        </Badge>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PRIORITY_OPTIONS.map((priority) => {
+                          const PriorityIcon = getPriorityIcon(priority)
+                          return (
+                            <SelectItem key={priority} value={priority}>
+                              <div className="flex items-center gap-2">
+                                <PriorityIcon className="w-4 h-4" />
+                                {priority}
+                              </div>
+                            </SelectItem>
+                          )
+                        })}
+                      </SelectContent>
+                    </Select>
+                    
+                    {/* Custom Fields in Mobile View */}
+                    {customColumns.filter(col => col.visible).map((customCol) => {
+                      const fieldValue = (testCase.customFields || {})[customCol.name]
+                      
+                      if (customCol.type === 'select') {
+                        const stringValue = fieldValue != null ? String(fieldValue) : ''
+                        return (
+                          <Select
+                            key={customCol.id}
+                            value={stringValue}
+                            onValueChange={(value) => {
+                              if (onUpdateCustomField) {
+                                onUpdateCustomField(testCase.id, customCol.name, value)
+                              }
+                            }}
+                          >
+                            <SelectTrigger className="w-auto border-0 p-0 h-auto bg-transparent">
+                              <Badge 
+                                variant="outline" 
+                                className="text-sm"
+                                style={{
+                                  borderColor: customCol.optionColors?.[String(fieldValue)] || customCol.color || '#3b82f6',
+                                  color: customCol.optionColors?.[String(fieldValue)] || customCol.color || '#3b82f6',
+                                  backgroundColor: `${customCol.optionColors?.[String(fieldValue)] || customCol.color || '#3b82f6'}10`
+                                }}
+                              >
+                                {fieldValue || 'Not Set'}
+                              </Badge>
+                            </SelectTrigger>
+                            <SelectContent>
+                              {customCol.options?.map((option) => (
+                                <SelectItem key={option} value={option}>
+                                  {option}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )
+                      } else if (customCol.type === 'boolean') {
+                        const boolValue = fieldValue === true || fieldValue === 'true'
+                        return (
+                          <Select
+                            key={customCol.id}
+                            value={boolValue ? 'true' : 'false'}
+                            onValueChange={(value) => {
+                              if (onUpdateCustomField) {
+                                onUpdateCustomField(testCase.id, customCol.name, value === 'true')
+                              }
+                            }}
+                          >
+                            <SelectTrigger className="w-auto border-0 p-0 h-auto bg-transparent">
+                              <Badge 
+                                variant={boolValue ? 'default' : 'secondary'} 
+                                className="text-sm"
+                                style={{
+                                  backgroundColor: boolValue ? (customCol.color || '#3b82f6') : `${customCol.color || '#3b82f6'}20`,
+                                  color: boolValue ? 'white' : (customCol.color || '#3b82f6'),
+                                  borderColor: customCol.color || '#3b82f6'
+                                }}
+                              >
+                                {boolValue ? 'Yes' : 'No'}
+                              </Badge>
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="true">Yes</SelectItem>
+                              <SelectItem value="false">No</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )
+                      } else {
+                        // For text, number, date fields, show as non-interactive badge
+                        return (
+                          <Badge 
+                            key={customCol.id} 
+                            variant="outline" 
+                            className="text-sm"
+                            style={{
+                              borderColor: customCol.color || '#3b82f6',
+                              color: customCol.color || '#3b82f6',
+                              backgroundColor: `${customCol.color || '#3b82f6'}10`
+                            }}
+                          >
+                            {customCol.label}: {fieldValue || '-'}
+                          </Badge>
+                        )
+                      }
+                    })}
                 </div>
                   {testCase.description && (
-                      <p className="text-sm text-slate-400 line-clamp-2">{testCase.description}</p>
+                      <p className="text-sm text-slate-400 break-words whitespace-pre-wrap">{testCase.description}</p>
                   )}
                 </div>
               </div>

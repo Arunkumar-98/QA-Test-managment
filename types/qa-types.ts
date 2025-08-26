@@ -5,6 +5,15 @@ export type TestCaseStatus = 'Pending' | 'Pass' | 'Fail' | 'In Progress' | 'Bloc
 export type TestCasePriority = 'High' | 'Medium' | 'Low'
 export type TestCaseCategory = 'Functional' | 'Non-Functional' | 'Regression' | 'Smoke' | 'Integration' | 'Unit' | 'E2E'
 
+// New status types for different roles
+export type QAStatus = 'Not Started' | 'In Progress' | 'Pass' | 'Fail' | 'Blocked' | 'Deferred' | 'Not Applicable'
+export type DevStatus = 'Not Started' | 'In Progress' | 'Completed' | 'In Review' | 'Blocked' | 'Deferred'
+export type BugStatus = 'Open' | 'In Progress' | 'Fixed' | 'Verified' | 'Closed' | 'Won\'t Fix' | 'Duplicate'
+export type TestType = 'Manual' | 'Automated' | 'Semi-Automated' | 'Exploratory' | 'Performance' | 'Security'
+export type TestLevel = 'Unit' | 'Integration' | 'System' | 'Acceptance' | 'Regression' | 'Smoke' | 'Sanity'
+export type DefectSeverity = 'Critical' | 'High' | 'Medium' | 'Low' | 'Cosmetic'
+export type DefectPriority = 'P1' | 'P2' | 'P3' | 'P4' | 'P5'
+
 export type StatusChangeReason = 'manual_update' | 'automation_run' | 'bulk_update' | 'import' | 'system'
 
 export type StatusHistory = {
@@ -71,6 +80,25 @@ export type TestCase = {
   position: number
   createdAt: Date
   updatedAt: Date
+  // New core columns
+  qaStatus: QAStatus
+  devStatus: DevStatus
+  assignedDev: string
+  bugStatus: BugStatus
+  testType: TestType
+  testLevel: TestLevel
+  defectSeverity: DefectSeverity
+  defectPriority: DefectPriority
+  estimatedTime: number // in minutes
+  actualTime: number // in minutes
+  testData: string
+  attachments: string[]
+  tags: string[]
+  reviewer: string
+  reviewDate: string
+  reviewNotes: string
+  lastModifiedBy: string
+  lastModifiedDate: Date
   automationScript?: {
     path: string
     type: string
@@ -111,6 +139,25 @@ export type TestCaseDB = {
   position: number
   created_at: Date
   updated_at: Date
+  // New core columns (snake_case)
+  qa_status: QAStatus
+  dev_status: DevStatus
+  assigned_dev: string
+  bug_status: BugStatus
+  test_type: TestType
+  test_level: TestLevel
+  defect_severity: DefectSeverity
+  defect_priority: DefectPriority
+  estimated_time: number // in minutes
+  actual_time: number // in minutes
+  test_data: string
+  attachments: string[]
+  tags: string[]
+  reviewer: string
+  review_date: string
+  review_notes: string
+  last_modified_by: string
+  last_modified_date: Date
   automation_script?: {
     path: string
     type: string
@@ -428,6 +475,25 @@ export const mapTestCaseFromDB = (db: TestCaseDB): TestCase => ({
   position: db.position,
   createdAt: db.created_at instanceof Date ? db.created_at : new Date(db.created_at),
   updatedAt: db.updated_at instanceof Date ? db.updated_at : new Date(db.updated_at),
+  // New core columns
+  qaStatus: db.qa_status || 'Not Started',
+  devStatus: db.dev_status || 'Not Started',
+  assignedDev: db.assigned_dev || '',
+  bugStatus: db.bug_status || 'Open',
+  testType: db.test_type || 'Manual',
+  testLevel: db.test_level || 'System',
+  defectSeverity: db.defect_severity || 'Medium',
+  defectPriority: db.defect_priority || 'P3',
+  estimatedTime: db.estimated_time || 0,
+  actualTime: db.actual_time || 0,
+  testData: db.test_data || '',
+  attachments: db.attachments || [],
+  tags: db.tags || [],
+  reviewer: db.reviewer || '',
+  reviewDate: db.review_date || '',
+  reviewNotes: db.review_notes || '',
+  lastModifiedBy: db.last_modified_by || '',
+  lastModifiedDate: db.last_modified_date instanceof Date ? db.last_modified_date : new Date(db.last_modified_date || db.updated_at),
   automationScript: db.automation_script ? {
     path: db.automation_script.path,
     type: db.automation_script.type,
@@ -464,6 +530,25 @@ export const mapTestCaseToDB = (tc: TestCase): TestCaseDB => ({
   position: tc.position,
   created_at: tc.createdAt,
   updated_at: tc.updatedAt,
+  // New core columns (snake_case)
+  qa_status: tc.qaStatus,
+  dev_status: tc.devStatus,
+  assigned_dev: tc.assignedDev,
+  bug_status: tc.bugStatus,
+  test_type: tc.testType,
+  test_level: tc.testLevel,
+  defect_severity: tc.defectSeverity,
+  defect_priority: tc.defectPriority,
+  estimated_time: tc.estimatedTime,
+  actual_time: tc.actualTime,
+  test_data: tc.testData,
+  attachments: tc.attachments,
+  tags: tc.tags,
+  reviewer: tc.reviewer,
+  review_date: tc.reviewDate,
+  review_notes: tc.reviewNotes,
+  last_modified_by: tc.lastModifiedBy,
+  last_modified_date: tc.lastModifiedDate,
   automation_script: tc.automationScript ? {
     path: tc.automationScript.path,
     type: tc.automationScript.type,
@@ -854,8 +939,10 @@ export type CustomColumn = {
   width: string
   minWidth: string
   options?: string[] // For select type
+  optionColors?: { [key: string]: string } // Colors for individual options
   defaultValue?: string | number | boolean
   required?: boolean
+  color?: string // Color for the column (hex code)
   projectId: string
   createdAt: Date
   updatedAt: Date
@@ -870,8 +957,10 @@ export type CustomColumnDB = {
   width: string
   min_width: string
   options?: string[]
+  option_colors?: { [key: string]: string } // Colors for individual options
   default_value?: string | number | boolean
   required?: boolean
+  color?: string
   project_id: string
   created_at: Date
   updated_at: Date
@@ -888,8 +977,10 @@ export const mapCustomColumnFromDB = (db: CustomColumnDB): CustomColumn => ({
   width: db.width,
   minWidth: db.min_width,
   options: db.options,
+  optionColors: db.option_colors,
   defaultValue: db.default_value,
   required: db.required,
+  color: db.color,
   projectId: db.project_id,
   createdAt: db.created_at,
   updatedAt: db.updated_at
@@ -904,8 +995,10 @@ export const mapCustomColumnToDB = (column: CustomColumn): CustomColumnDB => ({
   width: column.width,
   min_width: column.minWidth,
   options: column.options,
+  option_colors: column.optionColors,
   default_value: column.defaultValue,
   required: column.required,
+  color: column.color,
   project_id: column.projectId,
   created_at: column.createdAt,
   updated_at: column.updatedAt

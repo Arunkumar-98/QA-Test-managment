@@ -19,13 +19,15 @@ import {
   Sparkles,
   Upload,
   Download,
-  Eye
+  Eye,
+  Loader2
 } from 'lucide-react'
-import { TestCase } from '@/types/qa-types'
+import { TestCase, CustomColumn, CreateCustomColumnInput } from '@/types/qa-types'
 import { ImportFormat } from '@/types/import-types'
 import { parseTextIntelligently, mapImportedDataToTestCase, validateImportedTestCase } from '@/lib/utils'
 import { parseHierarchicalTestCases } from '@/lib/hierarchical-parser'
 import { toast } from '@/hooks/use-toast'
+import { customColumnService } from '@/lib/supabase-service'
 
 interface EnhancedPasteDialogProps {
   isOpen: boolean
@@ -33,6 +35,7 @@ interface EnhancedPasteDialogProps {
   onImport: (testCases: Partial<TestCase>[]) => void
   currentProject: string
   selectedSuiteId?: string
+  onCustomColumnsCreated?: (columns: CustomColumn[]) => void
 }
 
 export function EnhancedPasteDialog({
@@ -40,7 +43,8 @@ export function EnhancedPasteDialog({
   onClose,
   onImport,
   currentProject,
-  selectedSuiteId
+  selectedSuiteId,
+  onCustomColumnsCreated
 }: EnhancedPasteDialogProps) {
   const [pastedText, setPastedText] = useState('')
   const [parsedData, setParsedData] = useState<any[]>([])
@@ -50,6 +54,8 @@ export function EnhancedPasteDialog({
   const [validationErrors, setValidationErrors] = useState<string[]>([])
   const [activeTab, setActiveTab] = useState('paste')
   const [hierarchicalData, setHierarchicalData] = useState<any>(null)
+  const [detectedHeaders, setDetectedHeaders] = useState<string[]>([])
+  const [creatingColumns, setCreatingColumns] = useState(false)
 
   // Auto-parse when text changes
   useEffect(() => {
@@ -58,6 +64,18 @@ export function EnhancedPasteDialog({
       setDetectedFormat(result.format)
       setConfidence(result.confidence)
       setParsedData(result.data)
+
+      // Detect headers for TSV/CSV formats
+      if (result.format === 'tsv' || result.format === 'csv') {
+        const lines = pastedText.split('\n').filter(line => line.trim())
+        if (lines.length > 0) {
+          const separator = result.format === 'tsv' ? '\t' : ','
+          const headers = lines[0].split(separator).map(h => h.trim().replace(/"/g, ''))
+          setDetectedHeaders(headers)
+        }
+      } else {
+        setDetectedHeaders([])
+      }
 
       if (result.format === 'hierarchical') {
         try {
@@ -112,6 +130,7 @@ export function EnhancedPasteDialog({
       setParsedTestCases([])
       setValidationErrors([])
       setHierarchicalData(null)
+      setDetectedHeaders([])
     }
   }, [pastedText, currentProject, selectedSuiteId])
 
@@ -129,13 +148,96 @@ export function EnhancedPasteDialog({
     }
   }
 
-  const handleImport = () => {
+  const createCustomColumnsFromHeaders = async (headers: string[]): Promise<CustomColumn[]> => {
+    const standardFields = [
+      'test case id', 'title', 'description', 'steps to reproduce', 'expected result', 
+      'priority', 'status', 'category', 'assigned tester', 'execution date', 'notes', 
+      'actual result', 'environment', 'prerequisites', 'platform'
+    ]
+    
+    const customColumns: CustomColumn[] = []
+    
+    for (const header of headers) {
+      const normalizedHeader = header.toLowerCase().trim()
+      
+      // Skip if it's a standard field
+      if (standardFields.some(field => normalizedHeader.includes(field))) {
+        continue
+      }
+      
+      // Determine column type based on header name
+      let columnType: 'text' | 'number' | 'select' | 'date' = 'text'
+      if (normalizedHeader.includes('date') || normalizedHeader.includes('time')) {
+        columnType = 'date'
+      } else if (normalizedHeader.includes('count') || normalizedHeader.includes('number') || normalizedHeader.includes('id')) {
+        columnType = 'number'
+      } else if (normalizedHeader.includes('enabled') || normalizedHeader.includes('active') || normalizedHeader.includes('status')) {
+        columnType = 'select'
+      }
+      
+      try {
+        const columnInput: CreateCustomColumnInput = {
+          name: header.toLowerCase().replace(/\s+/g, '_'),
+          label: header,
+          type: columnType,
+          visible: true,
+          width: '150px',
+          minWidth: '100px',
+          options: columnType === 'select' ? ['Yes', 'No', 'Enabled', 'Disabled'] : undefined,
+          defaultValue: undefined,
+          required: false,
+          projectId: currentProject
+        }
+        
+        const createdColumn = await customColumnService.create(columnInput)
+        customColumns.push(createdColumn)
+      } catch (error) {
+        console.error(`Failed to create custom column for header "${header}":`, error)
+        // Continue with other columns even if one fails
+      }
+    }
+    
+    return customColumns
+  }
+
+  const handleImport = async () => {
     if (parsedTestCases.length > 0) {
-      onImport(parsedTestCases)
-      onClose()
-      setPastedText('')
-      setParsedData([])
-      setParsedTestCases([])
+      setCreatingColumns(true)
+      
+      try {
+        // Create custom columns if headers are detected
+        let createdColumns: CustomColumn[] = []
+        if (detectedHeaders.length > 0 && (detectedFormat === 'tsv' || detectedFormat === 'csv')) {
+          createdColumns = await createCustomColumnsFromHeaders(detectedHeaders)
+          
+          if (createdColumns.length > 0) {
+            toast({
+              title: "Custom Columns Created",
+              description: `Successfully created ${createdColumns.length} custom columns from your data headers.`,
+            })
+            
+            // Notify parent component about new columns
+            if (onCustomColumnsCreated) {
+              onCustomColumnsCreated(createdColumns)
+            }
+          }
+        }
+        
+        onImport(parsedTestCases)
+        onClose()
+        setPastedText('')
+        setParsedData([])
+        setParsedTestCases([])
+        setDetectedHeaders([])
+      } catch (error) {
+        toast({
+          title: "Import Error",
+          description: "Failed to create custom columns. Please try again.",
+          variant: "destructive"
+        })
+      } finally {
+        setCreatingColumns(false)
+      }
     }
   }
 
@@ -172,7 +274,8 @@ export function EnhancedPasteDialog({
             Enhanced Paste Import
           </DialogTitle>
           <DialogDescription>
-            Paste your test case data in any format. The system will automatically detect and parse it.
+            Paste your test case data in any format. The system will automatically detect and parse it. 
+            Custom columns will be created automatically based on your data headers.
           </DialogDescription>
         </DialogHeader>
 
@@ -240,6 +343,11 @@ export function EnhancedPasteDialog({
                 <div className="flex items-center justify-between">
                   <h3 className="font-semibold">Preview ({parsedTestCases.length} test cases)</h3>
                   <div className="flex items-center gap-2">
+                    {detectedHeaders.length > 0 && (
+                      <Badge variant="outline" className="bg-blue-100 text-blue-800">
+                        {detectedHeaders.length} columns detected
+                      </Badge>
+                    )}
                     {validationErrors.length > 0 && (
                       <Badge variant="destructive" className="flex items-center gap-1">
                         <AlertTriangle className="w-3 h-3" />
@@ -405,9 +513,9 @@ export function EnhancedPasteDialog({
                 </CardHeader>
                 <CardContent>
                   <pre className="bg-muted p-3 rounded text-sm overflow-x-auto">
-{`Test Case Title	Description	Steps to Reproduce	Expected Result	Priority	Status
-Short Active Screen Recording	Record 3–5 min while app is foregrounded	1. Start recording 2. Keep app in foreground	Recording completes and note is generated	Medium	Pending
-Medium Active Screen Recording	Record 10–15 min with app in active state	Same as above	Recording completes and is uploaded	Medium	Pending`}
+{`Test Case ID	Title	Description	Steps to Reproduce	Expected Result	Priority	Status
+TC-001	Overlapping Scheduled Rides	Driver should not be able to accept overlapping scheduled rides.	1. Login as driver 2. Accept ride at 10:00 AM 3. Try to accept another ride at 10:15 AM	System should restrict overlapping rides (min 30 min gap required).	High	Pending
+TC-002	Immediate Ride Conflict	Driver should get warning if accepting ride within 30 min of scheduled ride.	1. Accept scheduled ride at 11:00 AM 2. Try to accept on-demand ride at 10:40 AM	Warning message should be shown.	High	Pending`}
                   </pre>
                 </CardContent>
               </Card>
@@ -424,9 +532,9 @@ Medium Active Screen Recording	Record 10–15 min with app in active state	Same 
                 </CardHeader>
                 <CardContent>
                   <pre className="bg-muted p-3 rounded text-sm overflow-x-auto">
-{`Test ID,Test Case Name,Description,Steps,Expected Result,Priority,Status
-TC001,Login Test,Verify user login,1. Enter credentials 2. Click login,User logged in,High,Pending
-TC002,Logout Test,Verify user logout,1. Click logout,User logged out,Medium,Pending`}
+{`Test Case ID,Title,Description,Steps to Reproduce,Expected Result,Priority,Status
+TC-001,Overlapping Scheduled Rides,Driver should not be able to accept overlapping scheduled rides.,1. Login as driver 2. Accept ride at 10:00 AM 3. Try to accept another ride at 10:15 AM,System should restrict overlapping rides (min 30 min gap required).,High,Pending
+TC-002,Immediate Ride Conflict,Driver should get warning if accepting ride within 30 min of scheduled ride.,1. Accept scheduled ride at 11:00 AM 2. Try to accept on-demand ride at 10:40 AM,Warning message should be shown.,High,Pending`}
                   </pre>
                 </CardContent>
               </Card>
@@ -443,10 +551,11 @@ TC002,Logout Test,Verify user logout,1. Click logout,User logged out,Medium,Pend
                 </CardHeader>
                 <CardContent>
                   <pre className="bg-muted p-3 rounded text-sm overflow-x-auto">
-{`Test Case: User Login
-Description: Verify user can log in with valid credentials
-Steps: 1. Enter username 2. Enter password 3. Click login
-Expected: User is logged in and redirected to dashboard
+{`Test Case ID: TC-001
+Title: Overlapping Scheduled Rides
+Description: Driver should not be able to accept overlapping scheduled rides.
+Steps to Reproduce: 1. Login as driver 2. Accept ride at 10:00 AM 3. Try to accept another ride at 10:15 AM
+Expected Result: System should restrict overlapping rides (min 30 min gap required).
 Priority: High
 Status: Pending`}
                   </pre>
@@ -469,6 +578,35 @@ Status: Pending`}
 Verify user can log in with valid credentials. 
 The system should authenticate the user and redirect to the dashboard.`}
                   </pre>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Sparkles className="w-5 h-5" />
+                    Dynamic Column Creation
+                  </CardTitle>
+                  <CardDescription>
+                    Custom columns are automatically created based on your data headers
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <p className="text-sm text-muted-foreground">
+                      When you paste data with headers that don't match standard fields, the system will automatically create custom columns for them.
+                    </p>
+                    <div className="bg-muted p-3 rounded text-sm">
+                      <p className="font-medium mb-2">Example:</p>
+                      <p>If your data has headers like:</p>
+                      <ul className="list-disc list-inside mt-1 space-y-1">
+                        <li><code>Test Case ID</code> → Standard field (no custom column)</li>
+                        <li><code>Custom Field</code> → Creates a new custom column</li>
+                        <li><code>Date Created</code> → Creates a date-type custom column</li>
+                        <li><code>Bug Count</code> → Creates a number-type custom column</li>
+                      </ul>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
 
@@ -515,11 +653,20 @@ P1 - High Priority
           </Button>
           <Button 
             onClick={handleImport} 
-            disabled={parsedTestCases.length === 0}
+            disabled={parsedTestCases.length === 0 || creatingColumns}
             className="flex items-center gap-2"
           >
-            <Check className="w-4 h-4" />
-            Import {parsedTestCases.length} Test Cases
+            {creatingColumns ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Creating Columns...
+              </>
+            ) : (
+              <>
+                <Check className="w-4 h-4" />
+                Import {parsedTestCases.length} Test Cases
+              </>
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -46,23 +46,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Get initial session with error handling
     const getInitialSession = async () => {
       try {
+        console.log('🔄 Getting initial session...')
         const { data: { session }, error } = await supabase.auth.getSession()
         
         if (error) {
-          console.error('Error getting initial session:', error)
+          console.error('❌ Error getting initial session:', error)
           // If it's a refresh token error, clear the session
-          if (error.message.includes('Invalid Refresh Token') || error.message.includes('Refresh Token Not Found')) {
+          if (error.message.includes('Invalid Refresh Token') || 
+              error.message.includes('Refresh Token Not Found') ||
+              error.message.includes('JWT expired')) {
+            console.log('🔄 Clearing invalid session due to refresh token error...')
             await clearInvalidSession()
           }
           setLoading(false)
           return
         }
         
+        console.log('✅ Session retrieved successfully:', session?.user?.email)
         setSession(session)
         setUser(session?.user ?? null)
         setLoading(false)
       } catch (error) {
-        console.error('Unexpected error getting session:', error)
+        console.error('❌ Unexpected error getting session:', error)
         setLoading(false)
       }
     }
@@ -73,12 +78,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state change:', event, session?.user?.email)
+      console.log('🔄 Auth state change:', event, session?.user?.email)
       
       if (event === 'TOKEN_REFRESHED') {
-        console.log('Token refreshed successfully')
+        console.log('✅ Token refreshed successfully')
       } else if (event === 'SIGNED_OUT') {
-        console.log('User signed out')
+        console.log('👋 User signed out')
+      } else if (event === 'TOKEN_REFRESH_FAILED') {
+        console.log('❌ Token refresh failed, clearing session...')
+        await clearInvalidSession()
+        return
       }
       
       setSession(session)

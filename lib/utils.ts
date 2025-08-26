@@ -363,7 +363,7 @@ export const mapImportedDataToTestCase = (
 ): Partial<TestCase> => {
   return {
     testCase: mapImportField(row, 'testCase', [
-      'Test Case Title', 'Test Case', 'Test Case Name', 'Test ID', 'Title', 'Name', 'TC Name'
+      'Test Case ID', 'Test Case Title', 'Test Case', 'Test Case Name', 'Test ID', 'Title', 'Name', 'TC Name'
     ], `Imported Test Case ${index + 1}`),
     
     description: mapImportField(row, 'description', [
@@ -830,8 +830,8 @@ export const parseTextIntelligently = (text: string): {
 
   // Check if it's structured text (with keywords)
   const structuredKeywords = [
-    'test case:', 'description:', 'steps:', 'priority:', 'status:',
-    'test case name:', 'test steps:', 'test priority:', 'test status:'
+    'test case id:', 'title:', 'description:', 'steps to reproduce:', 'expected result:', 'priority:', 'status:',
+    'test case:', 'steps:', 'expected:', 'test case name:', 'test steps:', 'test priority:', 'test status:'
   ]
   
   const hasStructuredFormat = structuredKeywords.some(keyword => 
@@ -841,7 +841,7 @@ export const parseTextIntelligently = (text: string): {
   if (hasStructuredFormat) {
     // Parse structured text
     const testCase: any = {}
-    const sections = text.split(/(?=^(?:test case|description|steps|expected|priority|status):)/mi)
+    const sections = text.split(/(?=^(?:test case id|title|description|steps to reproduce|expected result|priority|status):)/mi)
     
     sections.forEach(section => {
       const lines = section.trim().split('\n')
@@ -849,14 +849,16 @@ export const parseTextIntelligently = (text: string): {
         const firstLine = lines[0].toLowerCase()
         const content = lines.slice(1).join('\n').trim()
         
-        if (firstLine.includes('test case')) {
-          testCase.testCase = content || firstLine.replace(/^test case:\s*/i, '').trim()
+        if (firstLine.includes('test case id')) {
+          testCase.testCase = content || firstLine.replace(/^test case id:\s*/i, '').trim()
+        } else if (firstLine.includes('title')) {
+          testCase.testCase = (testCase.testCase || '') + ': ' + (content || firstLine.replace(/^title:\s*/i, '').trim())
         } else if (firstLine.includes('description')) {
           testCase.description = content || firstLine.replace(/^description:\s*/i, '').trim()
-        } else if (firstLine.includes('steps')) {
-          testCase.stepsToReproduce = content || firstLine.replace(/^steps:\s*/i, '').trim()
-        } else if (firstLine.includes('expected')) {
-          testCase.expectedResult = content || firstLine.replace(/^expected:\s*/i, '').trim()
+        } else if (firstLine.includes('steps to reproduce')) {
+          testCase.stepsToReproduce = content || firstLine.replace(/^steps to reproduce:\s*/i, '').trim()
+        } else if (firstLine.includes('expected result')) {
+          testCase.expectedResult = content || firstLine.replace(/^expected result:\s*/i, '').trim()
         } else if (firstLine.includes('priority')) {
           testCase.priority = content || firstLine.replace(/^priority:\s*/i, '').trim()
         } else if (firstLine.includes('status')) {

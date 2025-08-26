@@ -43,8 +43,10 @@ export function CustomColumnDialog({
     width: "w-32",
     minWidth: "min-w-[120px]",
     options: [] as string[],
+    optionColors: {} as { [key: string]: string },
     defaultValue: "",
-    required: false
+    required: false,
+    color: "#3b82f6" // Default blue color
   })
 
   const [newOption, setNewOption] = useState("")
@@ -99,8 +101,10 @@ export function CustomColumnDialog({
         width: defaultColumn.column.width,
         minWidth: defaultColumn.column.minWidth,
         options: [],
+        optionColors: defaultColumn.column.optionColors || {},
         defaultValue: "",
-        required: false
+        required: false,
+        color: defaultColumn.column.color || "#3b82f6"
       })
     } else if (column && isEditMode) {
       // Handle custom column editing
@@ -112,8 +116,10 @@ export function CustomColumnDialog({
         width: column.width,
         minWidth: column.minWidth,
         options: column.options || [],
+        optionColors: column.optionColors || {},
         defaultValue: column.defaultValue?.toString() || "",
-        required: column.required || false
+        required: column.required || false,
+        color: column.color || "#3b82f6"
       })
     } else {
       // Handle new custom column creation
@@ -125,8 +131,10 @@ export function CustomColumnDialog({
         width: "w-32",
         minWidth: "min-w-[120px]",
         options: [],
+        optionColors: {},
         defaultValue: "",
-        required: false
+        required: false,
+        color: "#3b82f6"
       })
     }
   }, [column, isEditMode, isOpen, defaultColumn])
@@ -161,18 +169,27 @@ export function CustomColumnDialog({
 
   const addOption = () => {
     if (newOption.trim() && !formData.options.includes(newOption.trim())) {
+      const optionName = newOption.trim()
       setFormData(prev => ({
         ...prev,
-        options: [...prev.options, newOption.trim()]
+        options: [...prev.options, optionName],
+        optionColors: {
+          ...prev.optionColors,
+          [optionName]: '#6b7280' // Default gray color for new options
+        }
       }))
       setNewOption("")
     }
   }
 
   const removeOption = (index: number) => {
+    const optionToRemove = formData.options[index]
+    const newOptionColors = { ...formData.optionColors }
+    delete newOptionColors[optionToRemove]
     setFormData(prev => ({
       ...prev,
-      options: prev.options.filter((_, i) => i !== index)
+      options: prev.options.filter((_, i) => i !== index),
+      optionColors: newOptionColors
     }))
   }
 
@@ -291,6 +308,38 @@ export function CustomColumnDialog({
             </div>
           </div>
 
+          <div className="space-y-2">
+            <Label htmlFor="color">Column Color</Label>
+            <div className="flex items-center gap-3">
+              <div 
+                className="w-10 h-10 rounded-lg border-2 border-gray-300 cursor-pointer"
+                style={{ backgroundColor: formData.color }}
+                onClick={() => {
+                  const input = document.createElement('input')
+                  input.type = 'color'
+                  input.value = formData.color
+                  input.onchange = (e) => {
+                    const target = e.target as HTMLInputElement
+                    setFormData(prev => ({ ...prev, color: target.value }))
+                  }
+                  input.click()
+                }}
+                title="Click to change color"
+              />
+              <Input
+                id="color"
+                type="text"
+                value={formData.color}
+                onChange={(e) => setFormData(prev => ({ ...prev, color: e.target.value }))}
+                placeholder="#3b82f6"
+                className="flex-1"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Color for the column header and badges
+            </p>
+          </div>
+
           {formData.type === 'select' && (
             <div className="space-y-3">
               <Label>Select Options</Label>
@@ -305,6 +354,23 @@ export function CustomColumnDialog({
                         setFormData(prev => ({ ...prev, options: newOptions }))
                       }}
                       placeholder="Option value"
+                      className="flex-1"
+                    />
+                    <div 
+                      className="w-8 h-8 rounded border-2 border-gray-300 cursor-pointer"
+                      style={{ backgroundColor: formData.optionColors[option] || '#6b7280' }}
+                      onClick={() => {
+                        const input = document.createElement('input')
+                        input.type = 'color'
+                        input.value = formData.optionColors[option] || '#6b7280'
+                        input.onchange = (e) => {
+                          const target = e.target as HTMLInputElement
+                          const newOptionColors = { ...formData.optionColors, [option]: target.value }
+                          setFormData(prev => ({ ...prev, optionColors: newOptionColors }))
+                        }
+                        input.click()
+                      }}
+                      title={`Click to change color for "${option}"`}
                     />
                     <Button
                       type="button"

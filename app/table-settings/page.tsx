@@ -145,23 +145,43 @@ const COLUMN_TEMPLATES: ColumnTemplate[] = [
     isGlobal: true
   },
   {
-    id: 'platform',
-    name: 'platform',
-    label: 'Platform',
-    type: 'select',
-    description: 'Target platform (iOS, Android, Web)',
-    icon: Globe,
-    category: 'testing',
+    id: 'assignedTester',
+    name: 'assignedTester',
+    label: 'Assigned Tester',
+    type: 'text',
+    description: 'Tester assigned to this test case',
+    icon: User,
+    category: 'management',
     isGlobal: true
   },
   {
-    id: 'automation',
-    name: 'automation',
-    label: 'Automation',
-    type: 'select',
-    description: 'Automation status of the test case',
-    icon: ToggleLeft,
-    category: 'automation',
+    id: 'executionDate',
+    name: 'executionDate',
+    label: 'Execution Date',
+    type: 'date',
+    description: 'Date when the test case was executed',
+    icon: Calendar,
+    category: 'management',
+    isGlobal: true
+  },
+  {
+    id: 'notes',
+    name: 'notes',
+    label: 'Notes',
+    type: 'text',
+    description: 'Additional notes or comments',
+    icon: FileText,
+    category: 'management',
+    isGlobal: true
+  },
+  {
+    id: 'actualResult',
+    name: 'actualResult',
+    label: 'Actual Result',
+    type: 'text',
+    description: 'Actual result when test was executed',
+    icon: Check,
+    category: 'testing',
     isGlobal: true
   },
   {
@@ -185,6 +205,16 @@ const COLUMN_TEMPLATES: ColumnTemplate[] = [
     isGlobal: true
   },
   {
+    id: 'platform',
+    name: 'platform',
+    label: 'Platform',
+    type: 'select',
+    description: 'Target platform (iOS, Android, Web)',
+    icon: Globe,
+    category: 'testing',
+    isGlobal: true
+  },
+  {
     id: 'stepsToReproduce',
     name: 'stepsToReproduce',
     label: 'Steps to Reproduce',
@@ -195,16 +225,6 @@ const COLUMN_TEMPLATES: ColumnTemplate[] = [
     isGlobal: true
   },
   {
-    id: 'date',
-    name: 'date',
-    label: 'Date',
-    type: 'date',
-    description: 'Date when the test case was created or modified',
-    icon: Calendar,
-    category: 'management',
-    isGlobal: true
-  },
-  {
     id: 'suite',
     name: 'suite',
     label: 'Test Suite',
@@ -212,6 +232,237 @@ const COLUMN_TEMPLATES: ColumnTemplate[] = [
     description: 'Test suite this case belongs to',
     icon: FileText,
     category: 'management',
+    isGlobal: true
+  },
+  {
+    id: 'position',
+    name: 'position',
+    label: 'Position',
+    type: 'number',
+    description: 'Order position in the test case list',
+    icon: Hash,
+    category: 'management',
+    isGlobal: true
+  },
+  {
+    id: 'createdAt',
+    name: 'createdAt',
+    label: 'Created At',
+    type: 'date',
+    description: 'Date when the test case was created',
+    icon: Calendar,
+    category: 'management',
+    isGlobal: true
+  },
+  {
+    id: 'updatedAt',
+    name: 'updatedAt',
+    label: 'Updated At',
+    type: 'date',
+    description: 'Date when the test case was last updated',
+    icon: Calendar,
+    category: 'management',
+    isGlobal: true
+  },
+  // New core columns
+  {
+    id: 'qaStatus',
+    name: 'qaStatus',
+    label: 'QA Status',
+    type: 'select',
+    description: 'Current QA status of the test case',
+    icon: BarChart3,
+    category: 'management',
+    isGlobal: true
+  },
+  {
+    id: 'devStatus',
+    name: 'devStatus',
+    label: 'Dev Status',
+    type: 'select',
+    description: 'Current development status',
+    icon: BarChart3,
+    category: 'management',
+    isGlobal: true
+  },
+  {
+    id: 'assignedDev',
+    name: 'assignedDev',
+    label: 'Assigned Developer',
+    type: 'text',
+    description: 'Developer assigned to this test case',
+    icon: User,
+    category: 'management',
+    isGlobal: true
+  },
+  {
+    id: 'bugStatus',
+    name: 'bugStatus',
+    label: 'Bug Status',
+    type: 'select',
+    description: 'Status of any associated bug',
+    icon: BarChart3,
+    category: 'management',
+    isGlobal: true
+  },
+  {
+    id: 'testType',
+    name: 'testType',
+    label: 'Test Type',
+    type: 'select',
+    description: 'Type of testing (Manual, Automated, etc.)',
+    icon: ToggleLeft,
+    category: 'testing',
+    isGlobal: true
+  },
+  {
+    id: 'testLevel',
+    name: 'testLevel',
+    label: 'Test Level',
+    type: 'select',
+    description: 'Level of testing (Unit, Integration, System, etc.)',
+    icon: Hash,
+    category: 'testing',
+    isGlobal: true
+  },
+  {
+    id: 'defectSeverity',
+    name: 'defectSeverity',
+    label: 'Defect Severity',
+    type: 'select',
+    description: 'Severity level of any defects found',
+    icon: Star,
+    category: 'management',
+    isGlobal: true
+  },
+  {
+    id: 'defectPriority',
+    name: 'defectPriority',
+    label: 'Defect Priority',
+    type: 'select',
+    description: 'Priority level of any defects found',
+    icon: Star,
+    category: 'management',
+    isGlobal: true
+  },
+  {
+    id: 'estimatedTime',
+    name: 'estimatedTime',
+    label: 'Estimated Time',
+    type: 'number',
+    description: 'Estimated time to complete the test (minutes)',
+    icon: Calendar,
+    category: 'management',
+    isGlobal: true
+  },
+  {
+    id: 'actualTime',
+    name: 'actualTime',
+    label: 'Actual Time',
+    type: 'number',
+    description: 'Actual time taken to complete the test (minutes)',
+    icon: Calendar,
+    category: 'management',
+    isGlobal: true
+  },
+  {
+    id: 'testData',
+    name: 'testData',
+    label: 'Test Data',
+    type: 'text',
+    description: 'Test data requirements or setup',
+    icon: Database,
+    category: 'testing',
+    isGlobal: true
+  },
+  {
+    id: 'attachments',
+    name: 'attachments',
+    label: 'Attachments',
+    type: 'text',
+    description: 'Files or documents attached to the test case',
+    icon: FileText,
+    category: 'management',
+    isGlobal: true
+  },
+  {
+    id: 'tags',
+    name: 'tags',
+    label: 'Tags',
+    type: 'text',
+    description: 'Tags for categorizing and filtering test cases',
+    icon: Hash,
+    category: 'management',
+    isGlobal: true
+  },
+  {
+    id: 'reviewer',
+    name: 'reviewer',
+    label: 'Reviewer',
+    type: 'text',
+    description: 'Person responsible for reviewing the test case',
+    icon: User,
+    category: 'management',
+    isGlobal: true
+  },
+  {
+    id: 'reviewDate',
+    name: 'reviewDate',
+    label: 'Review Date',
+    type: 'date',
+    description: 'Date when the test case was reviewed',
+    icon: Calendar,
+    category: 'management',
+    isGlobal: true
+  },
+  {
+    id: 'reviewNotes',
+    name: 'reviewNotes',
+    label: 'Review Notes',
+    type: 'text',
+    description: 'Notes from the review process',
+    icon: FileText,
+    category: 'management',
+    isGlobal: true
+  },
+  {
+    id: 'lastModifiedBy',
+    name: 'lastModifiedBy',
+    label: 'Last Modified By',
+    type: 'text',
+    description: 'Person who last modified the test case',
+    icon: User,
+    category: 'management',
+    isGlobal: true
+  },
+  {
+    id: 'lastModifiedDate',
+    name: 'lastModifiedDate',
+    label: 'Last Modified Date',
+    type: 'date',
+    description: 'Date when the test case was last modified',
+    icon: Calendar,
+    category: 'management',
+    isGlobal: true
+  },
+  {
+    id: 'automationScript',
+    name: 'automationScript',
+    label: 'Automation Script',
+    type: 'text',
+    description: 'Automation script details',
+    icon: ToggleLeft,
+    category: 'automation',
+    isGlobal: true
+  },
+  {
+    id: 'customFields',
+    name: 'customFields',
+    label: 'Custom Fields',
+    type: 'text',
+    description: 'Dynamic custom fields',
+    icon: Database,
+    category: 'custom',
     isGlobal: true
   }
 ]
@@ -423,6 +674,8 @@ function TableSettingsContent() {
   const [isAddColumnOpen, setIsAddColumnOpen] = useState(false)
   const [editingColumn, setEditingColumn] = useState<CustomColumn | null>(null)
   const [templateCategory, setTemplateCategory] = useState<string>('all')
+  const [showAllColumns, setShowAllColumns] = useState(false)
+  const [columnFilter, setColumnFilter] = useState<'all' | 'visible' | 'hidden'>('all')
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -431,15 +684,60 @@ function TableSettingsContent() {
     })
   )
 
-  const CORE_KEYS = ['testCase', 'description', 'status', 'priority', 'category', 'stepsToReproduce', 'expectedResult']
+  const getColumnTemplate = (columnName: string): ColumnTemplate | undefined => {
+    return COLUMN_TEMPLATES.find(template => template.name === columnName)
+  }
+
+  const CORE_KEYS = [
+    'testCase', 'description', 'expectedResult', 'status', 'priority', 'category', 
+    'assignedTester', 'executionDate', 'notes', 'actualResult', 'environment', 
+    'prerequisites', 'platform', 'stepsToReproduce', 'suite', 'position', 
+    'createdAt', 'updatedAt', 'automationScript', 'customFields',
+    // New core columns
+    'qaStatus', 'devStatus', 'assignedDev', 'bugStatus', 'testType', 'testLevel',
+    'defectSeverity', 'defectPriority', 'estimatedTime', 'actualTime', 'testData',
+    'attachments', 'tags', 'reviewer', 'reviewDate', 'reviewNotes', 'lastModifiedBy', 'lastModifiedDate'
+  ]
   const defaultCoreSettings: {[key: string]: { visible: boolean; width: string; minWidth: string; label: string }} = {
     testCase: { visible: true, width: 'w-64', minWidth: 'min-w-[250px]', label: 'Test Case' },
     description: { visible: true, width: 'w-80', minWidth: 'min-w-[300px]', label: 'Description' },
+    expectedResult: { visible: false, width: 'w-64', minWidth: 'min-w-[250px]', label: 'Expected Result' },
     status: { visible: true, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Status' },
-    priority: { visible: true, width: 'w-24', minWidth: 'min-w-[100px]', label: 'Priority' },
-    category: { visible: true, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Category' },
+    priority: { visible: false, width: 'w-24', minWidth: 'min-w-[100px]', label: 'Priority' },
+    category: { visible: false, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Category' },
+    assignedTester: { visible: false, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Assigned Tester' },
+    executionDate: { visible: false, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Execution Date' },
+    notes: { visible: false, width: 'w-64', minWidth: 'min-w-[250px]', label: 'Notes' },
+    actualResult: { visible: false, width: 'w-64', minWidth: 'min-w-[250px]', label: 'Actual Result' },
+    environment: { visible: false, width: 'w-24', minWidth: 'min-w-[100px]', label: 'Environment' },
+    prerequisites: { visible: false, width: 'w-64', minWidth: 'min-w-[250px]', label: 'Prerequisites' },
+    platform: { visible: false, width: 'w-24', minWidth: 'min-w-[100px]', label: 'Platform' },
     stepsToReproduce: { visible: true, width: 'w-80', minWidth: 'min-w-[300px]', label: 'Steps to Reproduce' },
-    expectedResult: { visible: true, width: 'w-64', minWidth: 'min-w-[250px]', label: 'Expected Result' },
+    suite: { visible: false, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Test Suite' },
+    position: { visible: false, width: 'w-16', minWidth: 'min-w-[80px]', label: 'Position' },
+    createdAt: { visible: false, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Created At' },
+    updatedAt: { visible: false, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Updated At' },
+    automationScript: { visible: false, width: 'w-48', minWidth: 'min-w-[200px]', label: 'Automation Script' },
+    customFields: { visible: false, width: 'w-48', minWidth: 'min-w-[200px]', label: 'Custom Fields' },
+    // New core columns default settings
+    qaStatus: { visible: false, width: 'w-32', minWidth: 'min-w-[120px]', label: 'QA Status' },
+    devStatus: { visible: false, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Dev Status' },
+    assignedDev: { visible: false, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Assigned Developer' },
+    bugStatus: { visible: false, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Bug Status' },
+    testType: { visible: false, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Test Type' },
+    testLevel: { visible: false, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Test Level' },
+    defectSeverity: { visible: false, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Defect Severity' },
+    defectPriority: { visible: false, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Defect Priority' },
+    estimatedTime: { visible: false, width: 'w-24', minWidth: 'min-w-[100px]', label: 'Estimated Time' },
+    actualTime: { visible: false, width: 'w-24', minWidth: 'min-w-[100px]', label: 'Actual Time' },
+    testData: { visible: false, width: 'w-64', minWidth: 'min-w-[250px]', label: 'Test Data' },
+    attachments: { visible: false, width: 'w-48', minWidth: 'min-w-[200px]', label: 'Attachments' },
+    tags: { visible: false, width: 'w-48', minWidth: 'min-w-[200px]', label: 'Tags' },
+    reviewer: { visible: false, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Reviewer' },
+    reviewDate: { visible: false, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Review Date' },
+    reviewNotes: { visible: false, width: 'w-64', minWidth: 'min-w-[250px]', label: 'Review Notes' },
+    lastModifiedBy: { visible: false, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Last Modified By' },
+    lastModifiedDate: { visible: false, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Last Modified Date' },
   }
 
   useEffect(() => {
@@ -459,29 +757,63 @@ function TableSettingsContent() {
         // Load core settings from localStorage
         const coreRaw = typeof window !== 'undefined' ? localStorage.getItem(`qa.coreColumns:${projectId}`) : null
         const coreSettings = coreRaw ? JSON.parse(coreRaw) : defaultCoreSettings
+        
+        // Merge existing settings with default settings to ensure all new columns are included
+        const mergedCoreSettings = { ...defaultCoreSettings, ...coreSettings }
+        
+        // Ensure all CORE_KEYS are included with proper defaults
         CORE_KEYS.forEach(k => {
-          const s = coreSettings[k] || defaultCoreSettings[k]
-          settings[k] = { visible: s.visible, width: s.width, minWidth: s.minWidth, label: s.label }
+          const s = mergedCoreSettings[k] || defaultCoreSettings[k]
+          if (s) {
+            settings[k] = { visible: s.visible, width: s.width, minWidth: s.minWidth, label: s.label }
+          } else {
+            // Fallback for any missing core columns
+            const template = COLUMN_TEMPLATES.find(t => t.name === k)
+            settings[k] = { 
+              visible: false, 
+              width: 'w-32', 
+              minWidth: 'min-w-[120px]', 
+              label: template?.label || k 
+            }
+          }
         })
+        
+        // Save the updated core settings back to localStorage to include new columns
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(`qa.coreColumns:${projectId}`, JSON.stringify(mergedCoreSettings))
+        }
+        
         // Include custom columns
         cols.forEach(c => {
           settings[c.name] = { visible: c.visible, width: c.width, minWidth: c.minWidth, label: c.label }
         })
         setColumnSettings(settings)
 
-        // Load order
+        // Load order and ensure all columns are included
         const orderRaw = typeof window !== 'undefined' ? localStorage.getItem(`qa.columnOrder:${projectId}`) : null
+        let order: string[] = []
+        
         if (orderRaw) {
-          const order = JSON.parse(orderRaw) as string[]
-          // Append any missing core/custom keys to the end to ensure visibility
-          const all = [...CORE_KEYS, ...cols.map(c => c.name)]
-          for (const k of all) {
-            if (!order.includes(k)) order.push(k)
-          }
-          setColumnOrder(order.filter(n => settings[n]))
-        } else {
-          setColumnOrder([...CORE_KEYS, ...cols.map(c => c.name)])
+          order = JSON.parse(orderRaw) as string[]
         }
+        
+        // Ensure all CORE_KEYS and custom columns are in the order
+        const allColumns = [...CORE_KEYS, ...cols.map(c => c.name)]
+        for (const k of allColumns) {
+          if (!order.includes(k)) {
+            order.push(k)
+          }
+        }
+        
+        // Filter to only include columns that have settings
+        const validOrder = order.filter(n => settings[n])
+        setColumnOrder(validOrder)
+        
+        // Save updated order to localStorage
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(`qa.columnOrder:${projectId}`, JSON.stringify(validOrder))
+        }
+        
       } catch (e) {
         console.error('Failed to load custom columns:', e)
         setCustomColumns([])
@@ -592,6 +924,61 @@ function TableSettingsContent() {
     }
   }
 
+  const handleShowAllColumns = () => {
+    setShowAllColumns(true)
+    // Add all missing columns to the order and settings
+    const allColumns = [...CORE_KEYS, ...customColumns.map(c => c.name)]
+    const missingColumns = allColumns.filter(col => !columnOrder.includes(col))
+    
+    if (missingColumns.length > 0) {
+      setColumnOrder(prev => [...prev, ...missingColumns])
+      
+      // Add default settings for missing columns
+      setColumnSettings(prev => {
+        const newSettings = { ...prev }
+        missingColumns.forEach(col => {
+          if (!newSettings[col]) {
+            const template = getColumnTemplate(col)
+            const customCol = customColumns.find(c => c.name === col)
+            const defaultSettings = defaultCoreSettings[col]
+            newSettings[col] = {
+              visible: false, // Start hidden
+              width: defaultSettings?.width || 'w-32',
+              minWidth: defaultSettings?.minWidth || 'min-w-[120px]',
+              label: template?.label || customCol?.label || col
+            }
+          }
+        })
+        return newSettings
+      })
+      
+      toast({ 
+        title: 'All columns added', 
+        description: `Added ${missingColumns.length} new columns to the table settings.` 
+      })
+    } else {
+      toast({ 
+        title: 'All columns already present', 
+        description: 'All available columns are already in your table settings.' 
+      })
+    }
+  }
+
+  const handleToggleAllColumns = (makeVisible: boolean) => {
+    setColumnSettings(prev => {
+      const newSettings = { ...prev }
+      Object.keys(newSettings).forEach(col => {
+        newSettings[col] = { ...newSettings[col], visible: makeVisible }
+      })
+      return newSettings
+    })
+    
+    toast({ 
+      title: makeVisible ? 'All columns shown' : 'All columns hidden', 
+      description: makeVisible ? 'All columns are now visible.' : 'All columns are now hidden.' 
+    })
+  }
+
   const handleResetToDefaults = async () => {
     try {
       console.log('🔧 Resetting columns: hide all and clear local view')
@@ -622,7 +1009,7 @@ function TableSettingsContent() {
     }
   }
 
-  const getColumnTemplate = (columnName: string) => COLUMN_TEMPLATES.find(template => template.name === columnName)
+
 
   const filteredTemplates = templateCategory === 'all' 
     ? COLUMN_TEMPLATES 
@@ -707,16 +1094,102 @@ function TableSettingsContent() {
                       Reorder, show/hide, and customize your table columns
                     </CardDescription>
                   </div>
-                  <Button
-                    onClick={() => setIsAddColumnOpen(true)}
-                    className="flex items-center gap-2"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Add Column
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      onClick={() => {
+                        // Clear localStorage for this project to force fresh load
+                        if (typeof window !== 'undefined' && projectId) {
+                          localStorage.removeItem(`qa.coreColumns:${projectId}`)
+                          localStorage.removeItem(`qa.columnOrder:${projectId}`)
+                        }
+                        window.location.reload()
+                      }}
+                      variant="outline"
+                      className="flex items-center gap-2"
+                    >
+                      <RotateCcw className="w-4 h-4" />
+                      Force Refresh Columns
+                    </Button>
+                    <Button
+                      onClick={handleShowAllColumns}
+                      variant="outline"
+                      className="flex items-center gap-2"
+                    >
+                      <Eye className="w-4 h-4" />
+                      Show All Columns
+                    </Button>
+                    <Button
+                      onClick={() => setIsAddColumnOpen(true)}
+                      className="flex items-center gap-2"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Add Column
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
+                {/* Column Summary and Filter */}
+                <div className="mb-4 p-3 bg-slate-50 rounded-lg">
+                  <div className="flex items-center justify-between text-sm mb-3">
+                    <div className="flex items-center gap-4">
+                      <span className="text-slate-600">
+                        <strong>{columnOrder.length}</strong> total columns
+                      </span>
+                      <span className="text-slate-600">
+                        <strong>{Object.values(columnSettings).filter(s => s.visible).length}</strong> visible
+                      </span>
+                      <span className="text-slate-600">
+                        <strong>{Object.values(columnSettings).filter(s => !s.visible).length}</strong> hidden
+                      </span>
+                    </div>
+                    <div className="text-slate-500">
+                      {CORE_KEYS.length} core columns • {customColumns.length} custom columns
+                    </div>
+                  </div>
+                  
+                  {/* Filter Controls */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <Label htmlFor="column-filter" className="text-sm font-medium">
+                        Filter columns:
+                      </Label>
+                      <Select value={columnFilter} onValueChange={(value: 'all' | 'visible' | 'hidden') => setColumnFilter(value)}>
+                        <SelectTrigger className="w-32">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Columns</SelectItem>
+                          <SelectItem value="visible">Visible Only</SelectItem>
+                          <SelectItem value="hidden">Hidden Only</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    {/* Quick Actions */}
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleToggleAllColumns(true)}
+                        className="flex items-center gap-1"
+                      >
+                        <Eye className="w-3 h-3" />
+                        Show All
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleToggleAllColumns(false)}
+                        className="flex items-center gap-1"
+                      >
+                        <EyeOff className="w-3 h-3" />
+                        Hide All
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
                 <DndContext
                   sensors={sensors}
                   collisionDetection={closestCenter}
@@ -727,7 +1200,21 @@ function TableSettingsContent() {
                     strategy={verticalListSortingStrategy}
                   >
                     <div className="space-y-3">
-                       {columnOrder.map((columnName, index) => {
+                       {columnOrder
+                        .filter(columnName => {
+                          const settings = columnSettings[columnName]
+                          if (!settings) return false
+                          
+                          switch (columnFilter) {
+                            case 'visible':
+                              return settings.visible
+                            case 'hidden':
+                              return !settings.visible
+                            default:
+                              return true
+                          }
+                        })
+                        .map((columnName, index) => {
                         const settings = columnSettings[columnName]
                         const template = getColumnTemplate(columnName)
                         const customColumn = customColumns.find(col => col.name === columnName)

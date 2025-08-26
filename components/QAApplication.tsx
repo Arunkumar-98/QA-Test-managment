@@ -48,7 +48,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
-import { Settings, Eye, Trash2, LogOut, User, Share2, Plus, Upload, Clipboard, Download, X, Folder, Table, FileText, Share, RefreshCw, Mail, EyeOff, BarChart3 } from "lucide-react"
+import { Settings, Eye, Trash2, LogOut, User, Share2, Plus, Upload, Clipboard, Download, X, Folder, Table, FileText, Share, RefreshCw, Mail, EyeOff, BarChart3, RotateCcw } from "lucide-react"
 import { useAuth } from "./AuthProvider"
 import { CustomColumnDialog } from './CustomColumnDialog'
 import { ProjectDashboard } from './ProjectDashboard'
@@ -91,6 +91,7 @@ export function QAApplication() {
   const [isProjectMembersDialogOpen, setIsProjectMembersDialogOpen] = useState(false)
   const [showDashboard, setShowDashboard] = useState(false)
   const [currentView, setCurrentView] = useState<'dashboard' | 'test-cases'>('dashboard')
+  const [coreColumnSettings, setCoreColumnSettings] = useState<{[key: string]: { visible: boolean; width: string; minWidth: string; label: string; deleted?: boolean }}>({})
 
   
   // Selected test case for dialogs
@@ -359,6 +360,9 @@ export function QAApplication() {
         
         // Load custom columns
         await loadCustomColumns(currentProjectId)
+        
+        // Load core column settings
+        loadCoreColumnSettings()
       } catch (error) {
         console.error('❌ Failed to load project data:', error)
       }
@@ -1263,6 +1267,111 @@ export function QAApplication() {
     // Intentionally left empty: default custom column seeding removed per new requirements
   }
 
+  // Load core column settings from localStorage
+  const loadCoreColumnSettings = () => {
+    if (typeof window !== 'undefined' && currentProjectId) {
+      const savedSettings = localStorage.getItem(`qa.coreColumns:${currentProjectId}`)
+      if (savedSettings) {
+        setCoreColumnSettings(JSON.parse(savedSettings))
+      } else {
+        // Set default settings
+        const defaultSettings = {
+          testCase: { visible: true, width: 'w-64', minWidth: 'min-w-[250px]', label: 'Test Case' },
+          description: { visible: true, width: 'w-80', minWidth: 'min-w-[300px]', label: 'Description' },
+          expectedResult: { visible: false, width: 'w-64', minWidth: 'min-w-[250px]', label: 'Expected Result' },
+          status: { visible: true, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Status' },
+          priority: { visible: false, width: 'w-24', minWidth: 'min-w-[100px]', label: 'Priority' },
+          category: { visible: false, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Category' },
+          assignedTester: { visible: false, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Assigned Tester' },
+          executionDate: { visible: false, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Execution Date' },
+          notes: { visible: false, width: 'w-64', minWidth: 'min-w-[250px]', label: 'Notes' },
+          actualResult: { visible: false, width: 'w-64', minWidth: 'min-w-[250px]', label: 'Actual Result' },
+          environment: { visible: false, width: 'w-24', minWidth: 'min-w-[100px]', label: 'Environment' },
+          prerequisites: { visible: false, width: 'w-64', minWidth: 'min-w-[250px]', label: 'Prerequisites' },
+          platform: { visible: false, width: 'w-24', minWidth: 'min-w-[100px]', label: 'Platform' },
+          stepsToReproduce: { visible: true, width: 'w-80', minWidth: 'min-w-[300px]', label: 'Steps to Reproduce' },
+          suite: { visible: false, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Test Suite' },
+          position: { visible: false, width: 'w-16', minWidth: 'min-w-[80px]', label: 'Position' },
+          createdAt: { visible: false, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Created At' },
+          updatedAt: { visible: false, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Updated At' },
+          automationScript: { visible: false, width: 'w-48', minWidth: 'min-w-[200px]', label: 'Automation Script' },
+          customFields: { visible: false, width: 'w-48', minWidth: 'min-w-[200px]', label: 'Custom Fields' }
+        }
+        setCoreColumnSettings(defaultSettings)
+        localStorage.setItem(`qa.coreColumns:${currentProjectId}`, JSON.stringify(defaultSettings))
+      }
+    }
+  }
+
+  // Handle permanent deletion of core columns
+  const handleDeleteCoreColumn = (columnName: string, columnLabel: string) => {
+    const updatedSettings = {
+      ...coreColumnSettings,
+      [columnName]: { 
+        ...coreColumnSettings[columnName], 
+        deleted: true,
+        visible: false 
+      }
+    }
+    setCoreColumnSettings(updatedSettings)
+    localStorage.setItem(`qa.coreColumns:${currentProjectId}`, JSON.stringify(updatedSettings))
+    
+    toast({
+      title: 'Column Deleted',
+      description: `${columnLabel} has been permanently deleted.`,
+      variant: 'destructive'
+    })
+  }
+
+  // Handle restoration of deleted core columns
+  const handleRestoreCoreColumn = (columnName: string, columnLabel: string) => {
+    const updatedSettings = {
+      ...coreColumnSettings,
+      [columnName]: { 
+        ...coreColumnSettings[columnName], 
+        deleted: false,
+        visible: false // Start hidden when restored
+      }
+    }
+    setCoreColumnSettings(updatedSettings)
+    localStorage.setItem(`qa.coreColumns:${currentProjectId}`, JSON.stringify(updatedSettings))
+    
+    toast({
+      title: 'Column Restored',
+      description: `${columnLabel} has been restored.`,
+    })
+  }
+
+  // Handle restoration of all deleted core columns
+  const handleRestoreAllDeletedColumns = () => {
+    const deletedColumns = Object.entries(coreColumnSettings).filter(([_, settings]) => settings.deleted)
+    
+    if (deletedColumns.length === 0) {
+      toast({
+        title: 'No Deleted Columns',
+        description: 'There are no deleted columns to restore.',
+      })
+      return
+    }
+
+    const updatedSettings = { ...coreColumnSettings }
+    deletedColumns.forEach(([columnName, settings]) => {
+      updatedSettings[columnName] = {
+        ...settings,
+        deleted: false,
+        visible: false // Start hidden when restored
+      }
+    })
+    
+    setCoreColumnSettings(updatedSettings)
+    localStorage.setItem(`qa.coreColumns:${currentProjectId}`, JSON.stringify(updatedSettings))
+    
+    toast({
+      title: 'All Columns Restored',
+      description: `${deletedColumns.length} deleted columns have been restored.`,
+    })
+  }
+
   const handleAddCustomColumn = async (column: Omit<CustomColumn, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
       // Validate column object
@@ -1886,6 +1995,18 @@ export function QAApplication() {
                   <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                   <h3 className="text-lg font-semibold text-slate-900">Column Management</h3>
                 </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={() => {
+                      // Navigate to the enhanced table settings page
+                      window.open('/table-settings?projectId=' + currentProjectId, '_blank')
+                    }}
+                    variant="outline"
+                    className="border-blue-200 text-blue-700 hover:bg-blue-50"
+                  >
+                    <Eye className="w-4 h-4 mr-2" />
+                    Show All Columns
+                  </Button>
                 <Button
                   onClick={() => setIsAddCustomColumnDialogOpen(true)}
                   className="bg-purple-600 hover:bg-purple-700"
@@ -1893,12 +2014,217 @@ export function QAApplication() {
                   <Plus className="w-4 h-4 mr-2" />
                   Add Custom Column
                 </Button>
+                </div>
               </div>
               
               <div className="space-y-2">
-                {/* Default columns UI removed per new requirement: user defines all columns */}
-                
-                {/* Custom Columns */}
+                {/* Column Summary */}
+                <div className="mb-4 p-3 bg-slate-50 rounded-lg">
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-4">
+                      <span className="text-slate-600">
+                        <strong>{customColumnsList.length + Object.values(coreColumnSettings).filter(s => !s.deleted).length}</strong> total columns available
+                      </span>
+                      <span className="text-slate-600">
+                        <strong>{customColumnsList.filter(c => c.visible).length + Object.values(coreColumnSettings).filter(s => s.visible && !s.deleted).length}</strong> visible
+                      </span>
+                      <span className="text-slate-600">
+                        <strong>{customColumnsList.filter(c => !c.visible).length + Object.values(coreColumnSettings).filter(s => !s.visible && !s.deleted).length}</strong> hidden
+                      </span>
+                      {Object.values(coreColumnSettings).some(s => s.deleted) && (
+                        <span className="text-red-600">
+                          <strong>{Object.values(coreColumnSettings).filter(s => s.deleted).length}</strong> deleted
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-slate-500">
+                      {Object.values(coreColumnSettings).filter(s => !s.deleted).length} core columns • {customColumnsList.length} custom columns
+                    </div>
+                  </div>
+                </div>
+
+                {/* Core Columns Section */}
+                <div className="mb-4">
+                  <h4 className="text-sm font-medium text-slate-700 mb-3 flex items-center gap-2">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                    Core Columns
+                  </h4>
+                  <div className="space-y-2">
+                    {[
+                      { name: 'testCase', label: 'Test Case', type: 'text' },
+                      { name: 'description', label: 'Description', type: 'text' },
+                      { name: 'expectedResult', label: 'Expected Result', type: 'text' },
+                      { name: 'status', label: 'Status', type: 'select' },
+                      { name: 'priority', label: 'Priority', type: 'select' },
+                      { name: 'category', label: 'Category', type: 'select' },
+                      { name: 'assignedTester', label: 'Assigned Tester', type: 'text' },
+                      { name: 'executionDate', label: 'Execution Date', type: 'date' },
+                      { name: 'notes', label: 'Notes', type: 'text' },
+                      { name: 'actualResult', label: 'Actual Result', type: 'text' },
+                      { name: 'environment', label: 'Environment', type: 'select' },
+                      { name: 'prerequisites', label: 'Prerequisites', type: 'text' },
+                      { name: 'platform', label: 'Platform', type: 'select' },
+                      { name: 'stepsToReproduce', label: 'Steps to Reproduce', type: 'text' },
+                      { name: 'suite', label: 'Test Suite', type: 'select' },
+                      { name: 'position', label: 'Position', type: 'number' },
+                      { name: 'createdAt', label: 'Created At', type: 'date' },
+                      { name: 'updatedAt', label: 'Updated At', type: 'date' },
+                      { name: 'automationScript', label: 'Automation Script', type: 'text' },
+                      { name: 'customFields', label: 'Custom Fields', type: 'text' }
+                    ].map((column) => {
+                      const settings = coreColumnSettings[column.name] || { visible: false, label: column.label, deleted: false }
+                      
+                      // Skip deleted columns in the main list
+                      if (settings.deleted) return null
+                      
+                      return (
+                        <div key={column.name} className="flex items-center justify-between p-3 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
+                          <div className="flex items-center gap-3 flex-1">
+                            <Checkbox
+                              checked={settings.visible}
+                              onCheckedChange={(checked) => {
+                                // Update core column visibility in localStorage and state
+                                const updatedSettings = {
+                                  ...coreColumnSettings,
+                                  [column.name]: { 
+                                    ...settings, 
+                                    visible: checked as boolean,
+                                    label: column.label
+                                  }
+                                }
+                                setCoreColumnSettings(updatedSettings)
+                                localStorage.setItem(`qa.coreColumns:${currentProjectId}`, JSON.stringify(updatedSettings))
+                                
+                                // Show toast notification
+                                toast({
+                                  title: checked ? 'Column Shown' : 'Column Hidden',
+                                  description: `${column.label} is now ${checked ? 'visible' : 'hidden'}.`
+                                })
+                              }}
+                            />
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <Label className="font-medium text-slate-900">{settings.label}</Label>
+                                <Badge variant="outline" className="text-xs">
+                                  {column.type}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-slate-600">
+                                {column.name} • Core column
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">
+                              Core
+                            </Badge>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteCoreColumn(column.name, column.label)}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              title="Delete column permanently"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Deleted Core Columns Section */}
+                {Object.values(coreColumnSettings).some(s => s.deleted) && (
+                  <div className="mb-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-sm font-medium text-slate-700 flex items-center gap-2">
+                        <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                        Deleted Core Columns
+                      </h4>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleRestoreAllDeletedColumns}
+                        className="border-green-200 text-green-700 hover:bg-green-50"
+                      >
+                        <RotateCcw className="w-3 h-3 mr-1" />
+                        Restore All
+                      </Button>
+                    </div>
+                    <div className="space-y-2">
+                      {[
+                        { name: 'testCase', label: 'Test Case', type: 'text' },
+                        { name: 'description', label: 'Description', type: 'text' },
+                        { name: 'expectedResult', label: 'Expected Result', type: 'text' },
+                        { name: 'status', label: 'Status', type: 'select' },
+                        { name: 'priority', label: 'Priority', type: 'select' },
+                        { name: 'category', label: 'Category', type: 'select' },
+                        { name: 'assignedTester', label: 'Assigned Tester', type: 'text' },
+                        { name: 'executionDate', label: 'Execution Date', type: 'date' },
+                        { name: 'notes', label: 'Notes', type: 'text' },
+                        { name: 'actualResult', label: 'Actual Result', type: 'text' },
+                        { name: 'environment', label: 'Environment', type: 'select' },
+                        { name: 'prerequisites', label: 'Prerequisites', type: 'text' },
+                        { name: 'platform', label: 'Platform', type: 'select' },
+                        { name: 'stepsToReproduce', label: 'Steps to Reproduce', type: 'text' },
+                        { name: 'suite', label: 'Test Suite', type: 'select' },
+                        { name: 'position', label: 'Position', type: 'number' },
+                        { name: 'createdAt', label: 'Created At', type: 'date' },
+                        { name: 'updatedAt', label: 'Updated At', type: 'date' },
+                        { name: 'automationScript', label: 'Automation Script', type: 'text' },
+                        { name: 'customFields', label: 'Custom Fields', type: 'text' }
+                      ].map((column) => {
+                        const settings = coreColumnSettings[column.name]
+                        
+                        // Only show deleted columns
+                        if (!settings || !settings.deleted) return null
+                        
+                        return (
+                          <div key={column.name} className="flex items-center justify-between p-3 border border-red-200 rounded-lg bg-red-50 hover:bg-red-100 transition-colors">
+                            <div className="flex items-center gap-3 flex-1">
+                              <div className="w-4 h-4 bg-red-200 rounded flex items-center justify-center">
+                                <Trash2 className="w-3 h-3 text-red-600" />
+                              </div>
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                  <Label className="font-medium text-slate-900 line-through">{settings.label}</Label>
+                                  <Badge variant="outline" className="text-xs">
+                                    {column.type}
+                                  </Badge>
+                                </div>
+                                <p className="text-sm text-slate-600">
+                                  {column.name} • Deleted core column
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="text-xs bg-red-50 text-red-700 border-red-200">
+                                Deleted
+                              </Badge>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleRestoreCoreColumn(column.name, column.label)}
+                                className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                                title="Restore column"
+                              >
+                                <RotateCcw className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Custom Columns Section */}
+                <div className="mb-4">
+                  <h4 className="text-sm font-medium text-slate-700 mb-3 flex items-center gap-2">
+                    <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                    Custom Columns
+                  </h4>
                 {customColumnsList.map((column) => (
                   <div key={column.id} className="flex items-center justify-between p-3 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
                     <div className="flex items-center gap-3 flex-1">
@@ -1953,24 +2279,26 @@ export function QAApplication() {
                   </div>
                 ))}
                 
-                {/* Empty State */}
+                  {/* Empty Custom Columns State */}
                 {customColumnsList.length === 0 && (
-                  <div className="text-center py-8 border border-dashed border-slate-300 rounded-lg">
-                    <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Table className="w-6 h-6 text-purple-600" />
+                    <div className="text-center py-6 border border-dashed border-slate-300 rounded-lg">
+                      <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                        <Table className="w-4 h-4 text-purple-600" />
                     </div>
-                    <h4 className="text-lg font-medium text-slate-900 mb-2">No Custom Columns</h4>
-                    <p className="text-slate-600 mb-4">Create custom columns to track additional data for your test cases.</p>
+                      <h4 className="text-sm font-medium text-slate-900 mb-1">No Custom Columns</h4>
+                      <p className="text-xs text-slate-600 mb-3">Create custom columns to track additional data.</p>
                     <Button
                       onClick={() => setIsAddCustomColumnDialogOpen(true)}
                       variant="outline"
+                        size="sm"
                       className="border-purple-200 text-purple-700 hover:bg-purple-50"
                     >
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add Your First Column
+                        <Plus className="w-3 h-3 mr-1" />
+                        Add Custom Column
                     </Button>
                   </div>
                 )}
+                </div>
               </div>
             </div>
             
@@ -2181,6 +2509,10 @@ export function QAApplication() {
         }}
         currentProject={currentProject}
         selectedSuiteId={selectedSuiteId || undefined}
+        onCustomColumnsCreated={(newColumns) => {
+          // Add new columns to the existing list
+          setCustomColumnsList(prev => [...prev, ...newColumns])
+        }}
       />
 
              {/* Custom Column Dialog */}

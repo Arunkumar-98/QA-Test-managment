@@ -401,7 +401,7 @@ export function NotesDialog({ isOpen, onClose, projectId, projectName }: NotesDi
                             {note.isPinned && <Pin className="w-3 h-3 text-red-500 flex-shrink-0" />}
                             <h3 className="font-medium text-sm truncate">{note.title}</h3>
                           </div>
-                          <p className="text-xs text-gray-600 line-clamp-2 mb-2">
+                          <p className="text-xs text-gray-600 break-words whitespace-pre-wrap mb-2">
                             {note.content}
                           </p>
                           <div className="flex items-center justify-between text-xs text-gray-500">
