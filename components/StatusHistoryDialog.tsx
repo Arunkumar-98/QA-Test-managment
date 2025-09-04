@@ -118,7 +118,7 @@ export function StatusHistoryDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[80vh] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-slate-700/60">
+      <DialogContent className="max-w-4xl w-[90vw] max-h-[95vh] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-slate-700/60">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-white">
             <Clock className="w-5 h-5 text-blue-300" />

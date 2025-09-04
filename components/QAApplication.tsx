@@ -2743,7 +2743,7 @@ export function QAApplication() {
 
       {/* Create Project Dialog */}
       <Dialog open={isProjectDialogOpen} onOpenChange={setIsProjectDialogOpen}>
-        <DialogContent className="sm:max-w-md bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-slate-700/60">
+        <DialogContent className="max-w-2xl w-[90vw] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-slate-700/60">
           <DialogHeader className="space-y-3">
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
@@ -2804,7 +2804,7 @@ export function QAApplication() {
 
       {/* Edit Project Dialog */}
       <Dialog open={isEditProjectDialogOpen} onOpenChange={setIsEditProjectDialogOpen}>
-        <DialogContent className="sm:max-w-md bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-slate-700/60">
+        <DialogContent className="max-w-2xl w-[90vw] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-slate-700/60">
           <DialogHeader className="space-y-3">
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
@@ -2860,7 +2860,7 @@ export function QAApplication() {
 
       {/* Table Settings Dialog */}
       <Dialog open={isTableSettingsOpen} onOpenChange={setIsTableSettingsOpen}>
-        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-slate-700/60">
+        <DialogContent className="max-w-7xl w-[95vw] max-h-[95vh] overflow-y-auto bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-slate-700/60">
           <DialogHeader className="border-b border-slate-700/60 pb-4">
             <DialogTitle className="flex items-center gap-2 text-2xl font-bold text-white">
               <Settings className="w-6 h-6 text-blue-400" />
@@ -3289,7 +3289,7 @@ export function QAApplication() {
 
       {/* Project Settings Dialog */}
       <Dialog open={isProjectSettingsOpen} onOpenChange={setIsProjectSettingsOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-4xl w-[90vw]">
           <DialogHeader>
             <DialogTitle>Project Settings</DialogTitle>
             <DialogDescription>
@@ -3415,7 +3415,7 @@ export function QAApplication() {
 
       {/* Add Link Dialog */}
       <Dialog open={isAddLinkDialogOpen} onOpenChange={setIsAddLinkDialogOpen}>
-        <DialogContent className="sm:max-w-md bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-slate-700/60">
+        <DialogContent className="max-w-2xl w-[90vw] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-slate-700/60">
           <DialogHeader className="space-y-3">
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
@@ -3490,7 +3490,7 @@ export function QAApplication() {
 
       {/* Add Document Dialog */}
       <Dialog open={isAddDocumentDialogOpen} onOpenChange={setIsAddDocumentDialogOpen}>
-        <DialogContent className="sm:max-w-md bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-slate-700/60">
+        <DialogContent className="max-w-2xl w-[90vw] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-slate-700/60">
           <DialogHeader className="space-y-3">
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-600 rounded-lg flex items-center justify-center">

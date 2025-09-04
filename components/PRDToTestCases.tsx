@@ -217,7 +217,7 @@ export function PRDToTestCases({ onAddTestCases, currentProject }: PRDToTestCase
       </Card>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden w-[95vw]">
+        <DialogContent className="max-w-7xl max-h-[95vh] overflow-hidden w-[95vw]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-blue-600 flex-shrink-0" />

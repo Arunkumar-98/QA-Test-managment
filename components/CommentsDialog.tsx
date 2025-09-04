@@ -90,7 +90,7 @@ export function CommentsDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-slate-700/60">
+      <DialogContent className="max-w-5xl w-[90vw] max-h-[95vh] overflow-y-auto bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-slate-700/60">
         <DialogHeader>
           <DialogTitle className="text-white">Comments - {testCase.testCase}</DialogTitle>
           <DialogDescription className="text-slate-300">Manage comments and discussions for this test case.</DialogDescription>

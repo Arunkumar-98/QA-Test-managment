@@ -184,7 +184,7 @@ export function ShareProjectDialog({ isOpen, onClose, projectId, projectName, on
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-slate-700/60">
+      <DialogContent className="max-w-4xl w-[90vw] max-h-[95vh] overflow-y-auto bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-slate-700/60">
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2 text-white">
             <Share2 className="w-5 h-5 text-blue-300" />

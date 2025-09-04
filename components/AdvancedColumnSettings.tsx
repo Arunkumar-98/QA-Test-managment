@@ -551,7 +551,7 @@ export function AdvancedColumnSettings({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-6xl h-[85vh] p-0 flex flex-col overflow-hidden">
+      <DialogContent className="max-w-7xl w-[95vw] h-[95vh] p-0 flex flex-col overflow-hidden">
         <DialogHeader className="px-6 py-4 border-b shrink-0">
           <DialogTitle className="flex items-center gap-2 text-xl">
             <Settings className="w-5 h-5" />

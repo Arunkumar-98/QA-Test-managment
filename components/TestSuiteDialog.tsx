@@ -48,7 +48,7 @@ export function TestSuiteDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-slate-700/60">
+      <DialogContent className="max-w-3xl w-[90vw] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-slate-700/60">
         <DialogHeader>
           <DialogTitle className="text-white">Create Test Suite</DialogTitle>
           <DialogDescription className="text-slate-300">Create a new test suite for organizing test cases.</DialogDescription>

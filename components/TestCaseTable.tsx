@@ -1776,7 +1776,7 @@ export function TestCaseTable({
 
       {/* Dialogs */}
       <Dialog open={isSaveFilterOpen} onOpenChange={setIsSaveFilterOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl w-[90vw]">
           <DialogHeader>
             <DialogTitle>Save Filter</DialogTitle>
             <DialogDescription>Save the current filter settings for future use.</DialogDescription>
@@ -1801,7 +1801,7 @@ export function TestCaseTable({
       </Dialog>
 
       <Dialog open={isClearAllDialogOpen} onOpenChange={setIsClearAllDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl w-[90vw]">
           <DialogHeader>
             <DialogTitle>Clear All Test Cases</DialogTitle>
             <DialogDescription>
@@ -1820,7 +1820,7 @@ export function TestCaseTable({
       </Dialog>
 
       <Dialog open={isBulkDeleteDialogOpen} onOpenChange={setIsBulkDeleteDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl w-[90vw]">
           <DialogHeader>
             <DialogTitle>Delete Selected Test Cases</DialogTitle>
             <DialogDescription>
@@ -1856,7 +1856,7 @@ export function TestCaseTable({
 
       {/* Paste Dialog */}
       <Dialog open={isPasteDialogOpen || false} onOpenChange={setIsPasteDialogOpen || (() => {})}>
-        <DialogContent className="sm:max-w-2xl">
+        <DialogContent className="max-w-3xl w-[90vw]">
           <DialogHeader>
             <DialogTitle className="flex items-center space-x-2">
               <Clipboard className="w-5 h-5" />
