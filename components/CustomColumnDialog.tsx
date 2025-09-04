@@ -205,9 +205,9 @@ export function CustomColumnDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-slate-700/60">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex items-center gap-2 text-white">
             {defaultColumn 
               ? "Edit Default Column" 
               : isEditMode 
@@ -215,7 +215,7 @@ export function CustomColumnDialog({
                 : "Add Custom Column"
             }
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-slate-300">
             {defaultColumn 
               ? "Modify the default column settings below."
               : isEditMode 

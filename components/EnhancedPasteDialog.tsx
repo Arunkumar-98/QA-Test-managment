@@ -267,13 +267,13 @@ export function EnhancedPasteDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-slate-700/60">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Clipboard className="w-5 h-5" />
+          <DialogTitle className="flex items-center gap-2 text-white">
+            <Clipboard className="w-5 h-5 text-blue-300" />
             Enhanced Paste Import
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-slate-300">
             Paste your test case data in any format. The system will automatically detect and parse it. 
             Custom columns will be created automatically based on your data headers.
           </DialogDescription>

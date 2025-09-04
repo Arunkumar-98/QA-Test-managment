@@ -194,23 +194,23 @@ export function TestCaseDialog({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto bg-white">
-          <DialogHeader className="pb-3 border-b border-slate-200">
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-slate-700/60">
+          <DialogHeader className="pb-3 border-b border-slate-700/60">
             <div className="flex items-center gap-3">
               {isViewMode ? (
-                <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-                  <Eye className="w-4 h-4 text-purple-600" />
+                <div className="w-8 h-8 bg-purple-500/20 rounded-lg flex items-center justify-center border border-purple-400/20">
+                  <Eye className="w-4 h-4 text-purple-300" />
                 </div>
               ) : (
-                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <FileText className="w-4 h-4 text-blue-600" />
+                <div className="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center border border-blue-400/20">
+                  <FileText className="w-4 h-4 text-blue-300" />
                 </div>
               )}
               <div>
-                <DialogTitle className="text-lg font-semibold text-slate-900">
+                <DialogTitle className="text-lg font-semibold text-white">
                   {isViewMode ? "View Test Case" : (testCase ? "Edit Test Case" : "Create New Test Case")}
                 </DialogTitle>
-                <DialogDescription className="text-sm text-slate-500">
+                <DialogDescription className="text-sm text-slate-300">
                   {isViewMode ? "Review test case details" : "Fill in the test case information"}
                 </DialogDescription>
               </div>
@@ -220,12 +220,12 @@ export function TestCaseDialog({
           {isViewMode ? (
             // Updated View Mode Layout with improved design
             <div className="py-3">
-              <div className="bg-white rounded-xl border border-slate-200 p-6">
+              <div className="bg-slate-800/50 rounded-xl border border-slate-700/60 p-6">
                 {/* Header with Title and Status */}
-                <div className="flex items-start justify-between mb-6 pb-4 border-b border-slate-100">
+                <div className="flex items-start justify-between mb-6 pb-4 border-b border-slate-700/60">
                   <div className="flex-1 pr-4">
                     <div className="flex items-center gap-3 mb-2">
-                      <h2 className="text-xl font-semibold text-slate-900 leading-tight">{formData.testCase}</h2>
+                      <h2 className="text-xl font-semibold text-white leading-tight">{formData.testCase}</h2>
                       {(() => {
                         const statusConfig = getStatusConfig(formData.status);
                         const StatusIcon = statusConfig.icon;
@@ -243,23 +243,23 @@ export function TestCaseDialog({
                 {/* Description Section */}
                 {formData.description && (
                   <div className="mb-6">
-                    <h3 className="text-sm font-semibold text-slate-700 mb-2 uppercase tracking-wide">Description</h3>
-                    <p className="text-slate-600 leading-relaxed">{formData.description}</p>
+                    <h3 className="text-sm font-semibold text-slate-300 mb-2 uppercase tracking-wide">Description</h3>
+                    <p className="text-slate-300 leading-relaxed">{formData.description}</p>
                         </div>
                       )}
                       
                 {/* Steps to Reproduce Section */}
                 {formData.stepsToReproduce && (
                   <div className="mb-6">
-                    <h3 className="text-sm font-semibold text-slate-700 mb-3 uppercase tracking-wide">Steps to Reproduce</h3>
+                    <h3 className="text-sm font-semibold text-slate-300 mb-3 uppercase tracking-wide">Steps to Reproduce</h3>
                     <ol className="space-y-2">
                       {formatTestSteps(formData.stepsToReproduce).split('\n').map((step, index) => (
                         step.trim() && (
                           <li key={index} className="flex gap-3">
-                            <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-sm font-medium">
+                            <span className="flex-shrink-0 w-6 h-6 bg-blue-500/20 text-blue-300 rounded-full flex items-center justify-center text-sm font-medium border border-blue-400/20">
                               {index + 1}
                             </span>
-                            <span className="text-slate-600 leading-relaxed">{step.trim()}</span>
+                            <span className="text-slate-300 leading-relaxed">{step.trim()}</span>
                           </li>
                         )
                       ))}
@@ -270,9 +270,9 @@ export function TestCaseDialog({
                 {/* Expected Result Section */}
                 {formData.expectedResult && (
                   <div>
-                    <h3 className="text-sm font-semibold text-slate-700 mb-2 uppercase tracking-wide">Expected Result</h3>
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                      <p className="text-slate-700 leading-relaxed">{formatExpectedResult(formData.expectedResult)}</p>
+                    <h3 className="text-sm font-semibold text-slate-300 mb-2 uppercase tracking-wide">Expected Result</h3>
+                    <div className="bg-emerald-500/10 border border-emerald-400/30 rounded-lg p-4">
+                      <p className="text-slate-200 leading-relaxed">{formatExpectedResult(formData.expectedResult)}</p>
                     </div>
                   </div>
                 )}
@@ -284,12 +284,12 @@ export function TestCaseDialog({
             // NEW: Improved Edit Mode Layout
             <form onSubmit={handleSubmit} className="space-y-6 py-4">
               {/* Basic Information Section */}
-              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-100">
+              <div className="bg-gradient-to-br from-blue-500/10 to-indigo-500/10 rounded-2xl p-6 border border-blue-400/30">
                 <div className="flex items-center gap-3 mb-6">
-                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <FileText className="w-4 h-4 text-blue-600" />
+                  <div className="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center border border-blue-400/20">
+                    <FileText className="w-4 h-4 text-blue-300" />
                   </div>
-                  <h3 className="text-xl font-bold text-slate-900">Basic Information</h3>
+                                      <h3 className="text-xl font-bold text-white">Basic Information</h3>
                 </div>
                 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

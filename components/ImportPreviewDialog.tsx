@@ -20,9 +20,11 @@ import {
   Info,
   Settings,
   FileText,
-  Table as TableIcon
+  Table as TableIcon,
+  FolderPlus,
+  Folder
 } from 'lucide-react'
-import { TestCase } from '@/types/qa-types'
+import { TestCase, TestSuite, CreateTestSuiteInput } from '@/types/qa-types'
 import { mapImportedDataToTestCase, validateImportedTestCase, mapImportField } from '@/lib/utils'
 import { toast } from '@/hooks/use-toast'
 
@@ -33,6 +35,8 @@ interface ImportPreviewDialogProps {
   rawData: any[]
   currentProject: string
   selectedSuiteId?: string
+  testSuites?: TestSuite[]
+  onCreateTestSuite?: (suite: CreateTestSuiteInput) => Promise<TestSuite>
 }
 
 interface ColumnMapping {
@@ -66,13 +70,19 @@ export function ImportPreviewDialog({
   onImport,
   rawData,
   currentProject,
-  selectedSuiteId
+  selectedSuiteId,
+  testSuites = [],
+  onCreateTestSuite
 }: ImportPreviewDialogProps) {
   const [columnMappings, setColumnMappings] = useState<ColumnMapping[]>([])
   const [previewData, setPreviewData] = useState<Partial<TestCase>[]>([])
   const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set())
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [validationErrors, setValidationErrors] = useState<string[]>([])
+  const [importSuiteId, setImportSuiteId] = useState<string | undefined>(selectedSuiteId)
+  const [newSuiteName, setNewSuiteName] = useState('')
+  const [isCreatingSuite, setIsCreatingSuite] = useState(false)
+  const [suiteSelectionMode, setSuiteSelectionMode] = useState<'existing' | 'new' | 'none'>('existing')
 
   // Auto-detect column mappings when data changes
   useEffect(() => {
@@ -211,7 +221,66 @@ export function ImportPreviewDialog({
     setSelectedRows(newSelected)
   }
 
-  const handleImport = () => {
+  const handleCreateNewSuite = async () => {
+    if (!newSuiteName.trim() || !onCreateTestSuite) return
+    
+    setIsCreatingSuite(true)
+    try {
+      const newSuite = await onCreateTestSuite({
+        name: newSuiteName.trim(),
+        description: `Test suite created during import of ${rawData.length} test cases`,
+        projectId: currentProject
+      })
+      setImportSuiteId(newSuite.id)
+      setSuiteSelectionMode('existing')
+      toast({
+        title: "Test Suite Created",
+        description: `"${newSuite.name}" created successfully.`,
+      })
+    } catch (error) {
+      toast({
+        title: "Failed to Create Test Suite",
+        description: "Please try again or select an existing test suite.",
+        variant: "destructive"
+      })
+    } finally {
+      setIsCreatingSuite(false)
+    }
+  }
+
+  const handleImport = async () => {
+    // Determine which suite ID to use
+    let finalSuiteId: string | undefined
+    if (suiteSelectionMode === 'existing' && importSuiteId) {
+      finalSuiteId = importSuiteId
+    } else if (suiteSelectionMode === 'new' && newSuiteName.trim() && onCreateTestSuite) {
+      // Create new suite first
+      setIsCreatingSuite(true)
+      try {
+        const newSuite = await onCreateTestSuite({
+          name: newSuiteName.trim(),
+          description: `Test suite created during import of ${rawData.length} test cases`,
+          projectId: currentProject
+        })
+        finalSuiteId = newSuite.id
+        toast({
+          title: "Test Suite Created",
+          description: `"${newSuite.name}" created and test cases will be imported into it.`,
+        })
+      } catch (error) {
+        toast({
+          title: "Failed to Create Test Suite",
+          description: "Please try again or select an existing test suite.",
+          variant: "destructive"
+        })
+        setIsCreatingSuite(false)
+        return
+      } finally {
+        setIsCreatingSuite(false)
+      }
+    }
+    // If suiteSelectionMode is 'none', finalSuiteId remains undefined
+
     const rowsToImport = selectedRows.size > 0 ? Array.from(selectedRows) : rawData.map((_, index) => index)
     
     const testCasesToImport: Partial<TestCase>[] = rowsToImport.map(index => {
@@ -224,7 +293,7 @@ export function ImportPreviewDialog({
         }
       })
 
-      const testCase = mapImportedDataToTestCase(mappedData, index, currentProject, selectedSuiteId)
+      const testCase = mapImportedDataToTestCase(mappedData, index, currentProject, finalSuiteId)
       const validation = validateImportedTestCase(testCase)
       
       return validation.cleanedTestCase
@@ -248,19 +317,128 @@ export function ImportPreviewDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-slate-700/60">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Upload className="w-5 h-5" />
+          <DialogTitle className="flex items-center gap-2 text-white">
+            <Upload className="w-5 h-5 text-blue-300" />
             Import Preview & Column Mapping
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-slate-300">
             Review how your data will be imported and adjust column mappings if needed.
             {rawData.length} rows detected, showing first 5 rows as preview.
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex-1 overflow-hidden flex flex-col gap-4">
+          {/* Test Suite Selection Section */}
+          <div className="border border-slate-700/60 rounded-lg p-4 bg-slate-800/50">
+            <div className="flex items-center gap-2 mb-3">
+              <Folder className="w-4 h-4 text-blue-300" />
+              <h3 className="font-semibold text-white">Test Suite Assignment</h3>
+            </div>
+            
+            <div className="space-y-3">
+              {/* Radio buttons for selection mode */}
+              <div className="flex items-center space-x-4">
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    checked={suiteSelectionMode === 'existing'}
+                    onChange={() => setSuiteSelectionMode('existing')}
+                    className="text-blue-400"
+                  />
+                  <span className="text-sm text-white">Import to existing test suite</span>
+                </label>
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    checked={suiteSelectionMode === 'new'}
+                    onChange={() => setSuiteSelectionMode('new')}
+                    className="text-blue-400"
+                  />
+                  <span className="text-sm text-white">Create new test suite</span>
+                </label>
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    checked={suiteSelectionMode === 'none'}
+                    onChange={() => setSuiteSelectionMode('none')}
+                    className="text-blue-400"
+                  />
+                  <span className="text-sm text-white">No test suite (project level)</span>
+                </label>
+              </div>
+
+              {/* Existing suite selection */}
+              {suiteSelectionMode === 'existing' && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Select Test Suite</Label>
+                  <Select
+                    value={importSuiteId || ''}
+                    onValueChange={setImportSuiteId}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose a test suite..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {testSuites.map((suite) => (
+                        <SelectItem key={suite.id} value={suite.id}>
+                          <div className="flex items-center justify-between w-full">
+                            <span>{suite.name}</span>
+                            <Badge variant="outline" className="ml-2 text-xs">
+                              {suite.totalTests || 0} tests
+                            </Badge>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* New suite creation */}
+              {suiteSelectionMode === 'new' && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">New Test Suite Name</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      value={newSuiteName}
+                      onChange={(e) => setNewSuiteName(e.target.value)}
+                      placeholder="Enter test suite name..."
+                      className="flex-1"
+                    />
+                    <Button
+                      onClick={handleCreateNewSuite}
+                      disabled={!newSuiteName.trim() || isCreatingSuite}
+                      size="sm"
+                    >
+                      {isCreatingSuite ? (
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          Creating...
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <FolderPlus className="w-4 h-4" />
+                          Create
+                        </div>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* No suite selected */}
+              {suiteSelectionMode === 'none' && (
+                <div className="text-sm text-muted-foreground bg-gray-50 p-3 rounded-lg">
+                  <Info className="w-4 h-4 inline mr-2" />
+                  Test cases will be imported at the project level without being assigned to any test suite.
+                  You can organize them into test suites later.
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Column Mapping Section */}
           <div className="border rounded-lg p-4">
             <div className="flex items-center justify-between mb-3">

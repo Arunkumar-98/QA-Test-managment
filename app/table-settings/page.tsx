@@ -699,45 +699,45 @@ function TableSettingsContent() {
     'attachments', 'tags', 'reviewer', 'reviewDate', 'reviewNotes', 'lastModifiedBy', 'lastModifiedDate'
   ]
   const defaultCoreSettings: {[key: string]: { visible: boolean; width: string; minWidth: string; label: string }} = {
-    testCase: { visible: true, width: 'w-64', minWidth: 'min-w-[250px]', label: 'Test Case' },
-    description: { visible: true, width: 'w-80', minWidth: 'min-w-[300px]', label: 'Description' },
-    expectedResult: { visible: false, width: 'w-64', minWidth: 'min-w-[250px]', label: 'Expected Result' },
-    status: { visible: true, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Status' },
-    priority: { visible: false, width: 'w-24', minWidth: 'min-w-[100px]', label: 'Priority' },
-    category: { visible: false, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Category' },
-    assignedTester: { visible: false, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Assigned Tester' },
-    executionDate: { visible: false, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Execution Date' },
-    notes: { visible: false, width: 'w-64', minWidth: 'min-w-[250px]', label: 'Notes' },
-    actualResult: { visible: false, width: 'w-64', minWidth: 'min-w-[250px]', label: 'Actual Result' },
-    environment: { visible: false, width: 'w-24', minWidth: 'min-w-[100px]', label: 'Environment' },
-    prerequisites: { visible: false, width: 'w-64', minWidth: 'min-w-[250px]', label: 'Prerequisites' },
-    platform: { visible: false, width: 'w-24', minWidth: 'min-w-[100px]', label: 'Platform' },
-    stepsToReproduce: { visible: true, width: 'w-80', minWidth: 'min-w-[300px]', label: 'Steps to Reproduce' },
-    suite: { visible: false, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Test Suite' },
-    position: { visible: false, width: 'w-16', minWidth: 'min-w-[80px]', label: 'Position' },
-    createdAt: { visible: false, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Created At' },
-    updatedAt: { visible: false, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Updated At' },
-    automationScript: { visible: false, width: 'w-48', minWidth: 'min-w-[200px]', label: 'Automation Script' },
-    customFields: { visible: false, width: 'w-48', minWidth: 'min-w-[200px]', label: 'Custom Fields' },
+    testCase: { visible: true, width: 'w-80', minWidth: 'min-w-[300px]', label: 'Test Case' },
+    description: { visible: true, width: 'w-96', minWidth: 'min-w-[350px]', label: 'Description' },
+    expectedResult: { visible: false, width: 'w-80', minWidth: 'min-w-[300px]', label: 'Expected Result' },
+    status: { visible: true, width: 'w-40', minWidth: 'min-w-[140px]', label: 'Status' },
+    priority: { visible: false, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Priority' },
+    category: { visible: false, width: 'w-40', minWidth: 'min-w-[140px]', label: 'Category' },
+    assignedTester: { visible: false, width: 'w-40', minWidth: 'min-w-[140px]', label: 'Assigned Tester' },
+    executionDate: { visible: false, width: 'w-40', minWidth: 'min-w-[140px]', label: 'Execution Date' },
+    notes: { visible: false, width: 'w-80', minWidth: 'min-w-[300px]', label: 'Notes' },
+    actualResult: { visible: false, width: 'w-80', minWidth: 'min-w-[300px]', label: 'Actual Result' },
+    environment: { visible: false, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Environment' },
+    prerequisites: { visible: false, width: 'w-80', minWidth: 'min-w-[300px]', label: 'Prerequisites' },
+    platform: { visible: false, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Platform' },
+    stepsToReproduce: { visible: true, width: 'w-96', minWidth: 'min-w-[350px]', label: 'Steps to Reproduce' },
+    suite: { visible: false, width: 'w-40', minWidth: 'min-w-[140px]', label: 'Test Suite' },
+    position: { visible: false, width: 'w-24', minWidth: 'min-w-[100px]', label: 'Position' },
+    createdAt: { visible: false, width: 'w-40', minWidth: 'min-w-[140px]', label: 'Created At' },
+    updatedAt: { visible: false, width: 'w-40', minWidth: 'min-w-[140px]', label: 'Updated At' },
+    automationScript: { visible: false, width: 'w-64', minWidth: 'min-w-[250px]', label: 'Automation Script' },
+    customFields: { visible: false, width: 'w-64', minWidth: 'min-w-[250px]', label: 'Custom Fields' },
     // New core columns default settings
-    qaStatus: { visible: false, width: 'w-32', minWidth: 'min-w-[120px]', label: 'QA Status' },
-    devStatus: { visible: false, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Dev Status' },
-    assignedDev: { visible: false, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Assigned Developer' },
-    bugStatus: { visible: false, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Bug Status' },
-    testType: { visible: false, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Test Type' },
-    testLevel: { visible: false, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Test Level' },
-    defectSeverity: { visible: false, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Defect Severity' },
+    qaStatus: { visible: false, width: 'w-40', minWidth: 'min-w-[140px]', label: 'QA Status' },
+    devStatus: { visible: false, width: 'w-40', minWidth: 'min-w-[140px]', label: 'Dev Status' },
+    assignedDev: { visible: false, width: 'w-40', minWidth: 'min-w-[140px]', label: 'Assigned Developer' },
+    bugStatus: { visible: false, width: 'w-40', minWidth: 'min-w-[140px]', label: 'Bug Status' },
+    testType: { visible: false, width: 'w-40', minWidth: 'min-w-[140px]', label: 'Test Type' },
+    testLevel: { visible: false, width: 'w-40', minWidth: 'min-w-[140px]', label: 'Test Level' },
+    defectSeverity: { visible: false, width: 'w-40', minWidth: 'min-w-[140px]', label: 'Defect Severity' },
     defectPriority: { visible: false, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Defect Priority' },
-    estimatedTime: { visible: false, width: 'w-24', minWidth: 'min-w-[100px]', label: 'Estimated Time' },
-    actualTime: { visible: false, width: 'w-24', minWidth: 'min-w-[100px]', label: 'Actual Time' },
-    testData: { visible: false, width: 'w-64', minWidth: 'min-w-[250px]', label: 'Test Data' },
-    attachments: { visible: false, width: 'w-48', minWidth: 'min-w-[200px]', label: 'Attachments' },
-    tags: { visible: false, width: 'w-48', minWidth: 'min-w-[200px]', label: 'Tags' },
-    reviewer: { visible: false, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Reviewer' },
-    reviewDate: { visible: false, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Review Date' },
-    reviewNotes: { visible: false, width: 'w-64', minWidth: 'min-w-[250px]', label: 'Review Notes' },
-    lastModifiedBy: { visible: false, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Last Modified By' },
-    lastModifiedDate: { visible: false, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Last Modified Date' },
+    estimatedTime: { visible: false, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Estimated Time' },
+    actualTime: { visible: false, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Actual Time' },
+    testData: { visible: false, width: 'w-80', minWidth: 'min-w-[300px]', label: 'Test Data' },
+    attachments: { visible: false, width: 'w-64', minWidth: 'min-w-[250px]', label: 'Attachments' },
+    tags: { visible: false, width: 'w-64', minWidth: 'min-w-[250px]', label: 'Tags' },
+    reviewer: { visible: false, width: 'w-40', minWidth: 'min-w-[140px]', label: 'Reviewer' },
+    reviewDate: { visible: false, width: 'w-40', minWidth: 'min-w-[140px]', label: 'Review Date' },
+    reviewNotes: { visible: false, width: 'w-80', minWidth: 'min-w-[300px]', label: 'Review Notes' },
+    lastModifiedBy: { visible: false, width: 'w-40', minWidth: 'min-w-[140px]', label: 'Last Modified By' },
+    lastModifiedDate: { visible: false, width: 'w-40', minWidth: 'min-w-[140px]', label: 'Last Modified Date' },
   }
 
   useEffect(() => {
@@ -765,7 +765,7 @@ function TableSettingsContent() {
         CORE_KEYS.forEach(k => {
           const s = mergedCoreSettings[k] || defaultCoreSettings[k]
           if (s) {
-            settings[k] = { visible: s.visible, width: s.width, minWidth: s.minWidth, label: s.label }
+          settings[k] = { visible: s.visible, width: s.width, minWidth: s.minWidth, label: s.label }
           } else {
             // Fallback for any missing core columns
             const template = COLUMN_TEMPLATES.find(t => t.name === k)
@@ -1016,9 +1016,9 @@ function TableSettingsContent() {
     : COLUMN_TEMPLATES.filter(template => template.category === templateCategory)
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800">
       {/* Header */}
-      <div className="bg-white border-b">
+      <div className="bg-slate-900/50 backdrop-blur-sm border-b border-slate-700/60">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -1026,14 +1026,14 @@ function TableSettingsContent() {
                 variant="ghost"
                 size="sm"
                 onClick={() => router.back()}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 text-slate-300 hover:text-white hover:bg-slate-800/50"
               >
                 <ArrowLeft className="w-4 h-4" />
                 Back
               </Button>
               <div>
-                <h1 className="text-2xl font-bold text-slate-900">Table Settings</h1>
-                <p className="text-sm text-slate-500">
+                <h1 className="text-2xl font-bold text-white">Table Settings</h1>
+                <p className="text-sm text-slate-300">
                   Customize your table columns, their types, visibility, and order
                 </p>
               </div>
@@ -1042,14 +1042,14 @@ function TableSettingsContent() {
               <Button
                 variant="outline"
                 onClick={handleResetToDefaults}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 border-slate-600/50 text-slate-300 hover:bg-slate-800/50"
               >
                 <RotateCcw className="w-4 h-4" />
                 Reset
               </Button>
               <Button
                 onClick={handleSaveSettings}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white"
               >
                 <Save className="w-4 h-4" />
                 Save Settings
@@ -1062,35 +1062,35 @@ function TableSettingsContent() {
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-6 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="columns" className="flex items-center gap-2">
+          <TabsList className="grid w-full grid-cols-4 bg-slate-800/50 border border-slate-700/60">
+            <TabsTrigger value="columns" className="flex items-center gap-2 data-[state=active]:bg-slate-700/50 data-[state=active]:text-white text-slate-300">
               <FileText className="w-4 h-4" />
               Columns
             </TabsTrigger>
-            <TabsTrigger value="templates" className="flex items-center gap-2">
+            <TabsTrigger value="templates" className="flex items-center gap-2 data-[state=active]:bg-slate-700/50 data-[state=active]:text-white text-slate-300">
               <Grid3X3 className="w-4 h-4" />
               Templates
             </TabsTrigger>
-            <TabsTrigger value="appearance" className="flex items-center gap-2">
+            <TabsTrigger value="appearance" className="flex items-center gap-2 data-[state=active]:bg-slate-700/50 data-[state=active]:text-white text-slate-300">
               <Palette className="w-4 h-4" />
               Appearance
             </TabsTrigger>
-            <TabsTrigger value="advanced" className="flex items-center gap-2">
+            <TabsTrigger value="advanced" className="flex items-center gap-2 data-[state=active]:bg-slate-700/50 data-[state=active]:text-white text-slate-300">
               <Settings className="w-4 h-4" />
               Advanced
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="columns" className="space-y-6">
-            <Card>
-              <CardHeader>
+            <Card className="bg-slate-800/50 backdrop-blur-sm border border-slate-700/60">
+              <CardHeader className="border-b border-slate-700/60">
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle className="flex items-center gap-2">
+                    <CardTitle className="flex items-center gap-2 text-white">
                       <List className="w-5 h-5" />
                       Column Management
                     </CardTitle>
-                    <CardDescription>
+                    <CardDescription className="text-slate-300">
                       Reorder, show/hide, and customize your table columns
                     </CardDescription>
                   </div>
@@ -1105,7 +1105,7 @@ function TableSettingsContent() {
                         window.location.reload()
                       }}
                       variant="outline"
-                      className="flex items-center gap-2"
+                      className="flex items-center gap-2 border-slate-600/50 text-slate-300 hover:bg-slate-700/50"
                     >
                       <RotateCcw className="w-4 h-4" />
                       Force Refresh Columns
@@ -1113,18 +1113,18 @@ function TableSettingsContent() {
                     <Button
                       onClick={handleShowAllColumns}
                       variant="outline"
-                      className="flex items-center gap-2"
+                      className="flex items-center gap-2 border-slate-600/50 text-slate-300 hover:bg-slate-700/50"
                     >
                       <Eye className="w-4 h-4" />
                       Show All Columns
                     </Button>
-                    <Button
-                      onClick={() => setIsAddColumnOpen(true)}
-                      className="flex items-center gap-2"
-                    >
-                      <Plus className="w-4 h-4" />
-                      Add Column
-                    </Button>
+                  <Button
+                    onClick={() => setIsAddColumnOpen(true)}
+                    className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add Column
+                  </Button>
                   </div>
                 </div>
               </CardHeader>

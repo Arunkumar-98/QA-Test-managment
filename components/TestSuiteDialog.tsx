@@ -48,50 +48,55 @@ export function TestSuiteDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
+      <DialogContent className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-slate-700/60">
         <DialogHeader>
-          <DialogTitle>Create Test Suite</DialogTitle>
-          <DialogDescription>Create a new test suite for organizing test cases.</DialogDescription>
+          <DialogTitle className="text-white">Create Test Suite</DialogTitle>
+          <DialogDescription className="text-slate-300">Create a new test suite for organizing test cases.</DialogDescription>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="suite-name">Suite Name *</Label>
+            <Label htmlFor="suite-name" className="text-white">Suite Name *</Label>
             <Input
               id="suite-name"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               placeholder="Enter suite name"
               required
+              className="bg-slate-800/50 border-slate-600/50 text-white placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
             />
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="suite-description">Description</Label>
+            <Label htmlFor="suite-description" className="text-white">Description</Label>
             <Textarea
               id="suite-description"
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               placeholder="Enter suite description"
               rows={3}
+              className="bg-slate-800/50 border-slate-600/50 text-white placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
             />
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="suite-owner">Owner</Label>
+            <Label htmlFor="suite-owner" className="text-white">Owner</Label>
             <Input
               id="suite-owner"
               value={formData.owner}
               onChange={(e) => setFormData({ ...formData, owner: e.target.value })}
               placeholder="Enter suite owner"
+              className="bg-slate-800/50 border-slate-600/50 text-white placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
             />
           </div>
           
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button type="button" variant="outline" onClick={onClose} className="text-slate-200 border-slate-600/50 hover:bg-slate-700/50">
               Cancel
             </Button>
-            <Button type="submit">Create Suite</Button>
+            <Button type="submit" className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white">
+              Create Suite
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

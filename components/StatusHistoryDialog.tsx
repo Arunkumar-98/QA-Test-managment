@@ -118,13 +118,13 @@ export function StatusHistoryDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[80vh]">
+      <DialogContent className="max-w-2xl max-h-[80vh] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-slate-700/60">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Clock className="w-5 h-5 text-blue-600" />
+          <DialogTitle className="flex items-center gap-2 text-white">
+            <Clock className="w-5 h-5 text-blue-300" />
             Status History
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-slate-300">
             Track all status changes for "{testCaseName}"
           </DialogDescription>
         </DialogHeader>

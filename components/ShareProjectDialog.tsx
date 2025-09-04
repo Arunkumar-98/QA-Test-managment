@@ -184,13 +184,13 @@ export function ShareProjectDialog({ isOpen, onClose, projectId, projectName, on
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-slate-700/60">
         <DialogHeader>
-          <DialogTitle className="flex items-center space-x-2">
-            <Share2 className="w-5 h-5" />
+          <DialogTitle className="flex items-center space-x-2 text-white">
+            <Share2 className="w-5 h-5 text-blue-300" />
             <span>Share Project: {projectName}</span>
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-slate-300">
             Create a shareable link for this project with customizable permissions.
           </DialogDescription>
         </DialogHeader>

@@ -90,33 +90,34 @@ export function CommentsDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-slate-700/60">
         <DialogHeader>
-          <DialogTitle>Comments - {testCase.testCase}</DialogTitle>
-          <DialogDescription>Manage comments and discussions for this test case.</DialogDescription>
+          <DialogTitle className="text-white">Comments - {testCase.testCase}</DialogTitle>
+          <DialogDescription className="text-slate-300">Manage comments and discussions for this test case.</DialogDescription>
         </DialogHeader>
         
         <div className="space-y-6">
           {/* Add New Comment */}
-          <div className="space-y-4 p-4 border border-slate-200 rounded-lg">
-            <h3 className="font-medium text-slate-900">Add New Comment</h3>
+          <div className="space-y-4 p-4 border border-slate-700/60 rounded-lg bg-slate-800/50">
+            <h3 className="font-medium text-white">Add New Comment</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="comment-author">Author</Label>
+                <Label htmlFor="comment-author" className="text-white">Author</Label>
                 <Input
                   id="comment-author"
                   value={newComment.author}
                   onChange={(e) => setNewComment({ ...newComment, author: e.target.value })}
                   placeholder="Enter author name"
+                  className="bg-slate-800/50 border-slate-600/50 text-white placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="comment-type">Type</Label>
+                <Label htmlFor="comment-type" className="text-white">Type</Label>
                 <Select
                   value={newComment.type}
                   onValueChange={(value) => setNewComment({ ...newComment, type: value as Comment["type"] })}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-slate-800/50 border-slate-600/50 text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -132,13 +133,14 @@ export function CommentsDialog({
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="comment-content">Comment *</Label>
+                <Label htmlFor="comment-content" className="text-white">Comment *</Label>
                 <Textarea
                   id="comment-content"
                   value={newComment.content}
                   onChange={(e) => setNewComment({ ...newComment, content: e.target.value })}
                   placeholder="Enter your comment..."
                   rows={3}
+                  className="bg-slate-800/50 border-slate-600/50 text-white placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                 />
               </div>
             </div>

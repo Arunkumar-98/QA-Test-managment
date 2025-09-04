@@ -840,60 +840,7 @@ export const mapSharedProjectReferenceToDB = (ref: SharedProjectReference): Shar
   last_synced_at: ref.lastSyncedAt
 })
 
-// Notes Types
-export type Note = {
-  id: string
-  title: string
-  content: string
-  projectId: string
-  userId: string
-  createdAt: Date
-  updatedAt: Date
-  isPinned: boolean
-  tags: string[]
-  color?: string
-}
 
-export type NoteDB = {
-  id: string
-  title: string
-  content: string
-  project_id: string
-  user_id: string
-  created_at: Date
-  updated_at: Date
-  is_pinned: boolean
-  tags: string[]
-  color?: string
-}
-
-export type CreateNoteInput = Omit<Note, 'id' | 'createdAt' | 'updatedAt'>
-
-export const mapNoteFromDB = (db: NoteDB): Note => ({
-  id: db.id,
-  title: db.title,
-  content: db.content,
-  projectId: db.project_id,
-  userId: db.user_id,
-  createdAt: db.created_at,
-  updatedAt: db.updated_at,
-  isPinned: db.is_pinned,
-  tags: db.tags || [],
-  color: db.color
-})
-
-export const mapNoteToDB = (note: Note): NoteDB => ({
-  id: note.id,
-  title: note.title,
-  content: note.content,
-  project_id: note.projectId,
-  user_id: note.userId,
-  created_at: note.createdAt,
-  updated_at: note.updatedAt,
-  is_pinned: note.isPinned,
-  tags: note.tags || [],
-  color: note.color
-})
 
 // Multi-User Project Types
 export type ProjectRole = 'owner' | 'admin' | 'editor' | 'viewer'

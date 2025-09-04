@@ -30,8 +30,8 @@ import {
   GripVertical,
   Sparkles,
   RefreshCw,
-  
-  AlignJustify,
+  Check,
+  Square,
   AlertCircle
 } from 'lucide-react'
 import { TestCase, TestCaseStatus, TestCasePriority, TestCaseCategory, CustomColumn } from '@/types/qa-types'
@@ -162,15 +162,15 @@ export function TestCaseTable({
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
     const initial: Record<string, number> = {}
     ;[
-      { key: 'index', width: 60 },
-      { key: 'testCase', width: 200 },
-      { key: 'description', width: 250 },
-      { key: 'status', width: 120 },
-      { key: 'priority', width: 100 },
-      { key: 'category', width: 120 },
-      { key: 'stepsToReproduce', width: 300 },
-      { key: 'expectedResult', width: 250 },
-      { key: 'actions', width: 220 }
+      { key: 'index', width: 80 },
+      { key: 'testCase', width: 320 },
+      { key: 'description', width: 400 },
+      { key: 'status', width: 160 },
+      { key: 'priority', width: 140 },
+      { key: 'category', width: 160 },
+      { key: 'stepsToReproduce', width: 400 },
+      { key: 'expectedResult', width: 320 },
+      { key: 'actions', width: 240 }
     ].forEach(c => { initial[c.key] = c.width })
     return initial
   })
@@ -181,6 +181,7 @@ export function TestCaseTable({
   // Persist wrap mode per project in localStorage
   const wrapStorageKey = useMemo(() => `qa.wrapMode:${currentProject || 'global'}`, [currentProject])
   const widthsStorageKey = useMemo(() => `qa.columnWidths:${currentProject || 'global'}`, [currentProject])
+  const selectedTestCasesStorageKey = useMemo(() => `qa.selectedTestCases:${currentProject || 'global'}`, [currentProject])
 
   useEffect(() => {
     try {
@@ -228,6 +229,52 @@ export function TestCaseTable({
       }
     } catch {}
   }, [columnWidths, widthsStorageKey])
+
+  // Load saved selected test cases
+  useEffect(() => {
+    try {
+      const raw = typeof window !== 'undefined' ? localStorage.getItem(selectedTestCasesStorageKey) : null
+      if (raw) {
+        const parsed = JSON.parse(raw) as string[]
+        if (Array.isArray(parsed)) {
+          // Only restore selections for test cases that still exist
+          const validSelections = parsed.filter(id => testCases.some(tc => tc.id === id))
+          if (validSelections.length > 0) {
+            // Use the onToggleTestCaseSelection function to properly set selections
+            validSelections.forEach(id => {
+              if (!selectedTestCases.has(id)) {
+                onToggleTestCaseSelection(id)
+              }
+            })
+            
+            // Show toast notification about restored selections
+            toast({
+              title: "Selections Restored",
+              description: `${validSelections.length} previously selected test case${validSelections.length !== 1 ? 's' : ''} restored.`,
+              duration: 3000
+            })
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Error loading saved test case selections:', err)
+    }
+  }, [currentProject, testCases.length]) // Only run when project changes or test cases are loaded
+
+  // Save selected test cases
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined' && selectedTestCases.size > 0) {
+        const selectionsArray = Array.from(selectedTestCases)
+        localStorage.setItem(selectedTestCasesStorageKey, JSON.stringify(selectionsArray))
+      } else if (typeof window !== 'undefined' && selectedTestCases.size === 0) {
+        // Clear the storage when no selections
+        localStorage.removeItem(selectedTestCasesStorageKey)
+      }
+    } catch (err) {
+      console.error('Error saving test case selections:', err)
+    }
+  }, [selectedTestCases, selectedTestCasesStorageKey])
 
   const MIN_COL_WIDTH = 60
   const startColumnResize = (key: string, clientX: number) => {
@@ -659,6 +706,13 @@ export function TestCaseTable({
           handlePasteCell()
         }
         break
+      case 'Delete':
+      case 'Backspace':
+        if (selectedTestCases.size > 0) {
+          e.preventDefault()
+          setIsBulkDeleteDialogOpen(true)
+        }
+        break
     }
   }
   
@@ -995,260 +1049,61 @@ export function TestCaseTable({
 
   return (
     <div className="h-full flex flex-col pb-24 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-800">
-      {/* Search and Filters - Dark theme */}
-      <div className="border-b border-slate-700/50 px-6 py-6 bg-slate-900/60 backdrop-blur">
-        <div className="flex flex-col gap-6">
-          {/* Main Search and Actions Row */}
-          <div className="flex flex-col lg:flex-row lg:items-center gap-4">
-            {/* Enhanced Search Bar */}
-            <div className="flex-1 relative group">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <Search className="h-5 w-5 text-slate-400 group-focus-within:text-blue-400 transition-colors" />
-          </div>
-            <Input
-                className="pl-12 pr-12 h-12 bg-slate-900/70 border-slate-700/60 text-slate-200 placeholder:text-slate-400 focus:border-blue-500/60 focus:ring-2 focus:ring-blue-500/20"
-                placeholder="Search test cases by title, description, or status..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-              <Button 
-              variant="ghost"
-              size="sm"
-                className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 p-0 hover:bg-slate-800/70 rounded-md"
-              onClick={() => setIsAdvancedSearchOpen(!isAdvancedSearchOpen)}
-                title="Advanced Search Options"
-            >
-                <Settings className="w-4 h-4 text-slate-300" />
-            </Button>
-            </div>
-            
-            {/* Modern Action Buttons (reduced) */}
-            <div className="flex items-center gap-2">
-              {/* Wrap Toggle */}
-              <Button
-                variant={wrapMode === 'wrap' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setWrapMode(wrapMode === 'wrap' ? 'truncate' : 'wrap')}
-                className={`h-10 px-3 ${wrapMode === 'wrap' ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-slate-800/50 text-slate-200 hover:bg-slate-700/50'}`}
-                title={wrapMode === 'wrap' ? 'Disable text wrapping' : 'Enable text wrapping'}
-              >
-                <AlignJustify className="w-4 h-4 mr-2" />
-                {wrapMode === 'wrap' ? 'Wrap On' : 'Wrap Off'}
-              </Button>
-
-              {/* Import */}
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => {
-                  const input = document.createElement('input')
-                  input.type = 'file'
-                  input.accept = '.csv,.xlsx'
-                  input.onchange = (e) => onFileUpload(e as any)
-                  input.click()
-                }}
-                className="h-10 px-3 bg-slate-800/50 border-slate-600/50 text-slate-200 hover:bg-slate-700/50 hover:border-slate-500/50"
-              >
-                <Upload className="w-4 h-4 mr-2" />
-                Import
-              </Button>
-              
-              {/* Paste */}
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setIsPasteDialogOpen?.(true)}
-                className="h-10 px-3 bg-slate-800/50 border-slate-600/50 text-slate-200 hover:bg-slate-700/50 hover:border-slate-500/50"
-              >
-                <Clipboard className="w-4 h-4 mr-2" />
-                Paste
-              </Button>
-
-              {/* Export */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onExportToExcel}
-                className="h-10 px-3 bg-slate-800/50 border-slate-600/50 text-slate-200 hover:bg-slate-700/50 hover:border-slate-500/50"
-              >
-                <Download className="w-4 h-4 mr-2" />
-                Export
-              </Button>
-              
-              {/* Filters Toggle */}
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setIsFiltersExpanded(!isFiltersExpanded)}
-                className="h-10 px-3 bg-slate-900/60 border-slate-700/60 text-slate-200 hover:bg-slate-800"
-              >
-                <Filter className="w-4 h-4 mr-2" />
-                Filters
-                {isFiltersExpanded ? <ChevronUp className="w-4 h-4 ml-2" /> : <ChevronDown className="w-4 h-4 ml-2" />}
-              </Button>
-            </div>
-          </div>
-          
-          {/* Expandable Filters - Modern Grid */}
-          {isFiltersExpanded && (
-            <div className="bg-slate-900/60 backdrop-blur-sm rounded-xl border border-slate-700/60 p-6 shadow-sm">
-              {/* Filter Action Buttons */}
-              <div className="flex items-center gap-3 mb-4">
-                {/* Save Filter */}
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => setIsSaveFilterOpen(true)}
-                  className="h-8 px-3 bg-slate-900/60 border-slate-700/60 text-slate-200 hover:bg-slate-800"
-                >
-                  <Save className="w-3.5 h-3.5 mr-1.5 text-slate-300" />
-                  <span className="text-xs font-medium text-slate-200">Save Filter</span>
-                </Button>
-                
-                {/* Load Filter */}
-                <Select onValueChange={(value) => {
-                  const filter = savedFilters.find(f => f.id === value)
-                  if (filter) onLoadFilter(filter)
-                }}>
-                  <SelectTrigger className="h-8 px-3 bg-white/80 backdrop-blur-sm border-slate-200/60 hover:border-blue-500/60 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 w-32">
-                    <Loader2 className="w-3.5 h-3.5 mr-1.5 text-slate-600" />
-                    <SelectValue placeholder="Load Filter" className="text-xs font-medium text-slate-700" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white/95 backdrop-blur-sm border-slate-200/60">
-                    {savedFilters.map((filter) => (
-                      <SelectItem key={filter.id} value={filter.id} className="hover:bg-blue-50/50">
-                        <div className="flex items-center justify-between w-full">
-                          <span className="font-medium">{filter.name}</span>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              onDeleteFilter(filter.id)
-                            }}
-                            className="h-6 w-6 p-0 ml-2 hover:bg-red-100 hover:text-red-600"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                
-                {/* Clear All */}
-                <Button
-                  variant="outline" 
-                  size="sm" 
-                  onClick={onClearAllFilters}
-                  className="h-8 px-3 bg-white/80 backdrop-blur-sm border-slate-200/60 hover:border-red-500/60 hover:bg-red-50/50 transition-all duration-200"
-                >
-                  <span className="text-xs font-medium text-slate-700">Clear All</span>
-                </Button>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {/* Status Filter */}
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-slate-700">Status</label>
-                         <Select value={statusFilter.join(',')} onValueChange={(value) => setStatusFilter(value ? value.split(',') as TestCaseStatus[] : [])}>
-                    <SelectTrigger className="h-11 bg-white/80 border-slate-200/60 hover:border-blue-500/60 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200">
-                      <Filter className="w-4 h-4 mr-2 text-slate-500" />
-                      <SelectValue placeholder="Select status" />
-              </SelectTrigger>
-                    <SelectContent className="bg-white/95 backdrop-blur-sm border-slate-200/60">
-                      {STATUS_OPTIONS.map((status) => {
-                        const StatusIcon = getStatusIcon(status)
-                        return (
-                          <SelectItem key={status} value={status} className="hover:bg-blue-50/50">
-                            <div className="flex items-center gap-2">
-                              <StatusIcon className="w-4 h-4" />
-                              <span className="font-medium">{status}</span>
-                            </div>
-                  </SelectItem>
-                        )
-                      })}
-              </SelectContent>
-            </Select>
-                </div>
-            
-                {/* Priority Filter */}
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-slate-700">Priority</label>
-                         <Select value={priorityFilter.join(',')} onValueChange={(value) => setPriorityFilter(value ? value.split(',') as TestCasePriority[] : [])}>
-                    <SelectTrigger className="h-11 bg-white/80 border-slate-200/60 hover:border-blue-500/60 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200">
-                      <Filter className="w-4 h-4 mr-2 text-slate-500" />
-                      <SelectValue placeholder="Select priority" />
-              </SelectTrigger>
-                    <SelectContent className="bg-white/95 backdrop-blur-sm border-slate-200/60">
-                      {PRIORITY_OPTIONS.map((priority) => {
-                        const PriorityIcon = getPriorityIcon(priority)
-                        return (
-                          <SelectItem key={priority} value={priority} className="hover:bg-blue-50/50">
-                            <div className="flex items-center gap-2">
-                              <PriorityIcon className="w-4 h-4" />
-                              <span className="font-medium">{priority}</span>
-                            </div>
-                  </SelectItem>
-                        )
-                      })}
-              </SelectContent>
-            </Select>
-                </div>
-                
-                {/* Category Filter */}
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-slate-700">Category</label>
-                  <Select value={categoryFilter.join(',')} onValueChange={(value) => setCategoryFilter(value ? value.split(',') as TestCaseCategory[] : [])}>
-                    <SelectTrigger className="h-11 bg-white/80 border-slate-200/60 hover:border-blue-500/60 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200">
-                      <Filter className="w-4 h-4 mr-2 text-slate-500" />
-                      <SelectValue placeholder="Select category" />
-              </SelectTrigger>
-                    <SelectContent className="bg-white/95 backdrop-blur-sm border-slate-200/60">
-                      {CATEGORY_OPTIONS.map((category) => (
-                        <SelectItem key={category} value={category} className="hover:bg-blue-50/50">
-                          <span className="font-medium">{category}</span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-                </div>
-                
-                {/* Platform Filter */}
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-slate-700">Platform</label>
-                  <Select value={platformFilter.join(',')} onValueChange={(value) => setPlatformFilter(value ? value.split(',') : [])}>
-                    <SelectTrigger className="h-11 bg-white/80 border-slate-200/60 hover:border-blue-500/60 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200">
-                      <Filter className="w-4 h-4 mr-2 text-slate-500" />
-                      <SelectValue placeholder="Select platform" />
-                </SelectTrigger>
-                    <SelectContent className="bg-white/95 backdrop-blur-sm border-slate-200/60">
-                      <SelectItem value="Web" className="hover:bg-blue-50/50">
-                        <span className="font-medium">Web</span>
-                    </SelectItem>
-                      <SelectItem value="Mobile" className="hover:bg-blue-50/50">
-                        <span className="font-medium">Mobile</span>
-                      </SelectItem>
-                      <SelectItem value="Desktop" className="hover:bg-blue-50/50">
-                        <span className="font-medium">Desktop</span>
-                      </SelectItem>
-                      <SelectItem value="API" className="hover:bg-blue-50/50">
-                        <span className="font-medium">API</span>
-                      </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-            </div>
-          )}
-        </div>
-      </div>
+      {/* Search and action buttons moved to header */}
 
       {/* Table */}
       <div className="bg-white flex-1 min-h-0 flex flex-col overflow-hidden">
+        {/* Bulk Selection Indicator - Desktop */}
+        {selectedTestCases.size > 0 && (
+          <div className="bg-red-50 border-b border-red-200 px-4 py-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                <span className="text-sm font-medium text-red-800">
+                  {selectedTestCases.size} test case{selectedTestCases.size !== 1 ? 's' : ''} selected
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => {
+                    onToggleSelectAll([])
+                    // Also clear the localStorage
+                    if (typeof window !== 'undefined') {
+                      localStorage.removeItem(selectedTestCasesStorageKey)
+                    }
+                  }}
+                  className="h-7 px-2 text-xs border-red-200 text-red-700 hover:bg-red-100"
+                >
+                  Clear Selection
+                </Button>
+                <Button 
+                  variant="destructive" 
+                  size="sm"
+                  onClick={() => setIsBulkDeleteDialogOpen(true)}
+                  className="h-7 px-2 text-xs bg-red-600 hover:bg-red-700"
+                  disabled={deleteLoading}
+                >
+                  {deleteLoading ? (
+                    <>
+                      <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-3 h-3 mr-1" />
+                      Delete Selected
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
         <div className="flex-1 min-h-0 flex flex-col">
-          <div className="w-full px-4 py-4 min-h-0">
-            <div className={`relative w-full overflow-x-auto overflow-y-auto rounded-xl focus:outline-none h-[70vh] min-h-0 ${isResizing ? 'cursor-col-resize select-none' : ''}`} 
+          <div className="w-full px-2 py-2 min-h-0">
+            <div className={`relative w-full overflow-x-auto overflow-y-auto rounded-xl focus:outline-none h-[75vh] min-h-0 ${isResizing ? 'cursor-col-resize select-none' : ''}`} 
                  tabIndex={0} 
                  onKeyDown={handleKeyDown}>
               
@@ -1279,6 +1134,12 @@ export function TestCaseTable({
                         style={{ width: `${(columnWidths[column.key] ?? column.width)}px`, left: pinnedColumns.has(column.key) ? columnLeftOffsets[column.key] : undefined, zIndex: pinnedColumns.has(column.key) ? 50 : undefined }}
                       >
                         {column.label}
+                        {/* Bulk selection indicator for index column */}
+                        {column.key === 'index' && selectedTestCases.size > 0 && (
+                          <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                            {selectedTestCases.size}
+                          </div>
+                        )}
                         {/* Hover affordance line */}
                         <div className="pointer-events-none absolute top-0 right-0 h-full w-px bg-transparent group-hover:bg-slate-300" />
                         {/* Resize handle - generous hit area with hover feedback */}
@@ -1306,7 +1167,7 @@ export function TestCaseTable({
                           </div>
                           </div>
 
-                {/* Data Rows */}
+                                {/* Data Rows */}
                 <div className="divide-y divide-slate-200 rounded-b-xl">
                   {paginatedTestCases.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-16">
@@ -1316,7 +1177,7 @@ export function TestCaseTable({
                         <Plus className="w-4 h-4 mr-2" />
                         Add Test Case
                       </Button>
-                        </div>
+                    </div>
                   ) : (
                     paginatedTestCases.map((testCase, rowIndex) => (
                       <div key={testCase.id} className="flex">

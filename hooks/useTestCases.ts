@@ -4,6 +4,8 @@ import { generateId } from '@/lib/utils'
 import { toast } from '@/hooks/use-toast'
 import { testCaseService } from '@/lib/supabase-service'
 import { CreateTestCaseInput } from '@/types/qa-types'
+import { errorHandler, createSupabaseError, createDatabaseError } from '@/lib/error-handler'
+import { loadingStateManager, LOADING_TYPES } from '@/lib/loading-states'
 
 
 export const useTestCases = (currentProjectId: string) => {
@@ -22,25 +24,34 @@ export const useTestCases = (currentProjectId: string) => {
         return
       }
       
+      const loadingId = loadingStateManager.startLoading(
+        LOADING_TYPES.LOAD_TEST_CASES,
+        { projectId: currentProjectId, component: 'useTestCases' },
+        'Loading test cases...'
+      )
+      
       setLoading(true)
       try {
         console.log('📡 Calling testCaseService.getAll with projectId:', currentProjectId)
         const data = await testCaseService.getAll(currentProjectId)
         console.log('✅ Test cases loaded successfully:', data.length, 'cases')
         setTestCases(data)
+        loadingStateManager.completeLoading(loadingId, `Loaded ${data.length} test cases`)
       } catch (error) {
         console.error('❌ Error loading test cases:', error)
-        console.error('❌ Error details:', {
-          message: error instanceof Error ? error.message : 'Unknown error',
-          stack: error instanceof Error ? error.stack : 'No stack trace',
-          currentProjectId,
-          error
+        const appError = createSupabaseError(error, {
+          projectId: currentProjectId,
+          component: 'useTestCases',
+          action: 'loadTestCases'
         })
+        
         toast({
-          title: "Error",
-          description: `Failed to load test cases: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          title: appError.message,
+          description: appError.userMessage,
           variant: "destructive",
         })
+        
+        loadingStateManager.completeLoadingWithError(loadingId, error, appError.userMessage)
       } finally {
         setLoading(false)
       }
@@ -70,9 +81,16 @@ export const useTestCases = (currentProjectId: string) => {
       automationScript: testCase.automationScript
     }
 
+    const loadingId = loadingStateManager.startLoading(
+      LOADING_TYPES.CREATE_TEST_CASE,
+      { projectId: currentProjectId, component: 'useTestCases' },
+      'Creating test case...'
+    )
+
     try {
       const created = await testCaseService.create(newTestCase)
       setTestCases(prev => [...prev, created])
+      loadingStateManager.completeLoading(loadingId, 'Test case created successfully')
       toast({
         title: "Success",
         description: "Test case added successfully",
@@ -85,11 +103,21 @@ export const useTestCases = (currentProjectId: string) => {
         newTestCase,
         currentProjectId
       })
+      
+      const appError = createSupabaseError(error, {
+        projectId: currentProjectId,
+        component: 'useTestCases',
+        action: 'addTestCase',
+        additionalData: { testCase: newTestCase.testCase }
+      })
+      
       toast({
-        title: "Error",
-        description: "Failed to add test case",
+        title: appError.message,
+        description: appError.userMessage,
         variant: "destructive",
       })
+      
+      loadingStateManager.completeLoadingWithError(loadingId, error, appError.userMessage)
       throw error
     }
   }, [currentProjectId])
