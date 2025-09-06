@@ -170,15 +170,21 @@ export function TeamCollaborationDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-7xl w-[95vw] max-h-[95vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Users className="w-5 h-5" />
-            Team Collaboration - {projectName}
-          </DialogTitle>
-          <DialogDescription>
-            Manage project sharing, team members, and view activity history
-          </DialogDescription>
+      <DialogContent className="max-w-7xl w-[95vw] max-h-[95vh] overflow-y-auto bg-white border border-slate-200 shadow-2xl">
+        <DialogHeader className="pb-6 border-b border-slate-200">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 bg-green-600 rounded-lg flex items-center justify-center">
+              <Users className="w-5 h-5 text-white" />
+            </div>
+            <div className="flex-1">
+              <DialogTitle className="text-xl font-bold text-slate-900">
+                Team Collaboration
+              </DialogTitle>
+              <DialogDescription className="text-slate-600 mt-1">
+                Set up team collaboration features and manage project sharing
+              </DialogDescription>
+            </div>
+          </div>
         </DialogHeader>
 
         <div className="flex space-x-2 mb-4">

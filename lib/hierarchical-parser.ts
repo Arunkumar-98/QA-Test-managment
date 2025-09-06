@@ -198,12 +198,12 @@ export function parseHierarchicalTestCases(text: string): ParsedHierarchicalData
 
 function normalizePriority(priority: string): TestCasePriority {
   const priorityMap: { [key: string]: TestCasePriority } = {
-    'P0': 'High',
-    'P1': 'High',
-    'P2': 'Medium',
-    'P3': 'Low'
+    'P0': 'P0 (Blocker)',
+    'P1': 'P1 (High)',
+    'P2': 'P2 (Medium)',
+    'P3': 'P3 (Low)'
   }
-  return priorityMap[priority] || 'Medium'
+  return priorityMap[priority] || 'P2 (Medium)'
 }
 
 function determineAutomationStatus(

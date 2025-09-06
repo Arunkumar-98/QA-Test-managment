@@ -1,18 +1,18 @@
 // QA Test Management System Types
 // NOTE: Database uses snake_case (created_at), frontend uses camelCase (createdAt)
 
-export type TestCaseStatus = 'Pending' | 'Pass' | 'Fail' | 'In Progress' | 'Blocked'
-export type TestCasePriority = 'High' | 'Medium' | 'Low'
-export type TestCaseCategory = 'Functional' | 'Non-Functional' | 'Regression' | 'Smoke' | 'Integration' | 'Unit' | 'E2E'
+export type TestCaseStatus = 'Pass' | 'Fail' | 'Blocked' | 'In Progress' | 'Not Executed' | 'Other'
+export type TestCasePriority = 'P0 (Blocker)' | 'P1 (High)' | 'P2 (Medium)' | 'P3 (Low)' | 'Other'
+export type TestCaseCategory = 'Recording' | 'Transcription' | 'Notifications' | 'Calling' | 'UI/UX' | 'Other'
 
 // New status types for different roles
-export type QAStatus = 'Not Started' | 'In Progress' | 'Pass' | 'Fail' | 'Blocked' | 'Deferred' | 'Not Applicable'
-export type DevStatus = 'Not Started' | 'In Progress' | 'Completed' | 'In Review' | 'Blocked' | 'Deferred'
-export type BugStatus = 'Open' | 'In Progress' | 'Fixed' | 'Verified' | 'Closed' | 'Won\'t Fix' | 'Duplicate'
-export type TestType = 'Manual' | 'Automated' | 'Semi-Automated' | 'Exploratory' | 'Performance' | 'Security'
-export type TestLevel = 'Unit' | 'Integration' | 'System' | 'Acceptance' | 'Regression' | 'Smoke' | 'Sanity'
-export type DefectSeverity = 'Critical' | 'High' | 'Medium' | 'Low' | 'Cosmetic'
-export type DefectPriority = 'P1' | 'P2' | 'P3' | 'P4' | 'P5'
+export type QAStatus = 'New' | 'Reviewed' | 'Approved' | 'Rejected' | 'Other'
+export type DevStatus = 'Open' | 'In Progress' | 'Fixed' | 'Reopened' | 'Closed' | 'Other'
+export type BugStatus = 'New' | 'In Progress' | 'Verified' | 'Closed' | 'Reopened' | 'Deferred' | 'Other'
+export type TestType = 'Functional' | 'Regression' | 'Smoke' | 'Performance' | 'Security' | 'Other'
+export type TestLevel = 'Unit' | 'Integration' | 'System' | 'UAT' | 'Other'
+export type DefectSeverity = 'Critical' | 'Major' | 'Minor' | 'Trivial' | 'Other'
+export type DefectPriority = 'P0' | 'P1' | 'P2' | 'P3' | 'Other'
 
 export type StatusChangeReason = 'manual_update' | 'automation_run' | 'bulk_update' | 'import' | 'system'
 

@@ -4,7 +4,7 @@ import { TestCase, Comment, TestSuite, TestCaseStatus, TestCasePriority, TestCas
 import { ImportFormat } from "@/types/import-types"
 import { parseHierarchicalTestCases } from "./hierarchical-parser"
 import { STATUS_COLORS, PRIORITY_COLORS, COMMENT_TYPE_COLORS, COMMENT_TYPE_ICONS, AUTOMATION_STATUS_ICONS, AUTOMATION_STATUS_COLORS, STATUS_ICONS, PRIORITY_ICONS } from "./constants"
-import { MessageSquare, AlertTriangle, HelpCircle, Lightbulb, Activity, CheckCircle, XCircle, Loader2, Circle, Clock, Ban, Minus, ArrowDown } from "lucide-react"
+import { MessageSquare, AlertTriangle, HelpCircle, Lightbulb, Activity, CheckCircle, XCircle, Loader2, Circle, Clock, Ban, Minus, ArrowDown, AlertCircle } from "lucide-react"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -52,48 +52,59 @@ export const getStatusBadgeVariant = (status: string) => {
       return "secondary"
     case "Blocked":
       return "outline"
+    case "Not Executed":
+      return "secondary"
+    case "Other":
+      return "outline"
     default:
       return "secondary"
   }
 }
 
 export const getStatusBadgeStyle = (status: string) => {
-  return STATUS_COLORS[status as keyof typeof STATUS_COLORS] || STATUS_COLORS.Pending
+  return STATUS_COLORS[status as keyof typeof STATUS_COLORS] || STATUS_COLORS["Not Executed"]
 }
 
 export const getPriorityBadgeVariant = (priority: string) => {
   switch (priority) {
-    case "High":
+    case "P0 (Blocker)":
       return "destructive"
-    case "Medium":
+    case "P1 (High)":
+      return "destructive"
+    case "P2 (Medium)":
       return "secondary"
-    case "Low":
+    case "P3 (Low)":
       return "default"
+    case "Other":
+      return "outline"
     default:
       return "secondary"
   }
 }
 
 export const getPriorityBadgeStyle = (priority: string) => {
-  return PRIORITY_COLORS[priority as keyof typeof PRIORITY_COLORS] || PRIORITY_COLORS.Medium
+  return PRIORITY_COLORS[priority as keyof typeof PRIORITY_COLORS] || PRIORITY_COLORS["P2 (Medium)"]
 }
 
 export const getStatusIcon = (status: string) => {
   const iconMap: Record<string, any> = {
-    Pending: Clock,
+    "Not Executed": Clock,
     Pass: CheckCircle,
     Fail: XCircle,
     "In Progress": Loader2,
-    Blocked: Ban
+    Blocked: Ban,
+    Other: HelpCircle
   }
   return iconMap[status] || Clock
 }
 
 export const getPriorityIcon = (priority: string) => {
   const iconMap: Record<string, any> = {
-    High: AlertTriangle,
-    Medium: Minus,
-    Low: ArrowDown
+    "P0 (Blocker)": AlertTriangle,
+    "P1 (High)": AlertCircle,
+    "P2 (Medium)": Minus,
+    "P3 (Low)": ArrowDown,
+    Other: HelpCircle
   }
   return iconMap[priority] || Minus
 }
@@ -330,28 +341,12 @@ export const mapImportField = (row: any, fieldName: string, possibleNames: strin
   return defaultValue
 }
 
-// Parse CSV content
+// Parse CSV content - Legacy function, use parseCSVEnhanced for new code
 export const parseCSV = (csvContent: string): any[] => {
-  const lines = csvContent.split('\n').filter(line => line.trim())
-  if (lines.length === 0) return []
-  
-  // Parse header
-  const header = lines[0].split(',').map((col, index) => {
-    const cleanCol = col.trim().replace(/"/g, '')
-    return cleanCol || `Column${index + 1}`
-  })
-  
-  // Parse data rows
-  const data = lines.slice(1).map(line => {
-    const values = line.split(',').map(val => val.trim().replace(/"/g, ''))
-    const row: any = {}
-    header.forEach((col, index) => {
-      row[col] = values[index] || ''
-    })
-    return row
-  })
-  
-  return data
+  // Import the enhanced parser
+  const { parseCSVEnhanced } = require('./enhanced-csv-parser')
+  const result = parseCSVEnhanced(csvContent)
+  return result.data
 }
 
 // Dynamic test case mapping from imported data
@@ -363,7 +358,7 @@ export const mapImportedDataToTestCase = (
 ): Partial<TestCase> => {
   return {
     testCase: mapImportField(row, 'testCase', [
-      'Test Case ID', 'Test Case Title', 'Test Case', 'Test Case Name', 'Test ID', 'Title', 'Name', 'TC Name'
+      'Test Case Title', 'Test Case', 'Test Case Name', 'Title', 'Name', 'Test Name', 'Test Title'
     ], `Imported Test Case ${index + 1}`),
     
     description: mapImportField(row, 'description', [
@@ -376,15 +371,15 @@ export const mapImportedDataToTestCase = (
     
     status: mapImportField(row, 'status', [
       'Status', 'Test Status', 'Execution Status'
-    ], 'Pending') as TestCase['status'],
+    ], 'Not Executed') as TestCase['status'],
     
     priority: mapImportField(row, 'priority', [
       'Priority', 'Test Priority', 'Severity', 'Importance'
-    ], 'Medium') as TestCase['priority'],
+    ], 'P2 (Medium)') as TestCase['priority'],
     
     category: mapImportField(row, 'category', [
       'Category', 'Test Category', 'Type', 'Test Type', 'Functional Area'
-    ], 'Functional') as TestCase['category'],
+    ], 'Other') as TestCase['category'],
     
     assignedTester: mapImportField(row, 'assignedTester', [
       'Assigned Tester', 'Assigned To', 'Tester', 'Owner', 'Assignee'
@@ -404,7 +399,7 @@ export const mapImportedDataToTestCase = (
     
     environment: mapImportField(row, 'environment', [
       'Environment', 'Env', 'Test Environment'
-    ], ''),
+    ], 'Other'),
     
     prerequisites: mapImportField(row, 'prerequisites', [
       'Prerequisites', 'Pre-requisites', 'Requirements', 'Setup'
@@ -412,11 +407,80 @@ export const mapImportedDataToTestCase = (
     
     platform: mapImportField(row, 'platform', [
       'Platform', 'OS', 'Operating System', 'Device'
-    ], ''),
+    ], 'Other'),
     
     stepsToReproduce: mapImportField(row, 'stepsToReproduce', [
       'Steps to Reproduce', 'Test Steps', 'Steps', 'Procedure', 'Actions'
     ], ''),
+    
+    // New core columns
+    qaStatus: mapImportField(row, 'qaStatus', [
+      'QA Status', 'QA State', 'Quality Status'
+    ], 'New') as TestCase['qaStatus'],
+    
+    devStatus: mapImportField(row, 'devStatus', [
+      'Dev Status', 'Development Status', 'Developer Status'
+    ], 'Open') as TestCase['devStatus'],
+    
+    assignedDev: mapImportField(row, 'assignedDev', [
+      'Assigned Developer', 'Assigned Dev', 'Developer', 'Dev Assignee'
+    ], ''),
+    
+    bugStatus: mapImportField(row, 'bugStatus', [
+      'Bug Status', 'Defect Status', 'Issue Status'
+    ], 'New') as TestCase['bugStatus'],
+    
+    testType: mapImportField(row, 'testType', [
+      'Test Type', 'Testing Type', 'Type'
+    ], 'Functional') as TestCase['testType'],
+    
+    testLevel: mapImportField(row, 'testLevel', [
+      'Test Level', 'Level', 'Testing Level'
+    ], 'System') as TestCase['testLevel'],
+    
+    defectSeverity: mapImportField(row, 'defectSeverity', [
+      'Defect Severity', 'Severity', 'Bug Severity'
+    ], 'Major') as TestCase['defectSeverity'],
+    
+    defectPriority: mapImportField(row, 'defectPriority', [
+      'Defect Priority', 'Bug Priority', 'Issue Priority'
+    ], 'P2') as TestCase['defectPriority'],
+    
+    estimatedTime: parseInt(mapImportField(row, 'estimatedTime', [
+      'Estimated Time', 'Estimate', 'Time Estimate', 'Est Time'
+    ], '0')) || 0,
+    
+    actualTime: parseInt(mapImportField(row, 'actualTime', [
+      'Actual Time', 'Time Spent', 'Duration', 'Elapsed Time'
+    ], '0')) || 0,
+    
+    testData: mapImportField(row, 'testData', [
+      'Test Data', 'Data', 'Test Input', 'Input Data'
+    ], ''),
+    
+    attachments: mapImportField(row, 'attachments', [
+      'Attachments', 'Files', 'Documents'
+    ], '').split(',').filter(Boolean) || [],
+    
+    tags: mapImportField(row, 'tags', [
+      'Tags', 'Labels', 'Keywords'
+    ], '').split(',').filter(Boolean) || [],
+    
+    reviewer: mapImportField(row, 'reviewer', [
+      'Reviewer', 'Reviewed By', 'Review Owner'
+    ], ''),
+    
+    reviewDate: mapImportField(row, 'reviewDate', [
+      'Review Date', 'Reviewed Date', 'Review Time'
+    ], ''),
+    
+    reviewNotes: mapImportField(row, 'reviewNotes', [
+      'Review Notes', 'Review Comments', 'Review Feedback'
+    ], ''),
+    
+    lastModifiedBy: mapImportField(row, 'lastModifiedBy', [
+      'Last Modified By', 'Modified By', 'Changed By'
+    ], 'Import System'),
     
     projectId: currentProjectId,
     suiteId: selectedSuiteId || undefined
@@ -426,10 +490,13 @@ export const mapImportedDataToTestCase = (
 // Normalize status values from various formats
 export const normalizeStatus = (status: string): TestCaseStatus => {
   const statusMap: { [key: string]: TestCaseStatus } = {
-    'not started': 'Pending',
-    'notstarted': 'Pending',
-    'not_started': 'Pending',
-    'pending': 'Pending',
+    'not started': 'Not Executed',
+    'notstarted': 'Not Executed',
+    'not_started': 'Not Executed',
+    'pending': 'Not Executed',
+    'not executed': 'Not Executed',
+    'notexecuted': 'Not Executed',
+    'not_executed': 'Not Executed',
     'in progress': 'In Progress',
     'inprogress': 'In Progress',
     'in_progress': 'In Progress',
@@ -449,13 +516,18 @@ export const normalizeStatus = (status: string): TestCaseStatus => {
 // Normalize priority values from various formats
 export const normalizePriority = (priority: string): TestCasePriority => {
   const priorityMap: { [key: string]: TestCasePriority } = {
-    'critical': 'High',
-    'urgent': 'High',
-    'high': 'High',
-    'medium': 'Medium',
-    'normal': 'Medium',
-    'low': 'Low',
-    'minor': 'Low'
+    'critical': 'P0 (Blocker)',
+    'urgent': 'P0 (Blocker)',
+    'blocker': 'P0 (Blocker)',
+    'p0': 'P0 (Blocker)',
+    'high': 'P1 (High)',
+    'p1': 'P1 (High)',
+    'medium': 'P2 (Medium)',
+    'normal': 'P2 (Medium)',
+    'p2': 'P2 (Medium)',
+    'low': 'P3 (Low)',
+    'minor': 'P3 (Low)',
+    'p3': 'P3 (Low)'
   }
   
   const normalized = priorityMap[priority.toLowerCase()] || priority
@@ -482,10 +554,10 @@ export const validateImportedTestCase = (testCase: Partial<TestCase>): {
     cleanedTestCase.status = normalizeStatus(testCase.status)
   }
   
-  const validStatuses: TestCaseStatus[] = ['Pending', 'Pass', 'Fail', 'In Progress', 'Blocked']
+  const validStatuses: TestCaseStatus[] = ['Pass', 'Fail', 'Blocked', 'In Progress', 'Not Executed', 'Other']
   if (cleanedTestCase.status && !validStatuses.includes(cleanedTestCase.status)) {
     errors.push(`Invalid status: ${testCase.status}. Must be one of: ${validStatuses.join(', ')}`)
-    cleanedTestCase.status = 'Pending'
+    cleanedTestCase.status = 'Not Executed'
   }
   
   // Normalize and validate priority
@@ -493,17 +565,17 @@ export const validateImportedTestCase = (testCase: Partial<TestCase>): {
     cleanedTestCase.priority = normalizePriority(testCase.priority)
   }
   
-  const validPriorities: TestCasePriority[] = ['High', 'Medium', 'Low']
+  const validPriorities: TestCasePriority[] = ['P0 (Blocker)', 'P1 (High)', 'P2 (Medium)', 'P3 (Low)', 'Other']
   if (cleanedTestCase.priority && !validPriorities.includes(cleanedTestCase.priority)) {
     errors.push(`Invalid priority: ${testCase.priority}. Must be one of: ${validPriorities.join(', ')}`)
-    cleanedTestCase.priority = 'Medium'
+    cleanedTestCase.priority = 'P2 (Medium)'
   }
   
   // Validate category
-  const validCategories: TestCaseCategory[] = ['Functional', 'Non-Functional', 'Regression', 'Smoke', 'Integration', 'Unit', 'E2E']
+  const validCategories: TestCaseCategory[] = ['Recording', 'Transcription', 'Notifications', 'Calling', 'UI/UX', 'Other']
   if (testCase.category && !validCategories.includes(testCase.category)) {
     errors.push(`Invalid category: ${testCase.category}. Must be one of: ${validCategories.join(', ')}`)
-    cleanedTestCase.category = 'Functional'
+    cleanedTestCase.category = 'Other'
   }
   
   // Clean and trim string fields

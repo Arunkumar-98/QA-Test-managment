@@ -551,15 +551,21 @@ export function AdvancedColumnSettings({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-7xl w-[95vw] h-[95vh] p-0 flex flex-col overflow-hidden">
-        <DialogHeader className="px-6 py-4 border-b shrink-0">
-          <DialogTitle className="flex items-center gap-2 text-xl">
-            <Settings className="w-5 h-5" />
-            Advanced Column Settings
-          </DialogTitle>
-          <DialogDescription className="text-sm text-slate-500">
-            Customize your table columns, their types, visibility, and order. All changes are saved per project.
-          </DialogDescription>
+      <DialogContent className="max-w-7xl w-[95vw] h-[95vh] p-0 flex flex-col overflow-hidden bg-white border border-slate-200 shadow-2xl">
+        <DialogHeader className="px-8 py-6 border-b border-slate-200 shrink-0">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 bg-amber-600 rounded-lg flex items-center justify-center">
+              <Settings className="w-5 h-5 text-white" />
+            </div>
+            <div className="flex-1">
+              <DialogTitle className="text-xl font-bold text-slate-900">
+                Advanced Column Settings
+              </DialogTitle>
+              <DialogDescription className="text-slate-600 mt-1">
+                Configure table columns, custom fields, and data management options
+              </DialogDescription>
+            </div>
+          </div>
         </DialogHeader>
 
         <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
@@ -646,6 +652,7 @@ export function AdvancedColumnSettings({
                     </div>
                   </SortableContext>
                 </DndContext>
+                </div>
               </TabsContent>
 
               <TabsContent value="templates" className="mt-0">

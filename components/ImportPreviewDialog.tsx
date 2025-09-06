@@ -317,24 +317,29 @@ export function ImportPreviewDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-7xl w-[95vw] max-h-[95vh] overflow-hidden flex flex-col bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-slate-700/60">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-white">
-            <Upload className="w-5 h-5 text-blue-300" />
-            Import Preview & Column Mapping
-          </DialogTitle>
-          <DialogDescription className="text-slate-300">
-            Review how your data will be imported and adjust column mappings if needed.
-            {rawData.length} rows detected, showing first 5 rows as preview.
-          </DialogDescription>
+      <DialogContent className="max-w-7xl w-[95vw] max-h-[95vh] overflow-hidden flex flex-col bg-white border border-slate-200 shadow-2xl">
+        <DialogHeader className="pb-6 border-b border-slate-200">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 bg-emerald-600 rounded-lg flex items-center justify-center">
+              <Upload className="w-5 h-5 text-white" />
+            </div>
+            <div className="flex-1">
+              <DialogTitle className="text-xl font-bold text-slate-900">
+                Import Preview
+              </DialogTitle>
+              <DialogDescription className="text-slate-600 mt-1">
+                Review and configure your imported test cases before adding them to your project
+              </DialogDescription>
+            </div>
+          </div>
         </DialogHeader>
 
         <div className="flex-1 overflow-hidden flex flex-col gap-4">
           {/* Test Suite Selection Section */}
-          <div className="border border-slate-700/60 rounded-lg p-4 bg-slate-800/50">
+          <div className="border border-slate-200 rounded-lg p-4 bg-slate-50">
             <div className="flex items-center gap-2 mb-3">
               <Folder className="w-4 h-4 text-blue-300" />
-              <h3 className="font-semibold text-white">Test Suite Assignment</h3>
+              <h3 className="font-semibold text-slate-900">Test Suite Assignment</h3>
             </div>
             
             <div className="space-y-3">
@@ -347,7 +352,7 @@ export function ImportPreviewDialog({
                     onChange={() => setSuiteSelectionMode('existing')}
                     className="text-blue-400"
                   />
-                  <span className="text-sm text-white">Import to existing test suite</span>
+                  <span className="text-sm text-slate-900">Import to existing test suite</span>
                 </label>
                 <label className="flex items-center space-x-2">
                   <input
@@ -356,7 +361,7 @@ export function ImportPreviewDialog({
                     onChange={() => setSuiteSelectionMode('new')}
                     className="text-blue-400"
                   />
-                  <span className="text-sm text-white">Create new test suite</span>
+                  <span className="text-sm text-slate-900">Create new test suite</span>
                 </label>
                 <label className="flex items-center space-x-2">
                   <input
@@ -365,19 +370,19 @@ export function ImportPreviewDialog({
                     onChange={() => setSuiteSelectionMode('none')}
                     className="text-blue-400"
                   />
-                  <span className="text-sm text-white">No test suite (project level)</span>
+                  <span className="text-sm text-slate-900">No test suite (project level)</span>
                 </label>
               </div>
 
               {/* Existing suite selection */}
               {suiteSelectionMode === 'existing' && (
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">Select Test Suite</Label>
+                  <Label className="text-sm font-medium text-slate-900">Select Test Suite</Label>
                   <Select
                     value={importSuiteId || ''}
                     onValueChange={setImportSuiteId}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="text-sm">
                       <SelectValue placeholder="Choose a test suite..." />
                     </SelectTrigger>
                     <SelectContent>
@@ -385,7 +390,7 @@ export function ImportPreviewDialog({
                         <SelectItem key={suite.id} value={suite.id}>
                           <div className="flex items-center justify-between w-full">
                             <span>{suite.name}</span>
-                            <Badge variant="outline" className="ml-2 text-xs">
+                            <Badge variant="outline" className="ml-2 text-xs text-slate-900">
                               {suite.totalTests || 0} tests
                             </Badge>
                           </div>
@@ -399,7 +404,7 @@ export function ImportPreviewDialog({
               {/* New suite creation */}
               {suiteSelectionMode === 'new' && (
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">New Test Suite Name</Label>
+                  <Label className="text-sm font-medium text-slate-900">New Test Suite Name</Label>
                   <div className="flex gap-2">
                     <Input
                       value={newSuiteName}
@@ -414,7 +419,7 @@ export function ImportPreviewDialog({
                     >
                       {isCreatingSuite ? (
                         <div className="flex items-center gap-2">
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          <div className="w-4 h-4 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
                           Creating...
                         </div>
                       ) : (
@@ -430,7 +435,7 @@ export function ImportPreviewDialog({
 
               {/* No suite selected */}
               {suiteSelectionMode === 'none' && (
-                <div className="text-sm text-muted-foreground bg-gray-50 p-3 rounded-lg">
+                <div className="text-sm text-slate-600 bg-slate-50 p-3 rounded-lg">
                   <Info className="w-4 h-4 inline mr-2" />
                   Test cases will be imported at the project level without being assigned to any test suite.
                   You can organize them into test suites later.
@@ -440,9 +445,9 @@ export function ImportPreviewDialog({
           </div>
 
           {/* Column Mapping Section */}
-          <div className="border rounded-lg p-4">
+          <div className="border border-slate-200 rounded-lg p-4">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold flex items-center gap-2">
+              <h3 className="font-semibold flex items-center gap-2 text-slate-900">
                 <Settings className="w-4 h-4" />
                 Column Mapping
               </h3>
@@ -458,7 +463,7 @@ export function ImportPreviewDialog({
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {columnMappings.map((mapping) => (
                 <div key={mapping.sourceColumn} className="space-y-2">
-                  <Label className="text-sm font-medium">
+                  <Label className="text-sm font-medium text-slate-900">
                     {mapping.sourceColumn}
                     <Badge 
                       variant="outline" 
@@ -481,7 +486,7 @@ export function ImportPreviewDialog({
                           <div className="flex flex-col">
                             <span>{option.label}</span>
                             {showAdvanced && (
-                              <span className="text-xs text-muted-foreground">
+                              <span className="text-xs text-slate-600">
                                 {option.description}
                               </span>
                             )}
@@ -516,7 +521,7 @@ export function ImportPreviewDialog({
           {/* Preview Table */}
           <div className="flex-1 overflow-hidden">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold flex items-center gap-2">
+              <h3 className="font-semibold flex items-center gap-2 text-slate-900">
                 <Eye className="w-4 h-4" />
                 Preview (First 5 rows)
               </h3>
@@ -525,13 +530,13 @@ export function ImportPreviewDialog({
                   checked={selectedRows.size === rawData.length}
                   onCheckedChange={handleSelectAll}
                 />
-                <span className="text-sm text-muted-foreground">
+                <span className="text-sm text-slate-600">
                   Select All ({selectedRows.size}/{rawData.length})
                 </span>
               </div>
             </div>
 
-            <div className="border rounded-lg overflow-hidden">
+            <div className="border border-slate-200 rounded-lg overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -552,10 +557,10 @@ export function ImportPreviewDialog({
                           onCheckedChange={() => handleSelectRow(index)}
                         />
                       </TableCell>
-                      <TableCell className="font-medium">
+                      <TableCell className="font-medium text-slate-900">
                         {testCase.testCase || 'No name'}
                       </TableCell>
-                      <TableCell className="max-w-xs truncate">
+                      <TableCell className="max-w-xs truncate text-slate-600">
                         {testCase.description || 'No description'}
                       </TableCell>
                       <TableCell>
@@ -564,12 +569,12 @@ export function ImportPreviewDialog({
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline">
+                        <Badge variant="outline" className="text-slate-900">
                           {testCase.priority || 'Medium'}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline">
+                        <Badge variant="outline" className="text-slate-900">
                           {testCase.category || 'Functional'}
                         </Badge>
                       </TableCell>
@@ -582,7 +587,7 @@ export function ImportPreviewDialog({
         </div>
 
         <DialogFooter className="flex items-center justify-between">
-          <div className="text-sm text-muted-foreground">
+          <div className="text-sm text-slate-600">
             {selectedRows.size > 0 ? `${selectedRows.size} rows selected` : 'All rows will be imported'}
           </div>
           <div className="flex gap-2">

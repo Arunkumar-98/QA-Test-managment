@@ -42,9 +42,9 @@ import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import { StatusHistoryDialog } from './StatusHistoryDialog'
 
-const STATUS_OPTIONS: TestCaseStatus[] = ['Pass', 'Fail', 'Pending', 'In Progress', 'Blocked']
-const PRIORITY_OPTIONS: TestCasePriority[] = ['High', 'Medium', 'Low']
-const CATEGORY_OPTIONS: TestCaseCategory[] = ['Functional', 'Non-Functional', 'Regression', 'Smoke', 'Integration', 'Unit']
+const STATUS_OPTIONS: TestCaseStatus[] = ['Pass', 'Fail', 'Blocked', 'In Progress', 'Not Executed', 'Other']
+const PRIORITY_OPTIONS: TestCasePriority[] = ['P0 (Blocker)', 'P1 (High)', 'P2 (Medium)', 'P3 (Low)', 'Other']
+const CATEGORY_OPTIONS: TestCaseCategory[] = ['Recording', 'Transcription', 'Notifications', 'Calling', 'UI/UX', 'Other']
 
 interface TestCaseTableProps {
   testCases: TestCase[]
@@ -373,6 +373,7 @@ export function TestCaseTable({
 
   type CoreCol = { key: string; label: string; width: number; type: string; visible: boolean; options?: string[] }
   const coreColumns: CoreCol[] = [
+    { key: 'select', label: '', width: 50, type: 'checkbox', visible: true },
     { key: 'index', label: '#', width: 60, type: 'number', visible: true },
     ...(Object.entries(coreSettings) as Array<[string, any]>).map(([key, cfg]) => ({
       key,
@@ -449,6 +450,11 @@ export function TestCaseTable({
       handleSaveEdit()
     }
     
+    // Don't select checkbox column cells
+    if (columnKey === 'select') {
+      return
+    }
+    
     if (e?.shiftKey && selectedCell) {
       // Shift+click for range selection
       const startRow = Math.min(selectedCell.rowIndex, rowIndex)
@@ -521,7 +527,7 @@ export function TestCaseTable({
     const testCase = paginatedTestCases[rowIndex]
     if (!testCase) return
     // Do not enter edit mode for non-editable columns
-    if (columnKey === 'index' || columnKey === 'actions') return
+    if (columnKey === 'select' || columnKey === 'index' || columnKey === 'actions') return
 
     setEditingCell({ rowIndex, columnKey })
     const currentValue = getCellValue(testCase, columnKey)
@@ -1055,15 +1061,17 @@ export function TestCaseTable({
       <div className="bg-white flex-1 min-h-0 flex flex-col overflow-hidden">
         {/* Bulk Selection Indicator - Desktop */}
         {selectedTestCases.size > 0 && (
-          <div className="bg-red-50 border-b border-red-200 px-4 py-2">
+          <div className="bg-gradient-to-r from-red-50 to-orange-50 border-b border-red-200 px-6 py-3 shadow-sm">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                <span className="text-sm font-medium text-red-800">
+              <div className="flex items-center gap-3">
+                <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+                <span className="text-sm font-semibold text-red-800">
                   {selectedTestCases.size} test case{selectedTestCases.size !== 1 ? 's' : ''} selected
                 </span>
+                <div className="w-px h-4 bg-red-300"></div>
+                <span className="text-xs text-red-600">Choose an action below</span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 <Button 
                   variant="outline" 
                   size="sm"
@@ -1074,28 +1082,44 @@ export function TestCaseTable({
                       localStorage.removeItem(selectedTestCasesStorageKey)
                     }
                   }}
-                  className="h-7 px-2 text-xs border-red-200 text-red-700 hover:bg-red-100"
+                  className="h-8 px-4 text-sm border-red-300 text-red-700 hover:bg-red-50 hover:border-red-400 transition-all duration-200"
                 >
+                  <Square className="w-4 h-4 mr-2" />
                   Clear Selection
                 </Button>
                 <Button 
                   variant="destructive" 
                   size="sm"
                   onClick={() => setIsBulkDeleteDialogOpen(true)}
-                  className="h-7 px-2 text-xs bg-red-600 hover:bg-red-700"
+                  className="h-8 px-4 text-sm bg-red-600 hover:bg-red-700 shadow-md hover:shadow-lg transition-all duration-200"
                   disabled={deleteLoading}
                 >
                   {deleteLoading ? (
                     <>
-                      <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                       Deleting...
                     </>
                   ) : (
                     <>
-                      <Trash2 className="w-3 h-3 mr-1" />
+                      <Trash2 className="w-4 h-4 mr-2" />
                       Delete Selected
                     </>
                   )}
+                </Button>
+                <Button 
+                  variant="destructive" 
+                  size="sm"
+                  onClick={() => {
+                    // Select all test cases and then delete
+                    const allTestCaseIds = paginatedTestCases.map(tc => tc.id)
+                    onToggleSelectAll(allTestCaseIds)
+                    setTimeout(() => setIsBulkDeleteDialogOpen(true), 100)
+                  }}
+                  className="h-8 px-4 text-sm bg-red-700 hover:bg-red-800 shadow-md hover:shadow-lg transition-all duration-200"
+                  disabled={deleteLoading}
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete All
                 </Button>
               </div>
             </div>
@@ -1133,12 +1157,29 @@ export function TestCaseTable({
                         className={`group relative flex-shrink-0 h-10 flex items-center px-3 border-r border-slate-300 bg-slate-50 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors ${pinnedColumns.has(column.key) ? 'sticky' : ''}`}
                         style={{ width: `${(columnWidths[column.key] ?? column.width)}px`, left: pinnedColumns.has(column.key) ? columnLeftOffsets[column.key] : undefined, zIndex: pinnedColumns.has(column.key) ? 50 : undefined }}
                       >
-                        {column.label}
-                        {/* Bulk selection indicator for index column */}
-                        {column.key === 'index' && selectedTestCases.size > 0 && (
-                          <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
-                            {selectedTestCases.size}
+                        {column.key === 'select' ? (
+                          <div className="flex items-center justify-center w-full">
+                            <Checkbox
+                              checked={selectedTestCases.size > 0 && selectedTestCases.size === paginatedTestCases.length}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  const allTestCaseIds = paginatedTestCases.map(tc => tc.id)
+                                  onToggleSelectAll(allTestCaseIds)
+                                } else {
+                                  onToggleSelectAll([])
+                                }
+                              }}
+                              className="data-[state=checked]:bg-red-600 data-[state=checked]:border-red-600 hover:border-red-400 transition-colors"
+                            />
+                            {/* Bulk selection indicator for select column */}
+                            {selectedTestCases.size > 0 && (
+                              <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                                {selectedTestCases.size}
+                              </div>
+                            )}
                           </div>
+                        ) : (
+                          column.label
                         )}
                         {/* Hover affordance line */}
                         <div className="pointer-events-none absolute top-0 right-0 h-full w-px bg-transparent group-hover:bg-slate-300" />
@@ -1180,7 +1221,7 @@ export function TestCaseTable({
                     </div>
                   ) : (
                     paginatedTestCases.map((testCase, rowIndex) => (
-                      <div key={testCase.id} className="flex">
+                      <div key={testCase.id || `testcase-${rowIndex}`} className="flex">
                         {spreadsheetColumns.map((column) => {
                           const isSelected = selectedCell?.rowIndex === rowIndex && selectedCell?.columnKey === column.key
                           const isInRange = isCellInRange(rowIndex, column.key)
@@ -1190,9 +1231,10 @@ export function TestCaseTable({
                             <div
                               key={column.key}
                               className={`
-                                flex-shrink-0 ${wrapMode === 'wrap' ? 'min-h-12 h-auto py-2' : 'h-12'} border-r border-slate-200 flex ${wrapMode === 'wrap' && column.key !== 'actions' && column.key !== 'index' ? 'items-start' : 'items-center'} px-3 ${column.key === 'actions' ? 'cursor-default' : 'cursor-cell'} transition-colors select-none ${pinnedColumns.has(column.key) ? 'sticky bg-white' : ''}
+                                flex-shrink-0 ${wrapMode === 'wrap' ? 'min-h-12 h-auto py-2' : 'h-12'} border-r border-slate-200 flex ${wrapMode === 'wrap' && column.key !== 'actions' && column.key !== 'index' && column.key !== 'select' ? 'items-start' : 'items-center'} px-3 ${column.key === 'actions' || column.key === 'select' ? 'cursor-default' : 'cursor-cell'} transition-colors select-none ${pinnedColumns.has(column.key) ? 'sticky bg-white' : ''}
                                 ${isSelected ? 'bg-blue-100 border-2 border-blue-500' : isInRange ? 'bg-blue-50 border border-blue-300' : 'hover:bg-slate-50'}
                                 ${column.key === 'index' ? 'bg-slate-100 text-slate-600 font-medium justify-center' : ''}
+                                ${column.key === 'select' ? 'bg-slate-50 justify-center hover:bg-slate-100' : ''}
                               `}
                               style={{ width: `${(columnWidths[column.key] ?? column.width)}px`, left: pinnedColumns.has(column.key) ? columnLeftOffsets[column.key] : undefined, zIndex: pinnedColumns.has(column.key) ? 25 : undefined }}
                               onClick={(e) => handleCellClick(rowIndex, column.key, e)}
@@ -1323,7 +1365,16 @@ export function TestCaseTable({
                                 )
                               ) : (
                                 <div className={`w-full text-sm ${wrapMode === 'wrap' ? 'whitespace-pre-wrap break-words' : 'truncate'}`}>
-                                  {column.key === 'index' ? (
+                                  {column.key === 'select' ? (
+                                    <div className="flex items-center justify-center w-full">
+                                      <Checkbox
+                                        checked={selectedTestCases.has(testCase.id)}
+                                        onCheckedChange={() => onToggleTestCaseSelection(testCase.id)}
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="data-[state=checked]:bg-red-600 data-[state=checked]:border-red-600 hover:border-red-400 transition-colors"
+                                      />
+                                    </div>
+                                  ) : column.key === 'index' ? (
                                     startIndex + rowIndex + 1
                                   ) : column.key === 'status' ? (
                                     <Select
@@ -1471,33 +1522,64 @@ export function TestCaseTable({
         {/* Mobile View */}
         <div className="lg:hidden p-4 lg:pl-16 space-y-4 bg-slate-900/60">
           {selectedTestCases.size > 0 && (
-            <div className="bg-red-900/20 border border-red-700/40 rounded-lg p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
+            <div className="bg-gradient-to-r from-red-50 to-orange-50 border border-red-200 rounded-lg p-4 shadow-sm">
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
                   <Trash2 className="w-5 h-5 text-red-600" />
-                  <span className="text-sm font-medium text-red-900">
+                  <span className="text-sm font-semibold text-red-800">
                     {selectedTestCases.size} test case{selectedTestCases.size !== 1 ? 's' : ''} selected
                   </span>
                 </div>
-                <Button 
-                  variant="destructive" 
-                  size="sm"
-                  onClick={() => setIsBulkDeleteDialogOpen(true)}
-                  className="bg-red-600 hover:bg-red-700"
-                  disabled={deleteLoading}
-                >
-                  {deleteLoading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                      Deleting...
-                    </>
-                  ) : (
-                    <>
-                      <Trash2 className="w-4 h-4 mr-1" />
-                      Delete
-                    </>
-                  )}
-                </Button>
+                <div className="flex gap-3">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      onToggleSelectAll([])
+                      if (typeof window !== 'undefined') {
+                        localStorage.removeItem(selectedTestCasesStorageKey)
+                      }
+                    }}
+                    className="flex-1 border-red-300 text-red-700 hover:bg-red-50 hover:border-red-400 transition-all duration-200"
+                  >
+                    <Square className="w-4 h-4 mr-2" />
+                    Clear
+                  </Button>
+                  <Button 
+                    variant="destructive" 
+                    size="sm"
+                    onClick={() => setIsBulkDeleteDialogOpen(true)}
+                    className="flex-1 bg-red-600 hover:bg-red-700 shadow-md hover:shadow-lg transition-all duration-200"
+                    disabled={deleteLoading}
+                  >
+                    {deleteLoading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Deleting...
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Delete Selected
+                      </>
+                    )}
+                  </Button>
+                  <Button 
+                    variant="destructive" 
+                    size="sm"
+                    onClick={() => {
+                      const allTestCaseIds = paginatedTestCases.map(tc => tc.id)
+                      onToggleSelectAll(allTestCaseIds)
+                      setTimeout(() => setIsBulkDeleteDialogOpen(true), 100)
+                    }}
+                    className="flex-1 bg-red-700 hover:bg-red-800 shadow-md hover:shadow-lg transition-all duration-200"
+                    disabled={deleteLoading}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete All
+                  </Button>
+                </div>
               </div>
             </div>
           )}
@@ -1515,7 +1597,7 @@ export function TestCaseTable({
           <div className="space-y-4">
             {paginatedTestCases.map((testCase, idx) => (
               <div 
-                key={testCase.id} 
+                key={testCase.id || `testcase-mobile-${idx}`} 
                   className="bg-slate-900/60 border border-slate-700/60 rounded-lg p-4 cursor-pointer hover:bg-slate-800 transition-colors text-slate-200"
                 onDoubleClick={() => onViewTestCase(testCase)}
                 title="Double-click to view test case details"

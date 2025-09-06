@@ -1,0 +1,4 @@
+Test Case,Description,Expected Result,Status,Priority,Category
+TC999,Test login functionality,User should login successfully,Pending,High,Functional
+TC998,Test logout functionality,User should logout successfully,Pass,Medium,Functional
+TC997,Test password reset,Password reset email should be sent,Fail,Low,Functional

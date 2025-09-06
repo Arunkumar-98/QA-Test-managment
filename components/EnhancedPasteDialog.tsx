@@ -87,9 +87,9 @@ export function EnhancedPasteDialog({
             testCase: `${tc.id}: ${tc.title}`,
             description: tc.description || '',
             expectedResult: tc.expectedResult || '',
-            status: tc.status || 'Pending',
-            priority: tc.priority || 'Medium',
-            category: tc.category || 'Functional',
+            status: tc.status || 'Not Executed',
+            priority: tc.priority || 'P2 (Medium)',
+            category: tc.category || 'Other',
             stepsToReproduce: tc.stepsToReproduce || '',
             projectId: currentProject,
             suiteId: selectedSuiteId,
@@ -267,16 +267,21 @@ export function EnhancedPasteDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-7xl w-[95vw] max-h-[95vh] overflow-hidden flex flex-col bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-slate-700/60">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-white">
-            <Clipboard className="w-5 h-5 text-blue-300" />
-            Enhanced Paste Import
-          </DialogTitle>
-          <DialogDescription className="text-slate-300">
-            Paste your test case data in any format. The system will automatically detect and parse it. 
-            Custom columns will be created automatically based on your data headers.
-          </DialogDescription>
+      <DialogContent className="max-w-7xl w-[95vw] max-h-[95vh] overflow-hidden flex flex-col bg-white border border-slate-200 shadow-2xl">
+        <DialogHeader className="pb-6 border-b border-slate-200">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center">
+              <Clipboard className="w-5 h-5 text-white" />
+            </div>
+            <div className="flex-1">
+              <DialogTitle className="text-xl font-bold text-slate-900">
+                Enhanced Paste
+              </DialogTitle>
+              <DialogDescription className="text-slate-600 mt-1">
+                Paste your test case data and let AI help you organize it perfectly
+              </DialogDescription>
+            </div>
+          </div>
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">

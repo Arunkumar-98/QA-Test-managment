@@ -16,7 +16,7 @@ import {
   DialogTitle,
 } from "./ui/dialog"
 import { CustomColumn, CustomColumnType } from "@/types/qa-types"
-import { Plus, X } from "lucide-react"
+import { Plus, X, Settings } from "lucide-react"
 
 interface CustomColumnDialogProps {
   isOpen: boolean
@@ -205,24 +205,21 @@ export function CustomColumnDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl w-[90vw] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-slate-700/60">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-white">
-            {defaultColumn 
-              ? "Edit Default Column" 
-              : isEditMode 
-                ? "Edit Custom Column" 
-                : "Add Custom Column"
-            }
-          </DialogTitle>
-          <DialogDescription className="text-slate-300">
-            {defaultColumn 
-              ? "Modify the default column settings below."
-              : isEditMode 
-                ? "Modify the custom column settings below."
-                : "Create a new custom column to add to your test case table."
-            }
-          </DialogDescription>
+      <DialogContent className="max-w-4xl w-[90vw] bg-white border border-slate-200 shadow-2xl">
+        <DialogHeader className="pb-6 border-b border-slate-200">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 bg-fuchsia-600 rounded-lg flex items-center justify-center">
+              <Settings className="w-5 h-5 text-white" />
+            </div>
+            <div className="flex-1">
+              <DialogTitle className="text-xl font-bold text-slate-900">
+                {isEditMode ? 'Edit Column' : 'Add Custom Column'}
+              </DialogTitle>
+              <DialogDescription className="text-slate-600 mt-1">
+                {isEditMode ? 'Update your custom column settings' : 'Create a new custom column for your test cases'}
+              </DialogDescription>
+            </div>
+          </div>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">

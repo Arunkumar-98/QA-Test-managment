@@ -15,6 +15,7 @@ import { ShareProjectDialog } from "./ShareProjectDialog"
 import { StatusHistoryDialog } from './StatusHistoryDialog'
 import { PRDToTestCases } from './PRDToTestCases'
 import { ImportPreviewDialog } from './ImportPreviewDialog'
+import { EnhancedImportDialog } from './EnhancedImportDialog'
 import { EnhancedPasteDialog } from './EnhancedPasteDialog'
 import { ShareTestSuiteDialog } from './ShareTestSuiteDialog'
 
@@ -56,6 +57,7 @@ import { Settings, Eye, Trash2, LogOut, User, Share2, Plus, Upload, Clipboard, D
 import { useAuth } from "./AuthProvider"
 import { CustomColumnDialog } from './CustomColumnDialog'
 import { ProjectDashboard } from './ProjectDashboard'
+import { ProjectDropdown } from './ProjectDropdown'
 
 
 
@@ -162,6 +164,7 @@ export function QAApplication() {
   const [selectedTestSuiteForSharing, setSelectedTestSuiteForSharing] = useState<TestSuite | null>(null)
   const [isPasteDialogOpen, setIsPasteDialogOpen] = useState(false)
   const [isImportPreviewDialogOpen, setIsImportPreviewDialogOpen] = useState(false)
+  const [isEnhancedImportDialogOpen, setIsEnhancedImportDialogOpen] = useState(false)
   const [isEnhancedPasteDialogOpen, setIsEnhancedPasteDialogOpen] = useState(false)
   const [importRawData, setImportRawData] = useState<any[]>([])
   const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(false)
@@ -831,6 +834,7 @@ export function QAApplication() {
       setCurrentProjectId(selectedProject.id)
       setCurrentProject(selectedProject.name)
       setCurrentView('dashboard') // Show dashboard by default for project view
+      setIsFiltersExpanded(false) // Close filters panel when switching to dashboard
       // Don't clear selectedSuiteId - let user choose suite or stay in project view
       
       // Load project-specific data for the new project
@@ -1090,7 +1094,7 @@ export function QAApplication() {
       const totalTests = suiteTestCases.length
       const passedTests = suiteTestCases.filter(tc => tc.status === 'Pass').length
       const failedTests = suiteTestCases.filter(tc => tc.status === 'Fail').length
-      const pendingTests = suiteTestCases.filter(tc => tc.status === 'Pending').length
+      const pendingTests = suiteTestCases.filter(tc => tc.status === 'Not Executed').length
       
       await updateSuiteStatistics(suiteId, {
         totalTests,
@@ -1126,9 +1130,9 @@ export function QAApplication() {
     addTestCase({
       testCase: testCase.testCase || 'Untitled Test Case',
       description: testCase.description || '',
-      status: testCase.status || 'Pending',
-      priority: testCase.priority || 'Medium',
-      category: testCase.category || 'Functional',
+      status: testCase.status || 'Not Executed',
+      priority: testCase.priority || 'P2 (Medium)',
+      category: testCase.category || 'Other',
       platform: testCase.platform || 'Web',
       suiteId: selectedSuiteId || testCase.suiteId || '',
       executionDate: testCase.executionDate || '',
@@ -1225,7 +1229,7 @@ export function QAApplication() {
           const totalTests = (suite.totalTests || 0) + savedTestCases.length
           const passedTests = suite.passedTests || 0
           const failedTests = suite.failedTests || 0
-          const pendingTests = (suite.pendingTests || 0) + savedTestCases.filter(tc => tc.status === 'Pending').length
+          const pendingTests = (suite.pendingTests || 0) + savedTestCases.filter(tc => tc.status === 'Not Executed').length
           
           
           
@@ -1348,8 +1352,48 @@ export function QAApplication() {
     event.target.value = ''
   }
 
-  const handleExportToExcel = () => {
-    const worksheet = XLSX.utils.json_to_sheet(testCases.map(tc => ({
+  const handleExportToExcel = async () => {
+    if (finalTestCases.length === 0) {
+      toast({
+        title: "No Data to Export",
+        description: "There are no test cases to export.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      // Use the enhanced export system with standard Excel template
+      const { exportProcessor, exportTemplateManager } = await import('../lib/export-templates')
+      const template = exportTemplateManager.getTemplate('standard-excel')
+      
+      if (!template) {
+        throw new Error('Standard Excel template not found')
+      }
+
+      const fileName = selectedSuiteId && testSuites.find(s => s.id === selectedSuiteId)
+        ? `${testSuites.find(s => s.id === selectedSuiteId)?.name}_test_cases`
+        : `test-cases-${currentProject}-${new Date().toISOString().split('T')[0]}`
+
+      const result = await exportProcessor.exportData({
+        template,
+        data: finalTestCases,
+        fileName
+      })
+
+      if (result.success) {
+        toast({
+          title: "Export Successful",
+          description: `Exported ${result.recordCount} test cases to ${result.fileName}`,
+        })
+      } else {
+        throw new Error(result.errors.join(', '))
+      }
+    } catch (error) {
+      // Fallback to original export if enhanced system fails
+      console.warn('Enhanced export failed, using fallback:', error)
+      
+      const worksheet = XLSX.utils.json_to_sheet(finalTestCases.map(tc => ({
       'Test Case': tc.testCase,
       'Description': tc.description,
       'Expected Result': tc.expectedResult,
@@ -1358,7 +1402,6 @@ export function QAApplication() {
       'Category': tc.category,
       'Assigned Tester': tc.assignedTester,
       'Execution Date': tc.executionDate,
-      
       'Actual Result': tc.actualResult,
       'Environment': tc.environment,
       'Prerequisites': tc.prerequisites,
@@ -1374,6 +1417,7 @@ export function QAApplication() {
       title: "Export Successful",
       description: "Test cases exported to Excel successfully.",
     })
+    }
   }
 
   // Filter test cases based on selection:
@@ -1425,6 +1469,8 @@ export function QAApplication() {
     setCurrentView('dashboard')
     // Clear suite filter when switching to dashboard
     setSelectedSuiteId(null)
+    // Close filters panel when switching to dashboard
+    setIsFiltersExpanded(false)
   }
 
   const handleShowTestCases = () => {
@@ -1793,6 +1839,7 @@ export function QAApplication() {
   const clearSuite = () => {
     setSelectedSuiteId(null)
     setCurrentView('dashboard')
+    setIsFiltersExpanded(false) // Close filters panel when switching to dashboard
   }
 
   const handleSuiteClick = (suiteId: string | null) => {
@@ -1808,7 +1855,7 @@ export function QAApplication() {
 
 
         {/* Header */}
-        <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-800 border-b border-slate-700/50 shadow-lg relative z-40">
+        <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-800 border-b border-slate-700/50 shadow-lg relative z-[5]">
           <div className="w-full px-6 lg:px-8 xl:px-12">
             <div className="flex items-center justify-between h-20">
               <div className="flex items-center space-x-6">
@@ -1837,128 +1884,6 @@ export function QAApplication() {
               </div>
               
               <div className="flex items-center space-x-6">
-                {/* Project Selector */}
-                <div className="relative" ref={projectMenuRef}>
-                <Button
-                  variant="outline"
-                  size="sm"
-                    onClick={() => setShowProjectMenu(!showProjectMenu)}
-                    className="h-10 px-4 bg-slate-900/50 border-slate-700/60 text-slate-200 hover:bg-slate-800/70 transition-all duration-200 flex items-center space-x-2"
-                  >
-                    <Briefcase className="w-4 h-4 text-blue-300" />
-                    <span className="text-sm font-medium truncate max-w-40">
-                      {currentProject || 'Select Project'}
-                    </span>
-                    <ChevronDown className="w-4 h-4 text-slate-400" />
-                  </Button>
-                  
-                  {showProjectMenu && (
-                    <div className="absolute right-0 top-full mt-2 w-80 bg-slate-900/95 backdrop-blur-sm rounded-xl shadow-lg border border-slate-700/60 py-2 z-[999999] max-h-96 overflow-y-auto">
-                      <div className="px-4 py-3 border-b border-white/10">
-                        <p className="text-xs font-medium text-blue-200 uppercase tracking-wide">Projects</p>
-                      </div>
-                      
-                      {projects.length > 0 ? (
-                        <div className="py-2">
-                          {projects.map((project) => (
-                            <div
-                              key={project.id}
-                              onClick={() => {
-                                handleProjectChange(project.name)
-                                setShowProjectMenu(false)
-                              }}
-                              className={`w-full px-4 py-3 text-left hover:bg-white/10 flex items-center space-x-3 transition-colors group cursor-pointer rounded-lg mx-2 ${
-                                currentProject === project.name ? 'bg-blue-500/20 text-blue-200' : 'text-white'
-                              }`}
-                            >
-                              <Briefcase className={`w-4 h-4 ${
-                                currentProject === project.name ? 'text-blue-300' : 'text-slate-400'
-                              }`} />
-                              <div className="flex-1 min-w-0">
-                                <p className={`font-medium truncate ${
-                                  currentProject === project.name ? 'text-blue-200' : 'text-white'
-                                }`}>
-                                  {project.name}
-                                </p>
-                                <p className="text-xs text-slate-400 truncate">
-                                  {testSuites.filter(suite => suite.projectId === project.id).length} test suites
-                                </p>
-                              </div>
-                              <div className="flex items-center space-x-2">
-                                {currentProject === project.name && (
-                                  <div className="flex items-center space-x-1">
-                                    <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
-                                    <span className="text-xs text-emerald-300 font-medium">Active</span>
-                                  </div>
-                                )}
-                                <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      handleEditProject(project)
-                                    }}
-                                    className="p-1 hover:bg-blue-500/20 rounded text-blue-300 hover:text-blue-200 transition-colors"
-                                    title="Edit Project"
-                                  >
-                                    <Settings className="w-3 h-3" />
-                                  </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      handleShareProject(project)
-                                    }}
-                                    className="p-1 hover:bg-green-500/20 rounded text-green-300 hover:text-green-200 transition-colors"
-                                    title="Share Project"
-                                  >
-                                    <Share2 className="w-3 h-3" />
-                                  </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      handleDeleteProject(project)
-                                    }}
-                                    className="p-1 hover:bg-red-500/20 rounded text-red-300 hover:text-red-200 transition-colors"
-                                    title="Delete Project"
-                                  >
-                                    <Trash2 className="w-3 h-3" />
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="px-4 py-6 text-center">
-                          <p className="text-sm text-slate-400 mb-3">No projects available</p>
-                          <Button
-                            onClick={() => {
-                              setIsProjectDialogOpen(true)
-                              setShowProjectMenu(false)
-                            }}
-                            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white"
-                          >
-                            <Plus className="w-4 h-4 mr-2" />
-                            Create Project
-                </Button>
-              </div>
-                      )}
-                      
-                      <div className="px-4 py-3 border-t border-white/10">
-                        <button
-                          onClick={() => {
-                            setIsProjectDialogOpen(true)
-                            setShowProjectMenu(false)
-                          }}
-                          className="w-full px-4 py-3 text-left text-sm text-blue-300 hover:bg-blue-500/20 flex items-center space-x-3 transition-colors rounded-lg mx-2"
-                        >
-                          <Plus className="w-4 h-4" />
-                          <span className="font-medium">Create New Project</span>
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
                 <div className="relative" ref={userMenuRef}>
                   <Button
                     variant="ghost"
@@ -1970,7 +1895,7 @@ export function QAApplication() {
                   </Button>
                   
                   {showUserMenu && (
-                    <div className="absolute right-0 top-full mt-2 w-64 bg-slate-900/95 backdrop-blur-sm rounded-xl shadow-lg border border-slate-700/60 py-2 z-[99999]">
+                    <div className="absolute right-0 top-full mt-2 w-64 bg-slate-900/95 backdrop-blur-sm rounded-xl shadow-lg border border-slate-700/60 py-2 z-[999999999]">
                       <div className="px-4 py-2 border-b border-white/10">
                         <p className="text-xs font-medium text-blue-200 uppercase tracking-wide">User Profile</p>
                       </div>
@@ -2049,141 +1974,31 @@ export function QAApplication() {
         </div>
 
         {/* Second Navbar */}
-        <div className="bg-slate-900/80 border-b border-slate-700/30 shadow-sm relative z-[999999]">
+        <div className="bg-slate-900/80 border-b border-slate-700/30 shadow-sm relative z-[10]">
           <div className="w-full px-6 lg:px-8 xl:px-12">
             <div className="flex items-center justify-between h-14">
-              {/* Left side - Search and Actions */}
+              {/* Left side - Navigation sections */}
               <div className="flex items-center space-x-6">
-                {/* Search Bar */}
-                <div className="flex-1 max-w-md relative group">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Search className="h-4 w-4 text-blue-400 group-focus-within:text-blue-300 transition-colors" />
-                  </div>
-                  <Input
-                    className="pl-9 pr-9 h-8 bg-slate-800/70 border-slate-600/60 text-slate-200 placeholder:text-slate-400 focus:border-blue-500/60 focus:ring-2 focus:ring-blue-500/20 text-sm"
-                    placeholder="Search test cases..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                  <Button 
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 p-0 hover:bg-blue-500/20 rounded-md"
-                    title="Advanced Search Options"
-                  >
-                    <Settings className="w-3 h-3 text-blue-400 hover:text-blue-300 transition-colors" />
-                  </Button>
-                </div>
+                {/* Project Selector */}
+                <ProjectDropdown
+                  ref={projectMenuRef}
+                  currentProject={currentProject}
+                  projects={projects}
+                  testSuites={testSuites}
+                  showProjectMenu={showProjectMenu}
+                  onToggleProjectMenu={() => setShowProjectMenu(!showProjectMenu)}
+                  onProjectChange={handleProjectChange}
+                  onEditProject={handleEditProject}
+                  onShareProject={handleShareProject}
+                  onDeleteProject={handleDeleteProject}
+                  onOpenProjectDialog={() => setIsProjectDialogOpen(true)}
+                />
 
                 {/* Partition Line */}
-                <div className="w-px h-6 bg-slate-600/50 mx-2"></div>
-
-                {/* Action Buttons */}
-                <div className="flex items-center gap-2">
-                  {/* All Test Cases Button */}
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => handleSuiteClick(null)}
-                    className={`h-8 px-3 text-xs ${
-                      selectedSuiteId === null 
-                        ? 'bg-blue-500/30 border-blue-400/50 text-blue-200' 
-                        : 'bg-blue-500/20 border-blue-400/30 text-blue-300 hover:bg-blue-500/30 hover:border-blue-400/50'
-                    }`}
-                  >
-                    <Folder className="w-3 h-3 mr-1.5" />
-                    All Test Cases
-                  </Button>
-
-                  {/* Import */}
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => {
-                      const input = document.createElement('input')
-                      input.type = 'file'
-                      input.accept = '.csv,.xlsx'
-                      input.onchange = (e) => handleFileUpload(e as any)
-                      input.click()
-                    }}
-                    className="h-8 px-3 bg-emerald-500/20 border-emerald-400/30 text-emerald-300 hover:bg-emerald-500/30 hover:border-emerald-400/50 text-xs"
-                  >
-                    <Upload className="w-3 h-3 mr-1.5 text-emerald-300" />
-                    Import
-                  </Button>
-                  
-                  {/* Paste */}
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => setIsEnhancedPasteDialogOpen(true)}
-                    className="h-8 px-3 bg-blue-500/20 border-blue-400/30 text-blue-300 hover:bg-blue-500/30 hover:border-blue-400/50 text-xs"
-                  >
-                    <Clipboard className="w-3 h-3 mr-1.5 text-blue-300" />
-                    Paste
-                  </Button>
-
-                  {/* Export */}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleExportToExcel}
-                    className="h-8 px-3 bg-purple-500/20 border-purple-400/30 text-purple-300 hover:bg-purple-500/30 hover:border-purple-400/50 text-xs"
-                  >
-                    <Download className="w-3 h-3 mr-1.5 text-purple-300" />
-                    Export
-                  </Button>
-                  
-                  {/* Filters */}
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => setIsFiltersExpanded(!isFiltersExpanded)}
-                    className="h-8 px-3 bg-orange-500/20 border-orange-400/30 text-orange-300 hover:bg-orange-500/30 hover:border-orange-400/50 text-xs"
-                  >
-                    <Filter className="w-3 h-3 mr-1.5 text-orange-300" />
-                    Filters
-                  </Button>
-
-                  {/* Reset Widths */}
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => {
-                      // Reset to default column widths
-                      const defaultWidths: Record<string, number> = {
-                        index: 80,
-                        testCase: 320,
-                        description: 400,
-                        status: 160,
-                        priority: 140,
-                        category: 160,
-                        stepsToReproduce: 400,
-                        expectedResult: 320,
-                        actions: 240
-                      }
-                      setColumnWidths(defaultWidths)
-                      // Clear localStorage
-                      if (typeof window !== 'undefined') {
-                        localStorage.removeItem('table-column-widths')
-                      }
-                    }}
-                    className="h-8 px-3 bg-red-500/20 border-red-400/30 text-red-300 hover:bg-red-500/30 hover:border-red-400/50 text-xs"
-                    title="Reset all column widths to default"
-                  >
-                    <RefreshCw className="w-3 h-3 mr-1.5 text-red-300" />
-                    Reset
-                  </Button>
-                </div>
-              </div>
-
-              {/* Right side - Navigation sections */}
-              <div className="flex items-center space-x-4">
-                {/* Partition Line */}
-                <div className="w-px h-6 bg-slate-600/50 mx-2"></div>
+                <div className="w-px h-6 bg-slate-600/50"></div>
                 
                 {/* Test Suites Section */}
-                <div className="relative z-[999999]">
+                <div className="relative z-[999999999]">
                   <div 
                     className="flex items-center space-x-3 cursor-pointer hover:bg-emerald-500/10 rounded-lg px-3 py-2 transition-colors"
                     onClick={() => toggleDropdown('testSuites')}
@@ -2201,7 +2016,7 @@ export function QAApplication() {
                   {activeDropdown === 'testSuites' && (
                     <div 
                       data-test-suites-dropdown
-                      className="absolute top-full left-0 mt-2 w-80 bg-slate-900/95 backdrop-blur-sm rounded-xl shadow-lg border border-slate-700/60 py-2 z-[999999] max-h-96 overflow-y-auto"
+                      className="absolute top-full left-0 mt-2 w-80 bg-slate-900/95 backdrop-blur-sm rounded-xl shadow-lg border border-slate-700/60 py-2 z-[999999999] max-h-96 overflow-y-auto"
                     >
                       <div className="px-4 py-2 border-b border-white/10">
                         <p className="text-xs font-medium text-emerald-200 uppercase tracking-wide">Test Suites</p>
@@ -2288,18 +2103,6 @@ export function QAApplication() {
                         </div>
                       )}
                       
-                      <div className="px-4 py-2 border-t border-white/10">
-                        <button
-                          onClick={() => {
-                            setIsSuiteDialogOpen(true)
-                            closeDropdown()
-                          }}
-                          className="w-full px-4 py-2 text-left text-sm text-emerald-300 hover:bg-emerald-500/20 flex items-center space-x-3 transition-colors rounded-lg"
-                        >
-                          <Plus className="w-4 h-4" />
-                          <span className="font-medium">Create New Test Suite</span>
-                        </button>
-                      </div>
                     </div>
                   )}
                 </div>
@@ -2308,7 +2111,7 @@ export function QAApplication() {
                 <div className="w-px h-6 bg-slate-600/50 mx-3"></div>
 
                 {/* Resources Section */}
-                <div className="relative z-[999999]">
+                <div className="relative z-[999999999]">
                   <div 
                     className="flex items-center space-x-3 cursor-pointer hover:bg-indigo-500/10 rounded-lg px-3 py-2 transition-colors"
                     onClick={() => toggleDropdown('resources')}
@@ -2326,7 +2129,7 @@ export function QAApplication() {
                   {activeDropdown === 'resources' && (
                     <div 
                       data-resources-dropdown
-                      className="absolute top-full left-0 mt-2 w-80 bg-slate-900/95 backdrop-blur-sm rounded-xl shadow-lg border border-slate-700/60 py-2 z-[999999] max-h-96 overflow-y-auto"
+                      className="absolute top-full left-0 mt-2 w-80 bg-slate-900/95 backdrop-blur-sm rounded-xl shadow-lg border border-slate-700/60 py-2 z-[999999999] max-h-96 overflow-y-auto"
                     >
                       <div className="px-4 py-2 border-b border-white/10">
                         <p className="text-xs font-medium text-indigo-200 uppercase tracking-wide">Resources</p>
@@ -2458,7 +2261,7 @@ export function QAApplication() {
                 <div className="w-px h-6 bg-slate-600/50 mx-3"></div>
 
                 {/* Members Section */}
-                <div className="relative z-[999999]">
+                <div className="relative z-[999999999]">
                   <div 
                     className="flex items-center space-x-3 cursor-pointer hover:bg-purple-500/10 rounded-lg px-3 py-2 transition-colors"
                     onClick={() => toggleDropdown('members')}
@@ -2473,7 +2276,7 @@ export function QAApplication() {
                   {activeDropdown === 'members' && (
                     <div 
                       data-members-dropdown
-                      className="absolute top-full left-0 mt-2 w-80 bg-slate-900/95 backdrop-blur-sm rounded-xl shadow-lg border border-slate-700/60 py-2 z-[999999] max-h-96 overflow-y-auto"
+                      className="absolute top-full left-0 mt-2 w-80 bg-slate-900/95 backdrop-blur-sm rounded-xl shadow-lg border border-slate-700/60 py-2 z-[999999999] max-h-96 overflow-y-auto"
                     >
                       <div className="px-4 py-2 border-b border-white/10">
                         <p className="text-xs font-medium text-purple-200 uppercase tracking-wide">Project Members</p>
@@ -2532,16 +2335,193 @@ export function QAApplication() {
                 </div>
               </div>
               
-              {/* Right side - Empty for now, all actions moved to dropdowns */}
-              <div className="flex items-center space-x-3">
-                {/* Future action buttons can be added here if needed */}
+              {/* Right side - Search and Actions - Only show when on test cases view */}
+              {currentView === 'test-cases' && (
+                <div className="flex items-center space-x-6">
+                  {/* Search Bar */}
+                  <div className="flex-1 max-w-md relative group">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Search className="h-4 w-4 text-blue-400 group-focus-within:text-blue-300 transition-colors" />
               </div>
+                    <Input
+                      className="pl-9 pr-9 h-8 bg-slate-800/70 border-slate-600/60 text-slate-200 placeholder:text-slate-400 focus:border-blue-500/60 focus:ring-2 focus:ring-blue-500/20 text-sm"
+                      placeholder="Search test cases..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                    <Button 
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 p-0 hover:bg-blue-500/20 rounded-md"
+                      title="Advanced Search Options"
+                    >
+                      <Settings className="w-3 h-3 text-blue-400 hover:text-blue-300 transition-colors" />
+                    </Button>
+                  </div>
+
+                  {/* Partition Line */}
+                  <div className="w-px h-6 bg-slate-600/50 mx-2"></div>
+
+                  {/* Action Buttons */}
+                  <div className="flex items-center gap-2">
+                    {/* Import */}
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setIsEnhancedImportDialogOpen(true)}
+                      className="h-8 px-3 bg-emerald-500/20 border-emerald-400/30 text-emerald-300 hover:bg-emerald-500/30 hover:border-emerald-400/50 text-xs"
+                    >
+                      <Upload className="w-3 h-3 mr-1.5 text-emerald-300" />
+                      Import
+                    </Button>
+                    
+                    {/* Paste */}
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setIsEnhancedPasteDialogOpen(true)}
+                      className="h-8 px-3 bg-blue-500/20 border-blue-400/30 text-blue-300 hover:bg-blue-500/30 hover:border-blue-400/50 text-xs"
+                    >
+                      <Clipboard className="w-3 h-3 mr-1.5 text-blue-300" />
+                      Paste
+                    </Button>
+
+                    {/* Export */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleExportToExcel}
+                      className="h-8 px-3 bg-purple-500/20 border-purple-400/30 text-purple-300 hover:bg-purple-500/30 hover:border-purple-400/50 text-xs"
+                    >
+                      <Download className="w-3 h-3 mr-1.5 text-purple-300" />
+                      Export
+                    </Button>
+                    
+                    {/* Filters */}
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setIsFiltersExpanded(!isFiltersExpanded)}
+                      className="h-8 px-3 bg-orange-500/20 border-orange-400/30 text-orange-300 hover:bg-orange-500/30 hover:border-orange-400/50 text-xs"
+                    >
+                      <Filter className="w-3 h-3 mr-1.5 text-orange-300" />
+                      Filters
+                    </Button>
+
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
 
+        {/* Filters Panel - Only show when on test cases view */}
+        {isFiltersExpanded && currentView === 'test-cases' && (
+          <div className="bg-slate-800/50 border-b border-slate-700/30 shadow-sm">
+            <div className="w-full px-6 lg:px-8 xl:px-12 py-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Status Filter */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-300">Status</label>
+                  <Select>
+                    <SelectTrigger className="h-8 bg-slate-700/50 border-slate-600/60 text-slate-200">
+                      <SelectValue placeholder="All Statuses" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Statuses</SelectItem>
+                      <SelectItem value="pass">Pass</SelectItem>
+                      <SelectItem value="fail">Fail</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="in-progress">In Progress</SelectItem>
+                      <SelectItem value="blocked">Blocked</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Priority Filter */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-300">Priority</label>
+                  <Select>
+                    <SelectTrigger className="h-8 bg-slate-700/50 border-slate-600/60 text-slate-200">
+                      <SelectValue placeholder="All Priorities" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Priorities</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="low">Low</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Category Filter */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-300">Category</label>
+                  <Select>
+                    <SelectTrigger className="h-8 bg-slate-700/50 border-slate-600/60 text-slate-200">
+                      <SelectValue placeholder="All Categories" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Categories</SelectItem>
+                      <SelectItem value="functional">Functional</SelectItem>
+                      <SelectItem value="non-functional">Non-Functional</SelectItem>
+                      <SelectItem value="regression">Regression</SelectItem>
+                      <SelectItem value="smoke">Smoke</SelectItem>
+                      <SelectItem value="integration">Integration</SelectItem>
+                      <SelectItem value="unit">Unit</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Platform Filter */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-300">Platform</label>
+                  <Select>
+                    <SelectTrigger className="h-8 bg-slate-700/50 border-slate-600/60 text-slate-200">
+                      <SelectValue placeholder="All Platforms" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Platforms</SelectItem>
+                      <SelectItem value="web">Web</SelectItem>
+                      <SelectItem value="mobile">Mobile</SelectItem>
+                      <SelectItem value="desktop">Desktop</SelectItem>
+                      <SelectItem value="api">API</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Filter Actions */}
+              <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-700/30">
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={clearFilters}
+                    className="h-8 px-3 bg-slate-700/50 border-slate-600/60 text-slate-200 hover:bg-slate-600/50 text-xs"
+                  >
+                    Clear All
+                  </Button>
+                  <span className="text-xs text-slate-400">
+                    {finalTestCases.length} test case{finalTestCases.length !== 1 ? 's' : ''} found
+                  </span>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsFiltersExpanded(false)}
+                  className="h-8 px-3 bg-slate-700/50 border-slate-600/60 text-slate-200 hover:bg-slate-600/50 text-xs"
+                >
+                  <X className="w-3 h-3 mr-1.5" />
+                  Close
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Main Content - Full Width */}
-          <div className="flex flex-col h-full overflow-hidden relative">
+          <div className="flex flex-col h-full overflow-hidden relative z-[1]">
             {/* Loading Overlay */}
 
             
@@ -2583,6 +2563,10 @@ export function QAApplication() {
                       onAddTestSuite={() => setIsSuiteDialogOpen(true)}
                       onExportData={handleExportDashboardData}
                       onOpenSettings={handleOpenDashboardSettings}
+                      onViewAllTestCases={() => {
+                        setSelectedSuiteId(null)
+                        setCurrentView('test-cases')
+                      }}
                     />
                   ) : (
                     <TestCaseTable
@@ -3301,7 +3285,7 @@ export function QAApplication() {
               const projectTestCases = testCases.filter(tc => tc.projectId === project.id)
               const projectStats = {
                 total: projectTestCases.length,
-                pending: projectTestCases.filter(tc => tc.status === "Pending").length,
+                pending: projectTestCases.filter(tc => tc.status === "Not Executed").length,
                 pass: projectTestCases.filter(tc => tc.status === "Pass").length,
                 fail: projectTestCases.filter(tc => tc.status === "Fail").length,
               }
@@ -3376,6 +3360,25 @@ export function QAApplication() {
         onImport={(importedTestCases) => {
           setIsImportPreviewDialogOpen(false)
           handleAddMultipleTestCases(importedTestCases)
+        }}
+        currentProject={currentProjectId}
+        selectedSuiteId={selectedSuiteId || undefined}
+        testSuites={testSuites}
+        onCreateTestSuite={createTestSuite}
+      />
+
+      {/* Enhanced Import Dialog */}
+      <EnhancedImportDialog
+        isOpen={isEnhancedImportDialogOpen}
+        onClose={() => setIsEnhancedImportDialogOpen(false)}
+        onImport={(importedTestCases) => {
+          setIsEnhancedImportDialogOpen(false)
+          // Add the imported test cases directly to the state
+          setTestCases(prev => [...prev, ...importedTestCases])
+          toast({
+            title: "Import Successful",
+            description: `Successfully imported ${importedTestCases.length} test cases`,
+          })
         }}
         currentProject={currentProjectId}
         selectedSuiteId={selectedSuiteId || undefined}

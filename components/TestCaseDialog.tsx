@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "./ui/dialog"
 import { TestCase, TestSuite } from "@/types/qa-types"
 import { STATUS_OPTIONS, PRIORITY_OPTIONS, PLATFORM_OPTIONS, CATEGORY_OPTIONS, ENVIRONMENT_OPTIONS } from "@/lib/constants"
-import { FileText, Save, X, Edit3, Eye, Loader2, CheckCircle, AlertCircle, History, User, Calendar, Globe, Layers, Target, Clock, Settings, Info, Bug } from "lucide-react"
+import { FileText, Save, X, Edit3, Eye, Loader2, CheckCircle, AlertCircle, History, User, Calendar, Globe, Layers, Target, Clock, Settings, Info, Bug, HelpCircle } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 import { getStatusBadgeVariant, getStatusBadgeStyle, getPriorityBadgeVariant, getPriorityBadgeStyle, formatTestSteps, formatExpectedResult } from "@/lib/utils"
 import { StatusHistoryDialog } from './StatusHistoryDialog'
@@ -39,7 +39,7 @@ export function TestCaseDialog({
     testCase: "",
     description: "",
     expectedResult: "",
-    status: "Pending" as TestCase["status"],
+    status: "Not Executed" as TestCase["status"],
     priority: undefined as TestCase["priority"] | undefined,
     category: undefined as TestCase["category"] | undefined,
     assignedTester: "",
@@ -60,16 +60,19 @@ export function TestCaseDialog({
   // Status configuration function
   const getStatusConfig = (status: string) => {
     const configs = {
-      pending: { color: 'bg-yellow-100 text-yellow-800 border-yellow-200', icon: Clock, label: 'Pending' },
-      passed: { color: 'bg-green-100 text-green-800 border-green-200', icon: CheckCircle, label: 'Passed' },
-      failed: { color: 'bg-red-100 text-red-800 border-red-200', icon: AlertCircle, label: 'Failed' },
-      blocked: { color: 'bg-gray-100 text-gray-800 border-gray-200', icon: Bug, label: 'Blocked' },
-      'In Progress': { color: 'bg-blue-100 text-blue-800 border-blue-200', icon: Clock, label: 'In Progress' },
+      'not executed': { color: 'bg-gray-100 text-gray-800 border-gray-200', icon: Clock, label: 'Not Executed' },
+      'passed': { color: 'bg-green-100 text-green-800 border-green-200', icon: CheckCircle, label: 'Passed' },
+      'failed': { color: 'bg-red-100 text-red-800 border-red-200', icon: AlertCircle, label: 'Failed' },
+      'blocked': { color: 'bg-orange-100 text-orange-800 border-orange-200', icon: Bug, label: 'Blocked' },
+      'in progress': { color: 'bg-blue-100 text-blue-800 border-blue-200', icon: Clock, label: 'In Progress' },
       'Pass': { color: 'bg-green-100 text-green-800 border-green-200', icon: CheckCircle, label: 'Pass' },
       'Fail': { color: 'bg-red-100 text-red-800 border-red-200', icon: AlertCircle, label: 'Fail' },
-      'Blocked': { color: 'bg-gray-100 text-gray-800 border-gray-200', icon: Bug, label: 'Blocked' }
+      'Blocked': { color: 'bg-orange-100 text-orange-800 border-orange-200', icon: Bug, label: 'Blocked' },
+      'Not Executed': { color: 'bg-gray-100 text-gray-800 border-gray-200', icon: Clock, label: 'Not Executed' },
+      'In Progress': { color: 'bg-blue-100 text-blue-800 border-blue-200', icon: Clock, label: 'In Progress' },
+      'Other': { color: 'bg-purple-100 text-purple-800 border-purple-200', icon: HelpCircle, label: 'Other' }
     };
-    return configs[status.toLowerCase() as keyof typeof configs] || configs.pending;
+    return configs[status.toLowerCase() as keyof typeof configs] || configs['not executed'];
   };
 
   useEffect(() => {
@@ -98,7 +101,7 @@ export function TestCaseDialog({
           testCase: "",
           description: "",
           expectedResult: "",
-          status: "Pending",
+          status: "Not Executed",
           priority: undefined,
           category: undefined,
           assignedTester: "",
@@ -119,7 +122,7 @@ export function TestCaseDialog({
         testCase: "",
         description: "",
         expectedResult: "",
-        status: "Pending",
+        status: "Not Executed",
         priority: undefined,
         category: undefined,
         assignedTester: "",
@@ -194,30 +197,24 @@ export function TestCaseDialog({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-7xl w-[95vw] max-h-[95vh] overflow-y-auto bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-slate-700/60">
-          <DialogHeader className="pb-3 border-b border-slate-700/60">
-            <div className="flex items-center gap-3">
-              {isViewMode ? (
-                <div className="w-8 h-8 bg-purple-500/20 rounded-lg flex items-center justify-center border border-purple-400/20">
-                  <Eye className="w-4 h-4 text-purple-300" />
-                </div>
-              ) : (
-                <div className="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center border border-blue-400/20">
-                  <FileText className="w-4 h-4 text-blue-300" />
-                </div>
-              )}
-              <div>
-                <DialogTitle className="text-lg font-semibold text-white">
-                  {isViewMode ? "View Test Case" : (testCase ? "Edit Test Case" : "Create New Test Case")}
+        <DialogContent className="max-w-7xl w-[95vw] max-h-[95vh] overflow-y-auto bg-white border border-slate-200 shadow-2xl">
+          <DialogHeader className="pb-6 border-b border-slate-200">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+                <FileText className="w-5 h-5 text-white" />
+              </div>
+              <div className="flex-1">
+                <DialogTitle className="text-xl font-bold text-slate-900">
+                  {testCase ? 'Edit Test Case' : 'Create New Test Case'}
                 </DialogTitle>
-                <DialogDescription className="text-sm text-slate-300">
-                  {isViewMode ? "Review test case details" : "Fill in the test case information"}
+                <DialogDescription className="text-slate-600 mt-1">
+                  {testCase ? 'Update your test case details below' : 'Fill in the details to create a new test case'}
                 </DialogDescription>
               </div>
             </div>
           </DialogHeader>
           
-          {isViewMode ? (
+          {testCase ? (
             // Updated View Mode Layout with improved design
             <div className="py-3">
               <div className="bg-slate-800/50 rounded-xl border border-slate-700/60 p-6">
@@ -284,12 +281,12 @@ export function TestCaseDialog({
             // NEW: Improved Edit Mode Layout
             <form onSubmit={handleSubmit} className="space-y-6 py-4">
               {/* Basic Information Section */}
-              <div className="bg-gradient-to-br from-blue-500/10 to-indigo-500/10 rounded-2xl p-6 border border-blue-400/30">
+              <div className="bg-slate-50 rounded-lg p-6 border border-slate-200">
                 <div className="flex items-center gap-3 mb-6">
-                  <div className="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center border border-blue-400/20">
-                    <FileText className="w-4 h-4 text-blue-300" />
+                  <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                    <FileText className="w-4 h-4 text-white" />
                   </div>
-                                      <h3 className="text-xl font-bold text-white">Basic Information</h3>
+                  <h3 className="text-lg font-semibold text-slate-900">Basic Information</h3>
                 </div>
                 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -518,7 +515,7 @@ export function TestCaseDialog({
               >
                 Close
               </Button>
-                {isViewMode && onEdit && (
+                {testCase && (
                   <Button
                     type="button"
                     onClick={onEdit}
@@ -528,7 +525,7 @@ export function TestCaseDialog({
                     Edit Test Case
                   </Button>
                 )}
-              {!isViewMode && (
+              {!testCase && (
                   <Button
                     type="submit"
                     onClick={handleSubmit}

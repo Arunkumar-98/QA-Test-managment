@@ -1,8 +1,8 @@
-export const STATUS_OPTIONS = ["Pending", "Pass", "Fail", "In Progress", "Blocked"] as const
-export const PRIORITY_OPTIONS = ["High", "Medium", "Low"] as const
-export const PLATFORM_OPTIONS = ["Web", "Mobile", "Desktop", "API", "Database"] as const
-export const CATEGORY_OPTIONS = ["Functional", "Non-Functional", "Regression", "Smoke", "Integration", "Unit"] as const
-export const ENVIRONMENT_OPTIONS = ["Development", "Staging", "Production", "Testing"] as const
+export const STATUS_OPTIONS = ["Pass", "Fail", "Blocked", "In Progress", "Not Executed", "Other"] as const
+export const PRIORITY_OPTIONS = ["P0 (Blocker)", "P1 (High)", "P2 (Medium)", "P3 (Low)", "Other"] as const
+export const PLATFORM_OPTIONS = ["Android", "iOS", "Web", "Cross-platform", "Other"] as const
+export const CATEGORY_OPTIONS = ["Recording", "Transcription", "Notifications", "Calling", "UI/UX", "Other"] as const
+export const ENVIRONMENT_OPTIONS = ["Android", "iOS", "Web", "Backend", "Other"] as const
 
 export const COMMENT_TYPES = ["general", "bug", "question", "suggestion", "status_update"] as const
 
@@ -26,17 +26,20 @@ export const TABLE_COLUMNS = [
 ] as const
 
 export const STATUS_COLORS = {
-  Pending: "bg-orange-100 text-orange-800 border-orange-200",
+  "Not Executed": "bg-gray-100 text-gray-800 border-gray-200",
   Pass: "bg-green-100 text-green-800 border-green-200",
   Fail: "bg-red-100 text-red-800 border-red-200",
   "In Progress": "bg-blue-100 text-blue-800 border-blue-200",
-  Blocked: "bg-gray-100 text-gray-800 border-gray-200"
+  Blocked: "bg-orange-100 text-orange-800 border-orange-200",
+  Other: "bg-purple-100 text-purple-800 border-purple-200"
 } as const
 
 export const PRIORITY_COLORS = {
-  High: "bg-red-100 text-red-800 border-red-200",
-  Medium: "bg-yellow-100 text-yellow-800 border-yellow-200",
-  Low: "bg-green-100 text-green-800 border-green-200"
+  "P0 (Blocker)": "bg-red-100 text-red-800 border-red-200",
+  "P1 (High)": "bg-orange-100 text-orange-800 border-orange-200",
+  "P2 (Medium)": "bg-yellow-100 text-yellow-800 border-yellow-200",
+  "P3 (Low)": "bg-green-100 text-green-800 border-green-200",
+  Other: "bg-gray-100 text-gray-800 border-gray-200"
 } as const
 
 export const COMMENT_TYPE_COLORS = {
@@ -70,15 +73,18 @@ export const AUTOMATION_STATUS_COLORS = {
 } as const
 
 export const STATUS_ICONS = {
-  Pending: "Clock",
+  "Not Executed": "Clock",
   Pass: "CheckCircle",
   Fail: "XCircle",
   "In Progress": "Loader2",
-  Blocked: "Ban"
+  Blocked: "Ban",
+  Other: "HelpCircle"
 } as const
 
 export const PRIORITY_ICONS = {
-  High: "AlertTriangle",
-  Medium: "Minus",
-  Low: "ArrowDown"
+  "P0 (Blocker)": "AlertTriangle",
+  "P1 (High)": "AlertCircle",
+  "P2 (Medium)": "Minus",
+  "P3 (Low)": "ArrowDown",
+  Other: "HelpCircle"
 } as const 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Label } from './ui/label'
@@ -12,7 +12,8 @@ import {
   FileText, 
   Users, 
   Shield,
-  Sparkles
+  Sparkles,
+  Briefcase
 } from 'lucide-react'
 
 interface WelcomeProjectModalProps {
@@ -75,17 +76,17 @@ export function WelcomeProjectModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl w-[90vw] max-h-[95vh] overflow-y-auto">
-        <DialogHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-r from-blue-500 to-purple-600">
-            <Rocket className="h-8 w-8 text-white" />
+      <DialogContent className="max-w-3xl w-[90vw] max-h-[95vh] overflow-y-auto bg-white border border-slate-200 shadow-2xl">
+        <DialogHeader className="text-center pb-6 border-b border-slate-200">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-blue-600 shadow-lg">
+            <Briefcase className="h-8 w-8 text-white" />
           </div>
-          <DialogTitle className="text-2xl font-bold">
-            Welcome to QA Management! 🎉
+          <DialogTitle className="text-xl font-bold text-slate-900">
+            Welcome to QA Management
           </DialogTitle>
-          <p className="text-muted-foreground">
-            Let's get you started with your first project
-          </p>
+          <DialogDescription className="text-slate-600 mt-2">
+            Create your first project to get started with test case management
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">

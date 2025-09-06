@@ -1,0 +1,4 @@
+Test Case,Description,Expected Result,Status,Priority,Category,Assigned Tester,Environment,Platform,Prerequisites,Steps to Reproduce
+TC999,Test login functionality,User should login successfully,Pending,High,Functional,test@example.com,QA,Web,Valid user account,1. Open login page; 2. Enter credentials; 3. Click login
+TC998,Test logout functionality,User should logout successfully,Pass,Medium,Functional,test@example.com,QA,Web,User logged in,1. Click logout button; 2. Verify redirect
+TC997,Test password reset,Password reset email should be sent,Fail,Low,Functional,test@example.com,QA,Web,Valid email,1. Click forgot password; 2. Enter email; 3. Submit

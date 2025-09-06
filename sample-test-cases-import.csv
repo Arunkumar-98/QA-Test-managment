@@ -1,0 +1,206 @@
+Test Case,Description,Steps to Reproduce,Expected Result,Status,Priority,Category,Assigned Tester,Environment,Platform,Prerequisites
+TC001,"Verify user login with valid credentials","1. Navigate to login page; 2. Enter valid username; 3. Enter valid password; 4. Click login button","User should be successfully logged in and redirected to dashboard",Pending,High,Functional,john.doe@example.com,QA,Web,Valid user account exists
+TC002,"Verify user login with invalid password","1. Navigate to login page
+2. Enter valid username
+3. Enter invalid password
+4. Click login button","Error message should display 'Invalid password'",Pass,High,Functional,jane.smith@example.com,QA,Web,Valid user account exists
+TC003,"Verify password reset functionality","1. Click 'Forgot Password' link
+2. Enter valid email
+3. Click submit
+4. Check email for reset link","Password reset email should be sent successfully",Fail,Medium,Functional,mike.johnson@example.com,QA,Web,Valid email account
+TC004,"Verify user registration with valid data","1. Navigate to registration page
+2. Fill all required fields
+3. Accept terms and conditions
+4. Click register","User account should be created successfully",Pending,High,Functional,sarah.wilson@example.com,QA,Web,Registration page accessible
+TC005,"Verify profile picture upload","1. Login to account
+2. Go to profile settings
+3. Click upload picture
+4. Select valid image file","Profile picture should be uploaded and displayed",In Progress,Low,Functional,alex.brown@example.com,QA,Web,User logged in
+TC006,"Verify search functionality with valid keywords","1. Navigate to search page
+2. Enter valid search term
+3. Click search button
+4. Review results","Relevant search results should be displayed",Pass,Medium,Functional,lisa.davis@example.com,QA,Web,Search data available
+TC007,"Verify shopping cart add item functionality","1. Browse product catalog
+2. Select a product
+3. Click 'Add to Cart'
+4. Verify cart contents","Product should be added to cart with correct details",Pending,High,E2E,tom.garcia@example.com,QA,Web,Products available in catalog
+TC008,"Verify checkout process with credit card","1. Add items to cart
+2. Proceed to checkout
+3. Enter shipping info
+4. Enter payment details
+5. Complete order","Order should be processed successfully",Blocked,High,Integration,emma.martinez@example.com,QA,Web,Payment gateway configured
+TC009,"Verify email notification for order confirmation","1. Complete an order
+2. Check email inbox
+3. Verify order confirmation email","Order confirmation email should be received",Pass,Medium,Integration,david.lee@example.com,QA,Email,Order completed successfully
+TC010,"Verify mobile responsive design on tablet","1. Open website on tablet
+2. Navigate through pages
+3. Test form interactions
+4. Verify layout","Website should display properly on tablet",Pending,Medium,Non-Functional,rachel.white@example.com,QA,Tablet,Tablet device available
+TC011,"Verify page load performance","1. Clear browser cache
+2. Navigate to home page
+3. Measure load time
+4. Compare with benchmarks","Page should load within 3 seconds",Fail,Medium,Non-Functional,kevin.taylor@example.com,QA,Web,Performance testing tools
+TC012,"Verify user logout functionality","1. Login to application
+2. Click logout button
+3. Verify session ended
+4. Try accessing protected pages","User should be logged out and redirected to login",Pass,High,Functional,jennifer.anderson@example.com,QA,Web,User logged in
+TC013,"Verify form validation for required fields","1. Navigate to contact form
+2. Leave required fields empty
+3. Click submit
+4. Check validation messages","Validation errors should be displayed for empty fields",Pending,Medium,Functional,christopher.thomas@example.com,QA,Web,Contact form accessible
+TC014,"Verify file upload with large file","1. Navigate to file upload
+2. Select file larger than limit
+3. Click upload
+4. Check error message","Error message should indicate file size limit exceeded",Pass,Low,Functional,michelle.jackson@example.com,QA,Web,Large test file available
+TC015,"Verify database connection error handling","1. Simulate database disconnect
+2. Perform data operation
+3. Check error handling
+4. Verify user message","Graceful error message should be displayed",In Progress,High,Non-Functional,robert.harris@example.com,QA,Backend,Database access
+TC016,"Verify API response time under load","1. Send 100 concurrent API requests
+2. Measure response times
+3. Check for timeouts
+4. Analyze performance","API should respond within 2 seconds under load",Pending,Medium,Non-Functional,daniel.clark@example.com,QA,API,Load testing tools
+TC017,"Verify cross-browser compatibility on Chrome","1. Open application in Chrome
+2. Test core functionality
+3. Check UI rendering
+4. Verify JavaScript execution","Application should work correctly in Chrome",Pass,Medium,Non-Functional,nancy.rodriguez@example.com,QA,Chrome,Chrome browser installed
+TC018,"Verify cross-browser compatibility on Firefox","1. Open application in Firefox
+2. Test core functionality
+3. Check UI rendering
+4. Verify JavaScript execution","Application should work correctly in Firefox",Fail,Medium,Non-Functional,paul.lewis@example.com,QA,Firefox,Firefox browser installed
+TC019,"Verify data export to Excel functionality","1. Navigate to data export page
+2. Select Excel format
+3. Click export button
+4. Download and verify file","Data should be exported to Excel successfully",Pending,Low,Functional,laura.walker@example.com,QA,Web,Data available for export
+TC020,"Verify data import from CSV file","1. Navigate to data import page
+2. Select valid CSV file
+3. Click import button
+4. Verify data imported","CSV data should be imported successfully",Pass,Medium,Functional,mark.hall@example.com,QA,Web,Valid CSV file
+TC021,"Verify user role-based access control","1. Login as regular user
+2. Try accessing admin features
+3. Check access restrictions
+4. Verify error messages","Access should be denied for admin features",Pass,High,Functional,steven.allen@example.com,QA,Web,Different user roles configured
+TC022,"Verify admin user management functionality","1. Login as admin
+2. Navigate to user management
+3. Create new user
+4. Assign roles and permissions","New user should be created with correct permissions",In Progress,High,Functional,kimberly.young@example.com,QA,Web,Admin access
+TC023,"Verify session timeout functionality","1. Login to application
+2. Leave inactive for 30 minutes
+3. Try to perform action
+4. Check session status","User should be logged out due to inactivity",Pending,Medium,Functional,joseph.king@example.com,QA,Web,Session timeout configured
+TC024,"Verify SSL certificate validation","1. Navigate to HTTPS URL
+2. Check browser security indicator
+3. Verify certificate details
+4. Test secure connection","Valid SSL certificate should be displayed",Pass,High,Non-Functional,lisa.wright@example.com,Production,Web,SSL certificate installed
+TC025,"Verify backup and restore functionality","1. Create data backup
+2. Delete some data
+3. Restore from backup
+4. Verify data integrity","Data should be restored successfully",Pending,High,Non-Functional,william.lopez@example.com,QA,Backend,Backup system configured
+TC026,"Verify email template customization","1. Access email template settings
+2. Modify template content
+3. Save changes
+4. Send test email","Email should use customized template",Pass,Low,Functional,elizabeth.hill@example.com,QA,Web,Email system configured
+TC027,"Verify multi-language support","1. Change language to Spanish
+2. Navigate through pages
+3. Check text translations
+4. Verify date/number formats","Interface should display in Spanish correctly",Fail,Medium,Functional,james.scott@example.com,QA,Web,Spanish language pack installed
+TC028,"Verify audit log functionality","1. Perform various user actions
+2. Check audit log entries
+3. Verify timestamp accuracy
+4. Check user identification","All actions should be logged with correct details",Pending,Medium,Functional,patricia.green@example.com,QA,Backend,Audit logging enabled
+TC029,"Verify two-factor authentication setup","1. Login to account
+2. Enable 2FA in settings
+3. Scan QR code with authenticator
+4. Verify setup with code","2FA should be enabled successfully",In Progress,High,Functional,richard.adams@example.com,QA,Web,2FA system configured
+TC030,"Verify API rate limiting","1. Send API requests rapidly
+2. Exceed rate limit
+3. Check response codes
+4. Verify rate limit headers","Rate limiting should be enforced with 429 status",Pass,Medium,Non-Functional,charles.baker@example.com,QA,API,Rate limiting configured
+TC031,"Verify mobile app push notifications","1. Install mobile app
+2. Enable notifications
+3. Trigger notification event
+4. Check notification received","Push notification should be received on mobile",Pending,Medium,Integration,barbara.gonzalez@example.com,QA,Mobile,Mobile app installed
+TC032,"Verify social media login integration","1. Click 'Login with Google'
+2. Authorize application
+3. Complete OAuth flow
+4. Verify user profile","User should be logged in via Google account",Pass,Medium,Integration,susan.nelson@example.com,QA,Web,Google OAuth configured
+TC033,"Verify payment processing with PayPal","1. Select PayPal payment option
+2. Login to PayPal account
+3. Authorize payment
+4. Complete transaction","Payment should be processed successfully via PayPal",Blocked,High,Integration,matthew.carter@example.com,QA,Web,PayPal integration configured
+TC034,"Verify data synchronization between systems","1. Update data in System A
+2. Wait for sync interval
+3. Check data in System B
+4. Verify consistency","Data should be synchronized correctly",Pending,High,Integration,anthony.mitchell@example.com,QA,Backend,Multiple systems configured
+TC035,"Verify automated report generation","1. Schedule report generation
+2. Wait for scheduled time
+3. Check report output
+4. Verify data accuracy","Report should be generated automatically with correct data",Pass,Medium,Functional,dorothy.perez@example.com,QA,Backend,Report scheduler configured
+TC036,"Verify cache invalidation","1. Load page with cached content
+2. Update backend data
+3. Clear cache
+4. Reload page","Updated data should be displayed after cache clear",Fail,Medium,Non-Functional,mark.roberts@example.com,QA,Web,Caching system enabled
+TC037,"Verify error logging and monitoring","1. Trigger application error
+2. Check error logs
+3. Verify error details
+4. Check monitoring alerts","Error should be logged with full details and trigger alerts",Pending,High,Non-Functional,donald.turner@example.com,QA,Backend,Logging and monitoring configured
+TC038,"Verify content management system","1. Login to CMS
+2. Create new content
+3. Publish content
+4. Verify on frontend","New content should appear on website",Pass,Medium,Functional,helen.phillips@example.com,QA,Web,CMS access
+TC039,"Verify inventory management integration","1. Place order for product
+2. Check inventory levels
+3. Verify stock reduction
+4. Test low stock alerts","Inventory should be updated correctly after order",In Progress,High,Integration,betty.campbell@example.com,QA,Backend,Inventory system connected
+TC040,"Verify customer support ticket system","1. Submit support ticket
+2. Check ticket creation
+3. Verify email notification
+4. Test ticket status updates","Support ticket should be created and tracked properly",Pending,Medium,Functional,gary.parker@example.com,QA,Web,Support system configured
+TC041,"Verify advanced search with filters","1. Navigate to advanced search
+2. Apply multiple filters
+3. Execute search
+4. Verify filtered results","Search results should match all applied filters",Pass,Medium,Functional,sandra.evans@example.com,QA,Web,Search data available
+TC042,"Verify bulk data operations","1. Select multiple records
+2. Choose bulk operation
+3. Execute operation
+4. Verify all records updated","Bulk operation should be applied to all selected records",Fail,Medium,Functional,larry.edwards@example.com,QA,Web,Multiple records available
+TC043,"Verify data validation on API endpoints","1. Send API request with invalid data
+2. Check response status
+3. Verify error message
+4. Test field-specific validation","API should return validation errors for invalid data",Pending,High,Non-Functional,ruth.collins@example.com,QA,API,API documentation available
+TC044,"Verify user preference settings","1. Login to account
+2. Modify user preferences
+3. Save settings
+4. Verify preferences applied","User preferences should be saved and applied correctly",Pass,Low,Functional,frank.stewart@example.com,QA,Web,User account available
+TC045,"Verify webhook notifications","1. Configure webhook endpoint
+2. Trigger webhook event
+3. Check webhook delivery
+4. Verify payload data","Webhook should be delivered with correct payload",In Progress,Medium,Integration,maria.sanchez@example.com,QA,API,Webhook endpoint configured
+TC046,"Verify file compression and optimization","1. Upload large image file
+2. Check file compression
+3. Verify image quality
+4. Test loading performance","Image should be compressed without significant quality loss",Pending,Low,Non-Functional,gregory.morris@example.com,QA,Web,Image optimization enabled
+TC047,"Verify scheduled maintenance mode","1. Enable maintenance mode
+2. Try accessing application
+3. Check maintenance message
+4. Disable maintenance mode","Maintenance message should be displayed during maintenance",Pass,Medium,Functional,carolyn.reed@example.com,QA,Web,Maintenance mode feature available
+TC048,"Verify data archiving functionality","1. Select old records for archiving
+2. Execute archive operation
+3. Verify data moved to archive
+4. Test archive search","Old data should be archived and searchable in archive",Pending,Low,Functional,janet.cook@example.com,QA,Backend,Archive system configured
+TC049,"Verify real-time chat functionality","1. Open chat window
+2. Send message to support
+3. Wait for response
+4. Verify message history","Real-time chat should work with message persistence",Pass,Medium,Functional,arthur.bailey@example.com,QA,Web,Chat system enabled
+TC050,"Verify analytics and reporting dashboard","1. Navigate to analytics dashboard
+2. Check data visualization
+3. Verify metrics accuracy
+4. Test date range filters","Analytics should display accurate data with proper visualizations",Fail,Medium,Functional,frances.rivera@example.com,QA,Web,Analytics data available
+TC051,"Verify GDPR compliance data export","1. Request personal data export
+2. Verify export includes all data
+3. Check data format
+4. Verify download security","Personal data should be exported in compliant format",Pending,High,Functional,wayne.cooper@example.com,QA,Web,GDPR compliance features enabled
+TC052,"Verify data retention policy enforcement","1. Create test data
+2. Wait for retention period
+3. Check automated deletion
+4. Verify compliance logs","Old data should be automatically deleted per policy",In Progress,High,Non-Functional,alice.richardson@example.com,QA,Backend,Data retention policy configured

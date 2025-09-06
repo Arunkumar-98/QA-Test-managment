@@ -217,15 +217,21 @@ export function PRDToTestCases({ onAddTestCases, currentProject }: PRDToTestCase
       </Card>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-7xl max-h-[95vh] overflow-hidden w-[95vw]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-blue-600 flex-shrink-0" />
-              <span className="break-words">AI Test Case Generator</span>
-            </DialogTitle>
-            <DialogDescription className="break-words">
-              Upload your PRD or feature documentation to automatically generate comprehensive test cases using AI.
-            </DialogDescription>
+        <DialogContent className="max-w-7xl max-h-[95vh] overflow-hidden w-[95vw] bg-white border border-slate-200 shadow-2xl">
+          <DialogHeader className="pb-6 border-b border-slate-200">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 bg-rose-600 rounded-lg flex items-center justify-center">
+                <FileText className="w-5 h-5 text-white" />
+              </div>
+              <div className="flex-1">
+                <DialogTitle className="text-xl font-bold text-slate-900">
+                  PRD to Test Cases
+                </DialogTitle>
+                <DialogDescription className="text-slate-600 mt-1">
+                  Convert your Product Requirements Document into comprehensive test cases using AI
+                </DialogDescription>
+              </div>
+            </div>
           </DialogHeader>
 
           <div className="flex flex-col h-full space-y-4 overflow-hidden">
@@ -293,9 +299,9 @@ export function PRDToTestCases({ onAddTestCases, currentProject }: PRDToTestCase
                 </div>
 
                 <div className="flex-1 overflow-y-auto space-y-3 pr-2 min-h-0">
-                  {generatedTestCases.map((testCase) => (
+                  {generatedTestCases.map((testCase, index) => (
                     <Card 
-                      key={testCase.id}
+                      key={testCase.id || `generated-${index}`}
                       className={`border-2 transition-all duration-200 ${
                         selectedTestCases.has(testCase.id) 
                           ? 'border-blue-300 bg-blue-50/50' 

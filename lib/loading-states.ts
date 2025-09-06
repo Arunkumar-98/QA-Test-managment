@@ -1,5 +1,6 @@
 // Granular Loading States Management System
 // Provides detailed loading states for better user experience
+import { useState, useEffect } from 'react'
 
 export interface LoadingState {
   id: string
@@ -384,10 +385,10 @@ export const loadingStateManager = LoadingStateManager.getInstance()
 
 // React hook for loading states
 export const useLoadingState = (type?: keyof typeof LOADING_TYPES) => {
-  const [loadingStates, setLoadingStates] = React.useState<LoadingState[]>([])
-  const [isLoading, setIsLoading] = React.useState(false)
+  const [loadingStates, setLoadingStates] = useState<LoadingState[]>([])
+  const [isLoading, setIsLoading] = useState(false)
 
-  React.useEffect(() => {
+  useEffect(() => {
     const unsubscribe = loadingStateManager.subscribe((states) => {
       setLoadingStates(states)
       if (type) {

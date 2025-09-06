@@ -268,15 +268,21 @@ export function ProjectMembersDialog({ isOpen, onClose, project }: ProjectMember
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-7xl w-[95vw] h-[95vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Users className="w-5 h-5" />
-            Project Members - {project.name}
-          </DialogTitle>
-          <DialogDescription>
-            Manage project members, roles, and invitations. {project.memberCount} member{project.memberCount !== 1 ? 's' : ''} total.
-          </DialogDescription>
+      <DialogContent className="max-w-7xl w-[95vw] h-[95vh] flex flex-col bg-white border border-slate-200 shadow-2xl">
+        <DialogHeader className="pb-6 border-b border-slate-200">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center">
+              <Users className="w-5 h-5 text-white" />
+            </div>
+            <div className="flex-1">
+              <DialogTitle className="text-xl font-bold text-slate-900">
+                Project Members
+              </DialogTitle>
+              <DialogDescription className="text-slate-600 mt-1">
+                Manage team members and collaboration settings for your project
+              </DialogDescription>
+            </div>
+          </div>
         </DialogHeader>
 
         <div className="flex-1 flex flex-col min-h-0">

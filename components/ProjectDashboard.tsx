@@ -17,7 +17,8 @@ import {
   ArrowDownRight,
   Plus,
   Download,
-  Settings
+  Settings,
+  Folder
 } from 'lucide-react'
 import { TestCase, TestSuite, Project } from '@/types/qa-types'
 
@@ -29,6 +30,7 @@ interface ProjectDashboardProps {
   onAddTestSuite: () => void
   onExportData: () => void
   onOpenSettings: () => void
+  onViewAllTestCases: () => void
 }
 
 interface DashboardMetrics {
@@ -61,7 +63,8 @@ export function ProjectDashboard({
   onAddTestCase,
   onAddTestSuite,
   onExportData,
-  onOpenSettings
+  onOpenSettings,
+  onViewAllTestCases
 }: ProjectDashboardProps) {
   const [metrics, setMetrics] = useState<DashboardMetrics>({
     totalTestCases: 0,
@@ -82,7 +85,7 @@ export function ProjectDashboard({
   useEffect(() => {
     const passed = testCases.filter(tc => tc.status === 'Pass').length
     const failed = testCases.filter(tc => tc.status === 'Fail').length
-    const pending = testCases.filter(tc => tc.status === 'Pending').length
+    const pending = testCases.filter(tc => tc.status === 'Not Executed').length
     const blocked = testCases.filter(tc => tc.status === 'Blocked').length
     const total = testCases.length
     const passRate = total > 0 ? Math.round((passed / total) * 100) : 0
@@ -145,6 +148,14 @@ export function ProjectDashboard({
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-white">{project.name} Dashboard</h1>
           <div className="flex items-center space-x-3">
+            <Button 
+              variant="outline" 
+              onClick={onViewAllTestCases}
+              className="bg-blue-500/20 border-blue-400/30 text-blue-300 hover:bg-blue-500/30 hover:border-blue-400/50"
+            >
+              <Folder className="w-4 h-4 mr-2" />
+              View All Test Cases
+            </Button>
             <Button 
               variant="outline" 
               onClick={onExportData}

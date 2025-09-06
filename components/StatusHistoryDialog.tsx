@@ -18,7 +18,8 @@ import {
   Ban,
   ArrowRight,
   Calendar,
-  MessageSquare
+  MessageSquare,
+  History
 } from 'lucide-react'
 import { StatusHistory, TestCaseStatus, StatusChangeReason } from '@/types/qa-types'
 import { statusHistoryService } from '@/lib/supabase-service'
@@ -118,15 +119,21 @@ export function StatusHistoryDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl w-[90vw] max-h-[95vh] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-slate-700/60">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-white">
-            <Clock className="w-5 h-5 text-blue-300" />
-            Status History
-          </DialogTitle>
-          <DialogDescription className="text-slate-300">
-            Track all status changes for "{testCaseName}"
-          </DialogDescription>
+      <DialogContent className="max-w-4xl w-[90vw] max-h-[95vh] bg-white border border-slate-200 shadow-2xl">
+        <DialogHeader className="pb-6 border-b border-slate-200">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 bg-sky-600 rounded-lg flex items-center justify-center">
+              <History className="w-5 h-5 text-white" />
+            </div>
+            <div className="flex-1">
+              <DialogTitle className="text-xl font-bold text-slate-900">
+                Status History
+              </DialogTitle>
+              <DialogDescription className="text-slate-600 mt-1">
+                View the complete status change history for test case: {testCaseName}
+              </DialogDescription>
+            </div>
+          </div>
         </DialogHeader>
 
         <div className="flex-1 overflow-hidden">
