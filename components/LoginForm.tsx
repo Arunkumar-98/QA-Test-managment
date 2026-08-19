@@ -38,12 +38,12 @@ export function LoginForm({ onSwitchToSignup, onSwitchToForgotPassword, onNeedVe
     }
 
     try {
-      const { error } = await signIn(email, password)
+      const { error, needsVerification } = await signIn(email, password)
       
       if (error) {
         const message = error.message || 'Could not sign in'
         setError(message)
-        if (/confirm|not confirmed|verif/i.test(message)) {
+        if (needsVerification || /confirm|not confirmed|verif/i.test(message)) {
           const pending = email.trim().toLowerCase()
           sessionStorage.setItem('pendingEmailConfirmation', pending)
           onNeedVerification?.(pending)

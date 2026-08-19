@@ -79,7 +79,7 @@ export function SignupForm({ onSwitchToLogin, onSignupSuccess }: SignupFormProps
     }
 
     try {
-      const { error, needsVerification } = await signUp(email, password, name)
+      const { error } = await signUp(email, password, name)
 
       if (error) {
         setError(error.message || 'Failed to create account')
@@ -87,16 +87,12 @@ export function SignupForm({ onSwitchToLogin, onSignupSuccess }: SignupFormProps
       }
 
       toast({
-        title: needsVerification ? 'Check your email' : 'Account created',
-        description: needsVerification
-          ? 'Open the confirmation email and click the link to prove you own this address.'
-          : 'You are signed in. Your data is saved to your account.',
+        title: 'Check your email',
+        description: 'Enter the 6-digit code from the message, or click Confirm email address. You cannot sign in until that is done.',
       })
 
-      if (needsVerification) {
-        sessionStorage.setItem('pendingEmailConfirmation', email.trim().toLowerCase())
-        onSignupSuccess?.(email.trim().toLowerCase())
-      }
+      sessionStorage.setItem('pendingEmailConfirmation', email.trim().toLowerCase())
+      onSignupSuccess?.(email.trim().toLowerCase())
 
       setName('')
       setEmail('')

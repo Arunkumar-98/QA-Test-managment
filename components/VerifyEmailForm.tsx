@@ -82,8 +82,8 @@ export function VerifyEmailForm({
         </div>
         <CardTitle className="text-2xl font-bold text-center text-white">Confirm your email</CardTitle>
         <CardDescription className="text-center text-white/80">
-          We sent a confirmation email to <span className="text-white font-medium">{email}</span>. Open it and click{' '}
-          <span className="text-white font-medium">Confirm email address</span>. You must use an inbox you own.
+          We sent a confirmation to <span className="text-white font-medium">{email}</span>. Enter the 6-digit code from that email, or click{' '}
+          <span className="text-white font-medium">Confirm email address</span>. You cannot sign in until this is done.
         </CardDescription>
       </CardHeader>
       <CardContent>

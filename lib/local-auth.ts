@@ -16,7 +16,17 @@ export type LocalSession = {
 let memoryUser: LocalUser | null = null
 let memorySession: LocalSession | null = null
 
-function toLocalUser(user: { id: string; email?: string | null; user_metadata?: Record<string, any> } | null): LocalUser | null {
+function isEmailConfirmed(user: { email_confirmed_at?: string | null; confirmed_at?: string | null } | null | undefined) {
+  return Boolean(user?.email_confirmed_at || user?.confirmed_at)
+}
+
+function toLocalUser(user: {
+  id: string
+  email?: string | null
+  user_metadata?: Record<string, any>
+  email_confirmed_at?: string | null
+  confirmed_at?: string | null
+} | null): LocalUser | null {
   if (!user?.email) return null
   return {
     id: user.id,
@@ -75,13 +85,12 @@ export async function signUp(email: string, password: string, name: string) {
     }
   }
 
-  if (!data.session) {
-    return { error: null, user: null, needsVerification: true }
+  if (data.session) {
+    await supabase.auth.signOut()
+    clearSession()
   }
 
-  const user = toLocalUser(data.user)
-  if (user) setAuthMemory(user)
-  return { error: null, user, needsVerification: false }
+  return { error: null, user: null, needsVerification: true }
 }
 
 export async function verifySignupOtp(email: string, token: string) {
@@ -103,6 +112,11 @@ export async function verifySignupOtp(email: string, token: string) {
     : signup
 
   if (result.error) return { error: { message: result.error.message }, user: null }
+  if (!isEmailConfirmed(result.data.user)) {
+    await supabase.auth.signOut()
+    clearSession()
+    return { error: { message: 'That code did not confirm the email. Try again or use the email link.' }, user: null }
+  }
   const user = toLocalUser(result.data.user)
   if (user) setAuthMemory(user)
   return { error: null, user }
@@ -114,11 +128,24 @@ export async function signIn(email: string, password: string) {
     password,
   })
 
-  if (error) return { error: { message: error.message }, user: null }
+  if (error) {
+    const needsVerification = /confirm|not confirmed|verif/i.test(error.message)
+    return { error: { message: error.message }, user: null, needsVerification }
+  }
+
+  if (!isEmailConfirmed(data.user)) {
+    await supabase.auth.signOut()
+    clearSession()
+    return {
+      error: { message: 'Confirm your email before signing in. Enter the code we sent, or open the confirmation link.' },
+      user: null,
+      needsVerification: true,
+    }
+  }
 
   const user = toLocalUser(data.user)
   if (user) setAuthMemory(user)
-  return { error: null, user }
+  return { error: null, user, needsVerification: false }
 }
 
 export async function signOutRemote() {
@@ -152,9 +179,15 @@ export async function resendSignupEmail(email: string) {
 
 export async function loadSessionFromSupabase() {
   const { data } = await supabase.auth.getSession()
-  const user = toLocalUser(data.session?.user ?? null)
+  const raw = data.session?.user ?? null
+  if (raw && !isEmailConfirmed(raw)) {
+    await supabase.auth.signOut()
+    clearSession()
+    return null
+  }
+  const user = toLocalUser(raw)
   setAuthMemory(user)
   return user
 }
 
-export { toLocalUser }
+export { toLocalUser, isEmailConfirmed }

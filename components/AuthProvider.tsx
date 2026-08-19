@@ -15,6 +15,7 @@ import {
   toLocalUser,
   updatePassword,
   verifySignupOtp,
+  isEmailConfirmed,
 } from '@/lib/local-auth'
 import { clearCloudStore, hydrateCloudStore } from '@/lib/local-db'
 import { supabase } from '@/lib/supabase'
@@ -24,7 +25,7 @@ interface AuthContextType {
   session: LocalSession | null
   loading: boolean
   passwordRecovery: boolean
-  signIn: (email: string, password: string) => Promise<{ error: any }>
+  signIn: (email: string, password: string) => Promise<{ error: any; needsVerification?: boolean }>
   signUp: (
     email: string,
     password: string,
@@ -106,9 +107,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (event === 'SIGNED_OUT') {
         setPasswordRecovery(false)
         sessionStorage.removeItem('qa-password-recovery')
+        void applyUser(null)
+        return
       }
-      const nextUser = toLocalUser(nextSession?.user ?? null)
-      void applyUser(nextUser)
+      const raw = nextSession?.user ?? null
+      if (raw && !isEmailConfirmed(raw) && event !== 'PASSWORD_RECOVERY') {
+        void supabase.auth.signOut()
+        return
+      }
+      void applyUser(toLocalUser(raw))
     })
 
     return () => {
@@ -122,14 +129,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!result.error && result.user) {
       await applyUser(result.user)
     }
-    return { error: result.error }
+    return { error: result.error, needsVerification: result.needsVerification }
   }
 
   const signUp = async (email: string, password: string, name: string) => {
     const result = await localSignUp(email, password, name)
-    if (!result.error && result.user) {
-      await applyUser(result.user)
-    }
     return { error: result.error, needsVerification: result.needsVerification }
   }
 
