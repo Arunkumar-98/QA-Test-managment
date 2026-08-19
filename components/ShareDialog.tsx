@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
-import { Check, Copy, Loader2, Share2 } from 'lucide-react'
+import { Check, Copy, Loader2, Mail, Share2 } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
 import { getCurrentUser } from '@/lib/local-auth'
 import { googleSheetsService } from '@/lib/google-sheets-service'
@@ -19,6 +19,8 @@ import {
   type ShareRole,
 } from '@/lib/share-client'
 import { getLocalArtifactFile } from '@/lib/artifact-store'
+import { normalizeEmails } from '@/lib/share-access'
+import { openTeamShareEmail } from '@/lib/share-email'
 import type { TestSuite } from '@/types/qa-types'
 
 interface ShareDialogProps {
@@ -53,6 +55,7 @@ export function ShareDialog({
   const [url, setUrl] = useState('')
   const [token, setToken] = useState('')
   const [copied, setCopied] = useState(false)
+  const [inviteText, setInviteText] = useState('')
 
   const title = kind === 'project' ? projectName : suite?.name || 'List'
   const subtitle = kind === 'project' ? 'Share every suite and bug list in this project.' : 'Share this list only.'
@@ -72,6 +75,7 @@ export function ShareDialog({
         setToken(result.share.token)
         setRole(result.share.role)
         setUrl(`${window.location.origin}/s/${result.share.token}`)
+        setInviteText((result.share.allowedEmails || []).join('\n'))
         rememberLocalShare({
           token: result.share.token,
           kind,
@@ -84,6 +88,7 @@ export function ShareDialog({
         setToken('')
         setUrl('')
         setRole('edit')
+        setInviteText('')
       }
     }).catch(() => {
       setToken('')
@@ -114,6 +119,16 @@ export function ShareDialog({
         rows.push(...listRows.map((row) => ({ ...row, suiteId: list.id })))
       }
 
+      const invited = normalizeEmails(inviteText)
+      if (invited.length === 0) {
+        toast({
+          title: 'Add teammate emails',
+          description: 'Enter at least one email. We will open a message with the share link for you to send.',
+          variant: 'destructive',
+        })
+        return
+      }
+
       const result = await createShare({
         kind,
         title,
@@ -122,7 +137,7 @@ export function ShareDialog({
         suiteId: suite?.id,
         role,
         createdBy: user.id,
-        allowedEmails: [],
+        allowedEmails: invited,
         columns,
         lists: targetLists.map((list) => ({
           id: list.id,
@@ -145,9 +160,17 @@ export function ShareDialog({
         suiteId: suite?.id,
       })
       onChanged?.()
+      openTeamShareEmail({
+        emails: invited,
+        url: nextUrl,
+        title,
+        senderName: user.user_metadata?.name || user.user_metadata?.full_name,
+        senderEmail: user.email,
+        role,
+      })
       toast({
-        title: 'Share link ready',
-        description: 'Anyone with this link can open it. Email it to the other person.',
+        title: 'Email ready to send',
+        description: `A message to ${invited.length} teammate${invited.length === 1 ? '' : 's'} opened with the share link. Click Send in your mail app.`,
       })
     } catch (error) {
       toast({
@@ -232,9 +255,15 @@ export function ShareDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-slate-700 dark:text-slate-300">How it works</Label>
+            <Label className="text-xs font-medium text-slate-700 dark:text-slate-300">Team emails</Label>
+            <textarea
+              value={inviteText}
+              onChange={(event) => setInviteText(event.target.value)}
+              placeholder="alex@company.com"
+              className="min-h-[84px] w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:placeholder:text-slate-600"
+            />
             <p className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-500">
-              Create the link, copy it, and send it by email. Anyone who opens the link can view or edit based on the access you picked above.
+              Add each teammate’s email, one per line. We create the link and open an email to them with that link. They can open it directly — no extra invite code.
             </p>
           </div>
 
@@ -289,8 +318,8 @@ export function ShareDialog({
               disabled={busy}
               className="h-10 bg-sky-600 text-white hover:bg-sky-500"
             >
-              {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              {token ? 'Update link' : 'Create link'}
+              {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Mail className="mr-2 h-4 w-4" />}
+              {token ? 'Update and email team' : 'Send link to team'}
             </Button>
           </div>
         </div>
