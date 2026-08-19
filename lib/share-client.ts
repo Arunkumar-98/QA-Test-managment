@@ -1,6 +1,7 @@
 import type { CreateShareInput, ShareKind, ShareRole, SharedRow, PublicShare } from '@/lib/share-types'
 import { getCurrentUser } from '@/lib/local-auth'
 import { parseArtifacts, type ArtifactMeta } from '@/lib/artifact-store'
+import { supabase } from '@/lib/supabase'
 
 export type { PublicShare, ShareKind, ShareRole }
 
@@ -155,10 +156,22 @@ export async function uploadArtifactsForRows(
   getLocalFile: (id: string) => Promise<Blob | null>
 ) {
   const items = rows.flatMap((row) => parseArtifacts(row.dynamicFields?.artifacts))
+  const user = getCurrentUser()
+
   for (const item of items) {
-    const blob = await getLocalFile(item.id)
+    let blob = await getLocalFile(item.id)
+    if (!blob && user?.id) {
+      const { data } = await supabase.storage.from('artifacts').download(`${user.id}/${item.id}`)
+      blob = data || null
+    }
     if (!blob) continue
-    await uploadShareArtifact(token, item, blob)
+    const { error } = await supabase.storage.from('artifacts').upload(`shares/${token}/${item.id}`, blob, {
+      contentType: item.mime || blob.type || 'application/octet-stream',
+      upsert: true,
+    })
+    if (error) {
+      await uploadShareArtifact(token, item, blob).catch(() => undefined)
+    }
   }
 }
 

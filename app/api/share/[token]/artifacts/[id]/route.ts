@@ -16,7 +16,12 @@ export async function GET(request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const stored = await shareArtifactStore.get(token, id)
+  const storedUrl = await shareArtifactStore.signedUrl(token, id, share.createdBy)
+  if (storedUrl) {
+    return NextResponse.redirect(storedUrl, { headers: { 'Cache-Control': 'private, max-age=60' } })
+  }
+
+  const stored = await shareArtifactStore.get(token, id, share.createdBy)
   if (!stored) return NextResponse.json({ error: 'Artifact not found' }, { status: 404 })
 
   return new NextResponse(new Uint8Array(stored.bytes), {

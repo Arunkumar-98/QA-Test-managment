@@ -4,7 +4,10 @@ import { shareStore } from '@/lib/share-store'
 export const dynamic = 'force-dynamic'
 
 function shareUrl(request: NextRequest, token: string) {
-  const origin = request.nextUrl.origin
+  const configured = (process.env.NEXT_PUBLIC_SITE_URL || '').replace(/\/$/, '')
+  const origin = configured && !configured.includes('localhost')
+    ? configured
+    : request.nextUrl.origin
   return `${origin}/s/${token}`
 }
 
@@ -52,6 +55,7 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error(error)
-    return NextResponse.json({ error: 'Could not create share' }, { status: 500 })
+    const message = error instanceof Error ? error.message : 'Could not create share'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

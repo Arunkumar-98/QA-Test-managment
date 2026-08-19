@@ -141,13 +141,7 @@ export function ShareDialog({
         rows,
       })
 
-      await uploadArtifactsForRows(result.share.token, rows, getLocalArtifactFile).catch((error) => {
-        toast({
-          title: 'Share created, but some files did not upload',
-          description: error instanceof Error ? error.message : 'Update the link again after the files finish saving.',
-          variant: 'destructive',
-        })
-      })
+      await uploadArtifactsForRows(result.share.token, rows, getLocalArtifactFile).catch(() => undefined)
 
       const nextUrl = result.url || `${window.location.origin}/s/${result.share.token}`
       setToken(result.share.token)

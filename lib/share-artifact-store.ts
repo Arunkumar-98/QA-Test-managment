@@ -1,7 +1,6 @@
-import { promises as fs } from 'fs'
-import path from 'path'
+import { getShareDb } from '@/lib/supabase-admin'
 
-const ROOT = path.join(process.cwd(), 'data', 'artifacts')
+const BUCKET = 'artifacts'
 
 export type ShareArtifactMeta = {
   id: string
@@ -16,49 +15,74 @@ function safePart(value: string, label: string) {
   return value
 }
 
-function dirFor(token: string) {
-  return path.join(ROOT, safePart(token, 'share'))
-}
-
-function fileFor(token: string, id: string) {
-  return path.join(dirFor(token), safePart(id, 'artifact'))
-}
-
-function metaFor(token: string, id: string) {
-  return `${fileFor(token, id)}.meta.json`
+function sharePath(token: string, id: string) {
+  return `shares/${safePart(token, 'share')}/${safePart(id, 'artifact')}`
 }
 
 export const shareArtifactStore = {
   async save(token: string, meta: ShareArtifactMeta, bytes: Buffer) {
-    const folder = dirFor(token)
-    await fs.mkdir(folder, { recursive: true })
-    await fs.writeFile(fileFor(token, meta.id), bytes)
-    await fs.writeFile(metaFor(token, meta.id), JSON.stringify({ ...meta, size: bytes.length }))
+    const db = getShareDb()
+    const path = sharePath(token, meta.id)
+    const { error } = await db.storage.from(BUCKET).upload(path, bytes, {
+      contentType: meta.mime || 'application/octet-stream',
+      upsert: true,
+    })
+    if (error) throw new Error(error.message)
     return { ...meta, size: bytes.length }
   },
 
-  async get(token: string, id: string): Promise<{ meta: ShareArtifactMeta; bytes: Buffer } | null> {
-    try {
-      const [bytes, raw] = await Promise.all([
-        fs.readFile(fileFor(token, id)),
-        fs.readFile(metaFor(token, id), 'utf8'),
-      ])
-      const meta = JSON.parse(raw) as ShareArtifactMeta
-      return { meta: { ...meta, size: bytes.length }, bytes }
-    } catch (error: any) {
-      if (error?.code === 'ENOENT') return null
-      throw error
+  async get(
+    token: string,
+    id: string,
+    ownerId?: string
+  ): Promise<{ meta: ShareArtifactMeta; bytes: Buffer } | null> {
+    const db = getShareDb()
+    const candidates = [sharePath(token, safePart(id, 'artifact'))]
+    if (ownerId && /^[a-zA-Z0-9._-]+$/.test(ownerId) && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      candidates.push(`${ownerId}/${safePart(id, 'artifact')}`)
     }
+
+    for (const path of candidates) {
+      const { data, error } = await db.storage.from(BUCKET).download(path)
+      if (error || !data) continue
+      const bytes = Buffer.from(await data.arrayBuffer())
+      return {
+        meta: {
+          id,
+          name: id,
+          kind: data.type.startsWith('video/') ? 'video' : 'image',
+          mime: data.type || 'application/octet-stream',
+          size: bytes.length,
+        },
+        bytes,
+      }
+    }
+    return null
+  },
+
+  async signedUrl(token: string, id: string, ownerId?: string) {
+    const db = getShareDb()
+    const candidates = [sharePath(token, safePart(id, 'artifact'))]
+    if (ownerId && /^[a-zA-Z0-9._-]+$/.test(ownerId) && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      candidates.push(`${ownerId}/${safePart(id, 'artifact')}`)
+    }
+    for (const path of candidates) {
+      const { data, error } = await db.storage.from(BUCKET).createSignedUrl(path, 60 * 10)
+      if (!error && data?.signedUrl) return data.signedUrl
+    }
+    return null
   },
 
   async remove(token: string, id: string) {
-    await Promise.allSettled([
-      fs.unlink(fileFor(token, id)),
-      fs.unlink(metaFor(token, id)),
-    ])
+    const db = getShareDb()
+    await db.storage.from(BUCKET).remove([sharePath(token, id)])
   },
 
   async removeAll(token: string) {
-    await fs.rm(dirFor(token), { recursive: true, force: true }).catch(() => undefined)
+    const db = getShareDb()
+    const folder = `shares/${safePart(token, 'share')}`
+    const { data } = await db.storage.from(BUCKET).list(folder, { limit: 1000 })
+    const names = (data || []).map((item) => `${folder}/${item.name}`)
+    if (names.length) await db.storage.from(BUCKET).remove(names)
   },
 }
