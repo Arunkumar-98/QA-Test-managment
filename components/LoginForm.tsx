@@ -13,9 +13,10 @@ import { useToast } from '@/hooks/use-toast'
 interface LoginFormProps {
   onSwitchToSignup: () => void
   onSwitchToForgotPassword: () => void
+  onNeedVerification?: (email: string) => void
 }
 
-export function LoginForm({ onSwitchToSignup, onSwitchToForgotPassword }: LoginFormProps) {
+export function LoginForm({ onSwitchToSignup, onSwitchToForgotPassword, onNeedVerification }: LoginFormProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -40,7 +41,13 @@ export function LoginForm({ onSwitchToSignup, onSwitchToForgotPassword }: LoginF
       const { error } = await signIn(email, password)
       
       if (error) {
-        setError(error.message)
+        const message = error.message || 'Could not sign in'
+        setError(message)
+        if (/confirm|not confirmed|verif/i.test(message)) {
+          const pending = email.trim().toLowerCase()
+          sessionStorage.setItem('pendingEmailConfirmation', pending)
+          onNeedVerification?.(pending)
+        }
       } else {
         toast({
           title: "Welcome back!",

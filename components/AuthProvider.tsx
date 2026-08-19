@@ -7,11 +7,14 @@ import {
   clearSession,
   loadSessionFromSupabase,
   resetPassword as localResetPassword,
+  resendSignupEmail,
   setAuthMemory,
   signIn as localSignIn,
   signOutRemote,
   signUp as localSignUp,
   toLocalUser,
+  updatePassword,
+  verifySignupOtp,
 } from '@/lib/local-auth'
 import { clearCloudStore, hydrateCloudStore } from '@/lib/local-db'
 import { supabase } from '@/lib/supabase'
@@ -20,11 +23,18 @@ interface AuthContextType {
   user: LocalUser | null
   session: LocalSession | null
   loading: boolean
+  passwordRecovery: boolean
   signIn: (email: string, password: string) => Promise<{ error: any }>
-  signUp: (email: string, password: string, name: string) => Promise<{ error: any }>
+  signUp: (
+    email: string,
+    password: string,
+    name: string
+  ) => Promise<{ error: any; needsVerification?: boolean }>
   signOut: () => Promise<void>
   resetPassword: (email: string, newPassword?: string) => Promise<{ error: any }>
   resendConfirmation: (email: string) => Promise<{ error: any }>
+  verifyEmailCode: (email: string, token: string) => Promise<{ error: any }>
+  completePasswordReset: (password: string) => Promise<{ error: any }>
   clearInvalidSession: () => Promise<void>
 }
 
@@ -35,6 +45,7 @@ async function activateUser(nextUser: LocalUser | null) {
     clearCloudStore()
     return
   }
+  sessionStorage.removeItem('pendingEmailConfirmation')
   await hydrateCloudStore(nextUser.id)
 }
 
@@ -42,6 +53,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<LocalUser | null>(null)
   const [session, setSession] = useState<LocalSession | null>(null)
   const [loading, setLoading] = useState(true)
+  const [passwordRecovery, setPasswordRecovery] = useState(false)
 
   const applyUser = async (nextUser: LocalUser | null) => {
     setAuthMemory(nextUser)
@@ -53,6 +65,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const clearInvalidSession = async () => {
     await signOutRemote()
     clearCloudStore()
+    setPasswordRecovery(false)
+    sessionStorage.removeItem('qa-password-recovery')
     setSession(null)
     setUser(null)
   }
@@ -62,6 +76,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const boot = async () => {
       try {
+        if (typeof window !== 'undefined' && sessionStorage.getItem('qa-password-recovery') === '1') {
+          setPasswordRecovery(true)
+        }
         const current = await loadSessionFromSupabase()
         if (cancelled) return
         await applyUser(current)
@@ -82,6 +99,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const { data } = supabase.auth.onAuthStateChange((event, nextSession) => {
       if (event === 'INITIAL_SESSION') return
+      if (event === 'PASSWORD_RECOVERY') {
+        setPasswordRecovery(true)
+        sessionStorage.setItem('qa-password-recovery', '1')
+      }
+      if (event === 'SIGNED_OUT') {
+        setPasswordRecovery(false)
+        sessionStorage.removeItem('qa-password-recovery')
+      }
       const nextUser = toLocalUser(nextSession?.user ?? null)
       void applyUser(nextUser)
     })
@@ -105,7 +130,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!result.error && result.user) {
       await applyUser(result.user)
     }
-    return { error: result.error }
+    return { error: result.error, needsVerification: result.needsVerification }
   }
 
   const signOut = async () => {
@@ -117,24 +142,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const resendConfirmation = async (email: string) => {
-    const origin = typeof window !== 'undefined' ? window.location.origin : ''
-    const { error } = await supabase.auth.resend({
-      type: 'signup',
-      email,
-      options: { emailRedirectTo: `${origin}/` },
-    })
-    return { error }
+    return resendSignupEmail(email)
+  }
+
+  const verifyEmailCode = async (email: string, token: string) => {
+    const result = await verifySignupOtp(email, token)
+    if (!result.error && result.user) {
+      await applyUser(result.user)
+    }
+    return { error: result.error }
+  }
+
+  const completePasswordReset = async (password: string) => {
+    const result = await updatePassword(password)
+    if (!result.error) {
+      setPasswordRecovery(false)
+      sessionStorage.removeItem('qa-password-recovery')
+    }
+    return result
   }
 
   const value = {
     user,
     session,
     loading,
+    passwordRecovery,
     signIn,
     signUp,
     signOut,
     resetPassword,
     resendConfirmation,
+    verifyEmailCode,
+    completePasswordReset,
     clearInvalidSession,
   }
 

@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast'
 
 interface ForgotPasswordFormProps {
   onSwitchToLogin: () => void
-  onEmailSent: (email: string) => void
+  onEmailSent?: (email: string) => void
 }
 
 export function ForgotPasswordForm({ onSwitchToLogin, onEmailSent }: ForgotPasswordFormProps) {
@@ -41,7 +41,7 @@ export function ForgotPasswordForm({ onSwitchToLogin, onEmailSent }: ForgotPassw
         setError(error.message)
       } else {
         setSuccess(true)
-        onEmailSent(email)
+        onEmailSent?.(email)
         toast({
           title: 'Reset email sent',
           description: 'Check your inbox for a link to choose a new password.',

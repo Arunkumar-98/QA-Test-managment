@@ -8,15 +8,10 @@ import Link from 'next/link'
 import { useAuth } from '@/components/AuthProvider'
 
 export default function VerificationSuccessPage() {
-  const [isClient, setIsClient] = useState(false)
   const [userEmail, setUserEmail] = useState<string>('')
-  
-  const { user } = isClient ? useAuth() : { user: null }
+  const { user } = useAuth()
 
   useEffect(() => {
-    setIsClient(true)
-    
-    // Get email from URL params or auth context
     const urlParams = new URLSearchParams(window.location.search)
     const email = urlParams.get('email')
     
@@ -25,8 +20,7 @@ export default function VerificationSuccessPage() {
     } else if (user?.email) {
       setUserEmail(user.email)
     } else {
-      // Try to get from localStorage
-      const storedEmail = localStorage.getItem('pendingEmailConfirmation')
+      const storedEmail = sessionStorage.getItem('pendingEmailConfirmation') || localStorage.getItem('pendingEmailConfirmation')
       if (storedEmail) {
         setUserEmail(storedEmail)
       }

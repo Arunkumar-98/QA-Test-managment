@@ -79,7 +79,7 @@ export function SignupForm({ onSwitchToLogin, onSignupSuccess }: SignupFormProps
     }
 
     try {
-      const { error } = await signUp(email, password, name)
+      const { error, needsVerification } = await signUp(email, password, name)
 
       if (error) {
         setError(error.message || 'Failed to create account')
@@ -87,15 +87,21 @@ export function SignupForm({ onSwitchToLogin, onSignupSuccess }: SignupFormProps
       }
 
       toast({
-        title: "Account created successfully!",
-        description: "You are now signed in. Data is stored locally in this browser.",
+        title: needsVerification ? 'Check your email' : 'Account created',
+        description: needsVerification
+          ? 'Open the confirmation email and click the link to prove you own this address.'
+          : 'You are signed in. Your data is saved to your account.',
       })
+
+      if (needsVerification) {
+        sessionStorage.setItem('pendingEmailConfirmation', email.trim().toLowerCase())
+        onSignupSuccess?.(email.trim().toLowerCase())
+      }
 
       setName('')
       setEmail('')
       setPassword('')
       setConfirmPassword('')
-      onSignupSuccess?.(email)
     } catch (err) {
       console.error('Signup error:', err)
       setError('An unexpected error occurred. Please try again.')
@@ -114,7 +120,7 @@ export function SignupForm({ onSwitchToLogin, onSignupSuccess }: SignupFormProps
         </div>
         <CardTitle className="text-2xl font-bold text-center text-white">Create account</CardTitle>
         <CardDescription className="text-center text-white/80">
-          Create your account and start managing test cases immediately
+          Create an account. We’ll email a confirmation link you must open.
         </CardDescription>
       </CardHeader>
       <CardContent>

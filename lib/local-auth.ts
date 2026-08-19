@@ -28,6 +28,11 @@ function toLocalUser(user: { id: string; email?: string | null; user_metadata?: 
   }
 }
 
+function redirectBase() {
+  if (typeof window !== 'undefined') return window.location.origin
+  return process.env.NEXT_PUBLIC_SITE_URL || 'https://qa-test-managment.vercel.app'
+}
+
 export function setAuthMemory(user: LocalUser | null) {
   memoryUser = user
   memorySession = user ? { user } : null
@@ -56,12 +61,49 @@ export async function signUp(email: string, password: string, name: string) {
     password,
     options: {
       data: { name, full_name: name },
+      emailRedirectTo: `${redirectBase()}/auth/callback`,
     },
   })
 
-  if (error) return { error: { message: error.message }, user: null }
+  if (error) return { error: { message: error.message }, user: null, needsVerification: false }
+
+  if (data.user && !data.session && (data.user.identities?.length ?? 0) === 0) {
+    return {
+      error: { message: 'An account with this email already exists. Sign in, or reset your password.' },
+      user: null,
+      needsVerification: false,
+    }
+  }
+
+  if (!data.session) {
+    return { error: null, user: null, needsVerification: true }
+  }
 
   const user = toLocalUser(data.user)
+  if (user) setAuthMemory(user)
+  return { error: null, user, needsVerification: false }
+}
+
+export async function verifySignupOtp(email: string, token: string) {
+  const normalizedEmail = email.trim().toLowerCase()
+  const normalizedToken = token.trim()
+
+  const signup = await supabase.auth.verifyOtp({
+    email: normalizedEmail,
+    token: normalizedToken,
+    type: 'signup',
+  })
+
+  const result = signup.error
+    ? await supabase.auth.verifyOtp({
+        email: normalizedEmail,
+        token: normalizedToken,
+        type: 'email',
+      })
+    : signup
+
+  if (result.error) return { error: { message: result.error.message }, user: null }
+  const user = toLocalUser(result.data.user)
   if (user) setAuthMemory(user)
   return { error: null, user }
 }
@@ -85,9 +127,24 @@ export async function signOutRemote() {
 }
 
 export async function resetPassword(email: string, _newPassword?: string) {
-  const origin = typeof window !== 'undefined' ? window.location.origin : process.env.NEXT_PUBLIC_SITE_URL || ''
   const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
-    redirectTo: `${origin}/`,
+    redirectTo: `${redirectBase()}/auth/callback?next=reset`,
+  })
+  if (error) return { error: { message: error.message } }
+  return { error: null }
+}
+
+export async function updatePassword(newPassword: string) {
+  const { error } = await supabase.auth.updateUser({ password: newPassword })
+  if (error) return { error: { message: error.message } }
+  return { error: null }
+}
+
+export async function resendSignupEmail(email: string) {
+  const { error } = await supabase.auth.resend({
+    type: 'signup',
+    email: email.trim().toLowerCase(),
+    options: { emailRedirectTo: `${redirectBase()}/auth/callback` },
   })
   if (error) return { error: { message: error.message } }
   return { error: null }

@@ -15,16 +15,9 @@ export default function AuthCodeErrorPage() {
     error_description?: string
   }>({})
   const [isResending, setIsResending] = useState(false)
-  const [isClient, setIsClient] = useState(false)
-  
-  // Only use auth context on client side
-  const authContext = isClient ? useAuth() : null
-  const resendConfirmation = authContext?.resendConfirmation
+  const { resendConfirmation } = useAuth()
 
   useEffect(() => {
-    // Mark as client-side
-    setIsClient(true)
-    
     // Parse URL hash for error details
     const hash = window.location.hash
     if (hash) {

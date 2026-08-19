@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import { ThemeProvider } from '@/components/theme-provider'
+import { AuthProvider } from '@/components/AuthProvider'
+import { Toaster } from '@/components/ui/toaster'
 
 export const metadata: Metadata = {
   title: 'QA Test Management',
@@ -32,7 +34,10 @@ export default function RootLayout({
     <html lang="en" className="dark" suppressHydrationWarning>
       <body>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} storageKey="qa-theme" disableTransitionOnChange>
-          {children}
+          <AuthProvider>
+            {children}
+            <Toaster />
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

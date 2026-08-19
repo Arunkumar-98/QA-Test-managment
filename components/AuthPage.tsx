@@ -1,37 +1,60 @@
 "use client"
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { LoginForm } from './LoginForm'
 import { SignupForm } from './SignupForm'
 import { ForgotPasswordForm } from './ForgotPasswordForm'
+import { VerifyEmailForm } from './VerifyEmailForm'
 import { ThemeToggle } from './ThemeToggle'
 
-type AuthMode = 'login' | 'signup' | 'forgot-password'
+type AuthMode = 'login' | 'signup' | 'forgot-password' | 'verify-email'
 
 export function AuthPage() {
   const [authMode, setAuthMode] = useState<AuthMode>('login')
+  const [pendingEmail, setPendingEmail] = useState('')
+
+  useEffect(() => {
+    const pending = sessionStorage.getItem('pendingEmailConfirmation')
+    if (pending) {
+      setPendingEmail(pending)
+      setAuthMode('verify-email')
+    }
+  }, [])
 
   const renderAuthForm = () => {
     switch (authMode) {
       case 'login':
         return (
-          <LoginForm 
+          <LoginForm
             onSwitchToSignup={() => setAuthMode('signup')}
             onSwitchToForgotPassword={() => setAuthMode('forgot-password')}
+            onNeedVerification={(email) => {
+              setPendingEmail(email)
+              setAuthMode('verify-email')
+            }}
           />
         )
       case 'signup':
         return (
-          <SignupForm 
+          <SignupForm
             onSwitchToLogin={() => setAuthMode('login')}
-            onSignupSuccess={() => setAuthMode('login')}
+            onSignupSuccess={(email) => {
+              setPendingEmail(email)
+              setAuthMode('verify-email')
+            }}
           />
         )
       case 'forgot-password':
         return (
-          <ForgotPasswordForm 
+          <ForgotPasswordForm
             onSwitchToLogin={() => setAuthMode('login')}
-            onEmailSent={() => setAuthMode('login')}
+          />
+        )
+      case 'verify-email':
+        return (
+          <VerifyEmailForm
+            email={pendingEmail}
+            onSwitchToLogin={() => setAuthMode('login')}
           />
         )
       default:
@@ -45,18 +68,16 @@ export function AuthPage() {
         <ThemeToggle className="bg-white/10 hover:bg-white/20" />
       </div>
       <div className="w-full max-w-md">
-        {/* Logo and Brand */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-20 h-20 mb-6">
-            <img 
-              src="/favicon.png" 
-              alt="QA Management" 
+            <img
+              src="/favicon.png"
+              alt="QA Management"
               className="w-20 h-20 object-contain"
               onError={(e) => {
-                // Fallback to favicon.ico if png fails
-                const target = e.target as HTMLImageElement;
+                const target = e.target as HTMLImageElement
                 if (target.src.includes('favicon.png')) {
-                  target.src = '/favicon.ico';
+                  target.src = '/favicon.ico'
                 }
               }}
             />
@@ -65,16 +86,12 @@ export function AuthPage() {
           <p className="text-white/80 text-lg">Professional test case management for teams</p>
         </div>
 
-        {/* Auth Form */}
         {renderAuthForm()}
 
-        {/* Footer */}
         <div className="mt-8 text-center">
-          <p className="text-sm text-white/60">
-            Local accounts stored in this browser
-          </p>
+          <p className="text-sm text-white/60">We’ll email a confirmation link so only you can activate the account</p>
         </div>
       </div>
     </div>
   )
-} 
+}
