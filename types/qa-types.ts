@@ -59,120 +59,35 @@ export type StatusHistoryDB = {
   }
 }
 
+// New Dynamic TestCase - Only core system fields, everything else is dynamic
 export type TestCase = {
+  // System required fields (cannot be removed)
   id: string
-  testCase: string
-  description: string
-  expectedResult: string
-  status: TestCaseStatus
-  priority: TestCasePriority
-  category: TestCaseCategory
-  assignedTester: string
-  executionDate: string
-  notes: string
-  actualResult: string
-  environment: string
-  prerequisites: string
-  platform: string
-  stepsToReproduce: string
   projectId: string
-  suiteId?: string
   position: number
   createdAt: Date
   updatedAt: Date
-  // New core columns
-  qaStatus: QAStatus
-  devStatus: DevStatus
-  assignedDev: string
-  bugStatus: BugStatus
-  testType: TestType
-  testLevel: TestLevel
-  defectSeverity: DefectSeverity
-  defectPriority: DefectPriority
-  estimatedTime: number // in minutes
-  actualTime: number // in minutes
-  testData: string
-  attachments: string[]
-  tags: string[]
-  reviewer: string
-  reviewDate: string
-  reviewNotes: string
-  lastModifiedBy: string
-  lastModifiedDate: Date
-  automationScript?: {
-    path: string
-    type: string
-    command: string
-    headlessMode: boolean
-    embeddedCode: string
-    lastRun?: Date
-    lastResult?: 'pass' | 'fail' | 'running' | 'not_run'
-    executionTime?: number
-    output?: string
-    error?: string
-  }
-  // Custom fields for dynamic columns
-  customFields?: {
-    [key: string]: string | number | boolean | null
+  suiteId?: string
+  
+  // All user data is stored in dynamic fields
+  dynamicFields: {
+    [columnName: string]: string | number | boolean | null
   }
 }
 
-// Database version of TestCase (snake_case)
+// Database version of Dynamic TestCase (snake_case)
 export type TestCaseDB = {
+  // System required fields (cannot be removed)
   id: string
-  test_case: string
-  description: string
-  expected_result: string
-  status: TestCaseStatus
-  priority: TestCasePriority
-  category: TestCaseCategory
-  assigned_tester: string
-  execution_date: string
-  notes: string
-  actual_result: string
-  environment: string
-  prerequisites: string
-  platform: string
-  steps_to_reproduce: string
   project_id: string
-  suite_id?: string
   position: number
   created_at: Date
   updated_at: Date
-  // New core columns (snake_case)
-  qa_status: QAStatus
-  dev_status: DevStatus
-  assigned_dev: string
-  bug_status: BugStatus
-  test_type: TestType
-  test_level: TestLevel
-  defect_severity: DefectSeverity
-  defect_priority: DefectPriority
-  estimated_time: number // in minutes
-  actual_time: number // in minutes
-  test_data: string
-  attachments: string[]
-  tags: string[]
-  reviewer: string
-  review_date: string
-  review_notes: string
-  last_modified_by: string
-  last_modified_date: Date
-  automation_script?: {
-    path: string
-    type: string
-    command: string
-    headless_mode: boolean
-    embedded_code: string
-    last_run?: Date
-    last_result?: 'pass' | 'fail' | 'running' | 'not_run'
-    execution_time?: number
-    output?: string
-    error?: string
-  }
-  // Custom fields for dynamic columns
-  custom_fields?: {
-    [key: string]: string | number | boolean | null
+  suite_id?: string
+  
+  // All user data is stored in dynamic fields
+  dynamic_fields: {
+    [columnName: string]: string | number | boolean | null
   }
 }
 
@@ -181,6 +96,7 @@ export type TestSuite = {
   name: string
   description: string
   projectId: string
+  kind?: 'suite' | 'bugs'
   testCaseIds: string[]
   createdAt: Date
   updatedAt: Date
@@ -891,6 +807,8 @@ export type CustomColumn = {
   required?: boolean
   color?: string // Color for the column (hex code)
   projectId: string
+  ownerUserId?: string
+  position?: number
   createdAt: Date
   updatedAt: Date
 }

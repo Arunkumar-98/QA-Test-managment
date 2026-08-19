@@ -19,26 +19,11 @@ export function AuthErrorFix({ error, onFixed }: AuthErrorFixProps) {
   const handleClearSession = async () => {
     setLoading(true)
     setMessage(null)
-    
-    try {
-      const response = await fetch('/api/auth/fix-session', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ action: 'clear_session' }),
-      })
 
-      const result = await response.json()
-      
-      if (result.success) {
-        setMessage('Session cleared successfully! Please sign in again.')
-        // Also clear the local auth state
-        await clearInvalidSession()
-        onFixed?.()
-      } else {
-        setMessage(`Failed to clear session: ${result.error}`)
-      }
+    try {
+      await clearInvalidSession()
+      setMessage('Session cleared successfully! Please sign in again.')
+      onFixed?.()
     } catch (err) {
       setMessage('Failed to clear session. Please try refreshing the page.')
     } finally {
@@ -49,24 +34,11 @@ export function AuthErrorFix({ error, onFixed }: AuthErrorFixProps) {
   const handleRefreshSession = async () => {
     setLoading(true)
     setMessage(null)
-    
-    try {
-      const response = await fetch('/api/auth/fix-session', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ action: 'refresh_session' }),
-      })
 
-      const result = await response.json()
-      
-      if (result.success) {
-        setMessage('Session refreshed successfully!')
-        onFixed?.()
-      } else {
-        setMessage(`Failed to refresh session: ${result.error}`)
-      }
+    try {
+      await clearInvalidSession()
+      setMessage('Session cleared. Please sign in again.')
+      onFixed?.()
     } catch (err) {
       setMessage('Failed to refresh session. Please try clearing the session instead.')
     } finally {
@@ -77,28 +49,11 @@ export function AuthErrorFix({ error, onFixed }: AuthErrorFixProps) {
   const handleCheckSession = async () => {
     setLoading(true)
     setMessage(null)
-    
-    try {
-      const response = await fetch('/api/auth/fix-session', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ action: 'check_session' }),
-      })
 
-      const result = await response.json()
-      
-      if (result.success) {
-        if (result.hasSession) {
-          setMessage('Session is valid! You should be able to continue.')
-          onFixed?.()
-        } else {
-          setMessage('No active session found. Please sign in.')
-        }
-      } else {
-        setMessage(`Session check failed: ${result.error}`)
-      }
+    try {
+      const hasSession = typeof window !== 'undefined' && !!localStorage.getItem('qa-local-session')
+      setMessage(hasSession ? 'Session is valid! You should be able to continue.' : 'No active session found. Please sign in.')
+      if (hasSession) onFixed?.()
     } catch (err) {
       setMessage('Failed to check session status.')
     } finally {

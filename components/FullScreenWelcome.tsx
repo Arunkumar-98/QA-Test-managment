@@ -4,6 +4,7 @@ import { Input } from './ui/input'
 import { Label } from './ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
 import { Badge } from './ui/badge'
+import { ThemeToggle } from './ThemeToggle'
 import { 
   FolderPlus, 
   Rocket, 
@@ -112,6 +113,7 @@ export function FullScreenWelcome({ onCreateProject, isLoading = false, onSignOu
 
       {/* Top Right Controls */}
       <div className="absolute top-6 right-6 z-20 flex items-center gap-4">
+        <ThemeToggle className="bg-white/10 hover:bg-white/20" />
         {/* User Info */}
         {user && (
           <div className="flex items-center gap-3 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20">

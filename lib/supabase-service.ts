@@ -1,1669 +1,665 @@
-import { supabase } from './supabase'
-import { 
-  TestCase, 
-  TestCaseDB, 
-  CreateTestCaseInput, 
-  TestSuite, 
-  TestSuiteDB, 
-  CreateTestSuiteInput, 
-  Document, 
-  DocumentDB, 
-  CreateDocumentInput, 
-  ImportantLink, 
-  ImportantLinkDB, 
-  CreateImportantLinkInput, 
-  Platform, 
-  PlatformDB, 
-  CreatePlatformInput, 
-  Project, 
-  ProjectDB, 
-  CreateProjectInput, 
-  Comment, 
-  CommentDB, 
-  StatusHistory, 
-  StatusHistoryDB, 
-  ProjectShare, 
-  ProjectShareDB, 
+import {
+  TestCase,
+  CreateTestCaseInput,
+  TestSuite,
+  CreateTestSuiteInput,
+  Document,
+  CreateDocumentInput,
+  ImportantLink,
+  CreateImportantLinkInput,
+  Platform,
+  CreatePlatformInput,
+  Project,
+  CreateProjectInput,
+  Comment,
+  StatusHistory,
+  ProjectShare,
   ProjectPermissions,
   TestSuiteShare,
-  TestSuiteShareDB,
   TestSuitePermissions,
   SharedProjectReference,
-  SharedProjectReferenceDB,
-
-  ProjectMembership,
-  ProjectMembershipDB,
-  CreateProjectMembershipInput,
-  ProjectWithMembership,
-  ProjectRole,
-  MembershipStatus,
-  ProjectInvitation,
-  mapTestCaseFromDB, 
-  mapTestCaseToDB, 
-  mapTestSuiteFromDB, 
-  mapTestSuiteToDB, 
-  mapDocumentFromDB, 
-  mapDocumentToDB, 
-  mapImportantLinkFromDB, 
-  mapImportantLinkToDB, 
-  mapPlatformFromDB, 
-  mapPlatformToDB, 
-  mapProjectFromDB, 
-  mapProjectToDB, 
-  mapCommentFromDB, 
-  mapCommentToDB, 
-  mapStatusHistoryFromDB, 
-  mapStatusHistoryToDB, 
-  mapProjectShareFromDB, 
-  mapProjectShareToDB,
-  mapTestSuiteShareFromDB,
-  mapTestSuiteShareToDB,
-  mapSharedProjectReferenceFromDB,
-  mapSharedProjectReferenceToDB,
-
-  mapProjectMembershipFromDB,
-  mapProjectMembershipToDB,
   CustomColumn,
   CreateCustomColumnInput,
-  mapCustomColumnFromDB,
-  mapCustomColumnToDB
 } from '@/types/qa-types'
+import { createId, readCollection, reviveDates, writeCollection } from '@/lib/local-db'
+import { getCurrentUser } from '@/lib/local-auth'
+import { dashboardService } from '@/lib/dashboard-service'
 
-// Test Cases
+export { dashboardService }
+
+function requireUser() {
+  const user = getCurrentUser()
+  if (!user) throw new Error('User not authenticated')
+  return user
+}
+
+function nextPosition(items: Array<{ position?: number }>) {
+  return items.reduce((max, item) => Math.max(max, item.position || 0), 0) + 1
+}
+
 export const testCaseService = {
   async getAll(projectId: string): Promise<TestCase[]> {
-    const { data, error } = await supabase
-      .from('test_cases')
-      .select('*')
-      .eq('project_id', projectId)
-      .order('position', { ascending: true })
-    
-    if (error) throw error
-    return (data || []).map(mapTestCaseFromDB)
+    return readCollection<TestCase>('test_cases')
+      .filter((item) => item.projectId === projectId)
+      .map((item) => reviveDates(item))
+      .sort((a, b) => (a.position || 0) - (b.position || 0))
   },
 
-  async create(testCase: CreateTestCaseInput): Promise<TestCase> {
-    // Use a database function to atomically get the next position and insert
-    // This prevents race conditions where multiple test cases could get the same position
-    
-    const dbData = {
-      test_case: testCase.testCase,
-      description: testCase.description,
-      expected_result: testCase.expectedResult,
-      status: testCase.status,
-      priority: testCase.priority,
-      category: testCase.category,
-      assigned_tester: testCase.assignedTester,
-      execution_date: testCase.executionDate,
-      notes: testCase.notes,
-      actual_result: testCase.actualResult,
-      environment: testCase.environment,
-      prerequisites: testCase.prerequisites,
-      platform: testCase.platform,
-      steps_to_reproduce: testCase.stepsToReproduce,
-      project_id: testCase.projectId,
-      suite_id: testCase.suiteId || undefined, // Convert empty string to undefined
-      custom_fields: testCase.customFields || {},
-      created_at: new Date(),
-      updated_at: new Date()
+  async create(testCase: CreateTestCaseInput | any): Promise<TestCase> {
+    const items = readCollection<any>('test_cases')
+    const position =
+      typeof testCase.position === 'number'
+        ? testCase.position
+        : nextPosition(items.filter((item) => item.projectId === testCase.projectId))
+    const now = new Date()
+    const created = {
+      ...testCase,
+      id: testCase.id || createId(),
+      position,
+      createdAt: now,
+      updatedAt: now,
+      dynamicFields: testCase.dynamicFields || {},
     }
-
-    // Only add automation_script if it exists and has data
-    if (testCase.automationScript) {
-      (dbData as any).automation_script = {
-        path: testCase.automationScript.path,
-        type: testCase.automationScript.type,
-        command: testCase.automationScript.command,
-        headless_mode: testCase.automationScript.headlessMode,
-        embedded_code: testCase.automationScript.embeddedCode,
-        last_run: testCase.automationScript.lastRun,
-        last_result: testCase.automationScript.lastResult,
-        execution_time: testCase.automationScript.executionTime,
-        output: testCase.automationScript.output,
-        error: testCase.automationScript.error
-      }
-    }
-
-    console.log('📊 Database data to insert:', dbData)
-
-    // Try to use the atomic database function first
-    try {
-      console.log('🚀 Attempting to use atomic function with data:', dbData)
-      const { data, error } = await supabase.rpc('insert_test_case_with_next_position', {
-        p_test_case_data: dbData
-      })
-      
-      if (error) {
-        console.error('❌ Atomic function error:', error)
-        throw error // This will trigger the fallback
-      }
-      
-      console.log('✅ Test case created successfully using atomic function:', data)
-      return mapTestCaseFromDB(data)
-    } catch (atomicError) {
-      console.error('❌ Atomic function failed, error details:', {
-        message: atomicError instanceof Error ? atomicError.message : String(atomicError),
-        code: (atomicError as any)?.code,
-        details: (atomicError as any)?.details
-      })
-      console.log('🔄 Falling back to manual position assignment...')
-      
-      // Fallback: Manual position assignment with retry logic
-      let retries = 10 // Increased retries
-      let baseDelay = 50 // Start with shorter delay
-      
-      while (retries > 0) {
-        try {
-          // Get the current max position with a more reliable query
-          const { data: maxPositionResult, error: queryError } = await supabase
-            .from('test_cases')
-            .select('position')
-            .eq('project_id', testCase.projectId)
-            .order('position', { ascending: false })
-            .limit(1)
-          
-          if (queryError) throw queryError
-          
-          let position = 1
-          if (maxPositionResult && maxPositionResult.length > 0) {
-            position = maxPositionResult[0].position + 1
-          }
-
-          // Add position to the data
-          const dbDataWithPosition = {
-            ...dbData,
-            position: position
-          }
-
-          console.log(`🔄 Attempting to insert with position ${position} (${retries} retries left)`)
-
-          // Try to insert with the calculated position
-          const { data, error } = await supabase
-            .from('test_cases')
-            .insert([dbDataWithPosition])
-            .select()
-            .single()
-          
-          if (error) {
-            // If it's a constraint violation, retry with a different position
-            if (error.code === '23505' && error.message.includes('unique_position_per_project')) {
-              console.log(`❌ Position ${position} already taken, retrying... (${retries} retries left)`)
-              retries--
-              if (retries > 0) {
-                // Exponential backoff with jitter
-                const delay = baseDelay * Math.pow(2, 10 - retries) + Math.random() * 50
-                await new Promise(resolve => setTimeout(resolve, delay))
-                position += Math.floor(Math.random() * 3) + 1 // Random increment 1-3
-                continue
-              }
-            }
-            throw error
-          }
-          
-          console.log('✅ Test case created successfully with manual position assignment:', data)
-          return mapTestCaseFromDB(data)
-        } catch (fallbackError) {
-          console.error('❌ Error in fallback position assignment:', fallbackError)
-          if (retries <= 1) {
-            throw fallbackError
-          }
-          retries--
-          await new Promise(resolve => setTimeout(resolve, baseDelay))
-        }
-      }
-      
-      throw new Error('Failed to create test case after multiple retries')
-    }
+    items.push(created)
+    await writeCollection('test_cases', items)
+    return reviveDates(created)
   },
 
-  async update(id: string, updates: Partial<TestCase>): Promise<TestCase> {
-    const dbUpdates: Partial<TestCaseDB> = {}
-    
-    if (updates.testCase !== undefined) dbUpdates.test_case = updates.testCase
-    if (updates.description !== undefined) dbUpdates.description = updates.description
-    if (updates.expectedResult !== undefined) dbUpdates.expected_result = updates.expectedResult
-    if (updates.status !== undefined) dbUpdates.status = updates.status
-    if (updates.priority !== undefined) dbUpdates.priority = updates.priority
-    if (updates.category !== undefined) dbUpdates.category = updates.category
-    if (updates.assignedTester !== undefined) dbUpdates.assigned_tester = updates.assignedTester
-    if (updates.executionDate !== undefined) dbUpdates.execution_date = updates.executionDate
-    if (updates.notes !== undefined) dbUpdates.notes = updates.notes
-    if (updates.actualResult !== undefined) dbUpdates.actual_result = updates.actualResult
-    if (updates.environment !== undefined) dbUpdates.environment = updates.environment
-    if (updates.prerequisites !== undefined) dbUpdates.prerequisites = updates.prerequisites
-    if (updates.platform !== undefined) dbUpdates.platform = updates.platform
-    if (updates.stepsToReproduce !== undefined) dbUpdates.steps_to_reproduce = updates.stepsToReproduce
-    if (updates.projectId !== undefined) dbUpdates.project_id = updates.projectId
-    if (updates.suiteId !== undefined) dbUpdates.suite_id = updates.suiteId || undefined
-    if (updates.position !== undefined) dbUpdates.position = updates.position
-    if (updates.customFields !== undefined) dbUpdates.custom_fields = updates.customFields
-    if (updates.automationScript !== undefined) {
-      if (updates.automationScript) {
-        (dbUpdates as any).automation_script = {
-          path: updates.automationScript.path,
-          type: updates.automationScript.type,
-          command: updates.automationScript.command,
-          headless_mode: updates.automationScript.headlessMode,
-          embedded_code: updates.automationScript.embeddedCode,
-          last_run: updates.automationScript.lastRun,
-          last_result: updates.automationScript.lastResult,
-          execution_time: updates.automationScript.executionTime,
-          output: updates.automationScript.output,
-          error: updates.automationScript.error
-        }
-      } else {
-        (dbUpdates as any).automation_script = null
-      }
-    }
-    
-    // Always update the updated_at timestamp
-    dbUpdates.updated_at = new Date()
+  async getById(id: string): Promise<TestCase | null> {
+    const item = readCollection<TestCase>('test_cases').find((row) => row.id === id)
+    return item ? reviveDates(item) : null
+  },
 
-    const { data, error } = await supabase
-      .from('test_cases')
-      .update(dbUpdates)
-      .eq('id', id)
-      .select()
-      .single()
-    
-    if (error) throw error
-    return mapTestCaseFromDB(data)
+  async update(id: string, updates: Partial<TestCase> | any): Promise<TestCase> {
+    const items = readCollection<any>('test_cases')
+    const index = items.findIndex((item) => item.id === id)
+    if (index === -1) throw new Error('Test case not found')
+    const current = items[index]
+    items[index] = {
+      ...current,
+      ...updates,
+      id,
+      updatedAt: new Date(),
+      dynamicFields: updates.dynamicFields
+        ? { ...(current.dynamicFields || {}), ...updates.dynamicFields }
+        : current.dynamicFields,
+    }
+    await writeCollection('test_cases', items)
+    return reviveDates(items[index])
   },
 
   async delete(id: string): Promise<void> {
-    console.log('🗑️ Attempting to delete test case:', id)
-    
-    try {
-      // Simple direct delete approach - more reliable
-      const { error } = await supabase
-        .from('test_cases')
-        .delete()
-        .eq('id', id)
-      
-      if (error) {
-        console.error('❌ Failed to delete test case:', error)
-        throw error
-      }
-      
-      console.log('✅ Test case deleted successfully:', id)
-    } catch (deleteError) {
-      console.error('❌ Delete operation failed:', deleteError)
-      throw deleteError
-    }
+    await writeCollection('test_cases', readCollection('test_cases').filter((item) => item.id !== id))
   },
 
   async deleteMultiple(ids: string[]): Promise<void> {
-    console.log('🗑️ Starting bulk deletion of test cases:', { ids, count: ids.length })
-    
-    if (ids.length === 0) return
-    
-    try {
-      // Simple bulk delete approach
-      const { error } = await supabase
-        .from('test_cases')
-        .delete()
-        .in('id', ids)
-      
-      if (error) {
-        console.error('❌ Failed to delete test cases:', error)
-        throw error
-      }
-      
-      console.log('✅ Bulk deletion completed successfully')
-    } catch (error) {
-      console.error('❌ Bulk deletion failed:', error)
-      throw error
+    const idSet = new Set(ids)
+    await writeCollection('test_cases', readCollection('test_cases').filter((item) => !idSet.has(item.id)))
+  },
+
+  async deleteUnassigned(projectId: string): Promise<number> {
+    const items = readCollection<any>('test_cases')
+    const remaining = items.filter((item) => item.projectId !== projectId || Boolean(item.suiteId))
+    const removed = items.length - remaining.length
+    if (removed > 0) {
+      await writeCollection('test_cases', remaining)
     }
+    return removed
   },
 
   async reorderTestCase(testCaseId: string, newPosition: number): Promise<void> {
-    const { error } = await supabase.rpc('reorder_test_cases', {
-      p_test_case_id: testCaseId,
-      p_new_position: newPosition
+    const items = readCollection<any>('test_cases')
+    const current = items.find((item) => item.id === testCaseId)
+    if (!current) throw new Error('Test case not found')
+
+    const projectItems = items
+      .filter((item) => item.projectId === current.projectId)
+      .sort((a, b) => (a.position || 0) - (b.position || 0))
+
+    const withoutCurrent = projectItems.filter((item) => item.id !== testCaseId)
+    withoutCurrent.splice(Math.max(0, newPosition - 1), 0, current)
+    withoutCurrent.forEach((item, index) => {
+      item.position = index + 1
     })
-    
-    if (error) throw error
+    await writeCollection('test_cases', items)
   },
 
-  async insertAtPosition(testCaseData: CreateTestCaseInput, position: number): Promise<TestCase> {
-    const { data, error } = await supabase.rpc('insert_test_case_at_position', {
-      p_test_case_data: testCaseData,
-      p_position: position
-    })
-    
-    if (error) throw error
-    
-    // Fetch the created test case
-    const { data: createdTestCase, error: fetchError } = await supabase
-      .from('test_cases')
-      .select('*')
-      .eq('id', data)
-      .single()
-    
-    if (fetchError) throw fetchError
-    return mapTestCaseFromDB(createdTestCase)
+  async insertAtPosition(testCaseData: CreateTestCaseInput | any, position: number): Promise<TestCase> {
+    const items = readCollection<any>('test_cases')
+    items
+      .filter((item) => item.projectId === testCaseData.projectId && (item.position || 0) >= position)
+      .forEach((item) => {
+        item.position = (item.position || 0) + 1
+      })
+
+    const now = new Date()
+    const created = {
+      ...testCaseData,
+      id: createId(),
+      position,
+      createdAt: now,
+      updatedAt: now,
+      dynamicFields: testCaseData.dynamicFields || {},
+    }
+    items.push(created)
+    await writeCollection('test_cases', items)
+    return reviveDates(created)
   },
 
   async deleteAndReorder(testCaseId: string): Promise<void> {
-    // This is just an alias for the delete method now
     await this.delete(testCaseId)
-  }
+  },
 }
 
-// Test Suites
 export const testSuiteService = {
   async getAll(projectId: string): Promise<TestSuite[]> {
-    const { data, error } = await supabase
-      .from('test_suites')
-      .select('*')
-      .eq('project_id', projectId)
-      .order('created_at', { ascending: false })
-    
-    if (error) throw error
-    return (data || []).map(mapTestSuiteFromDB)
+    return readCollection<TestSuite>('test_suites')
+      .filter((item) => item.projectId === projectId)
+      .map((item) => reviveDates(item, ['createdAt', 'updatedAt', 'lastRun']))
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
   },
 
   async create(testSuite: CreateTestSuiteInput): Promise<TestSuite> {
-    const dbData: Omit<TestSuiteDB, 'id'> = {
-      name: testSuite.name,
-      description: testSuite.description,
-      project_id: testSuite.projectId,
-      test_case_ids: testSuite.testCaseIds,
-      created_at: new Date(),
-      updated_at: new Date(),
-      total_tests: 0,
-      passed_tests: 0,
-      failed_tests: 0,
-      pending_tests: 0,
-      tags: testSuite.tags,
-      owner: testSuite.owner,
-      is_active: testSuite.isActive
+    const items = readCollection<TestSuite>('test_suites')
+    const now = new Date()
+    const created: TestSuite = {
+      ...testSuite,
+      kind: testSuite.kind || 'suite',
+      id: createId(),
+      createdAt: now,
+      updatedAt: now,
+      totalTests: 0,
+      passedTests: 0,
+      failedTests: 0,
+      pendingTests: 0,
     }
-
-    const { data, error } = await supabase
-      .from('test_suites')
-      .insert([dbData])
-      .select()
-      .single()
-    
-    if (error) throw error
-    return mapTestSuiteFromDB(data)
+    items.push(created)
+    await writeCollection('test_suites', items)
+    return reviveDates(created, ['createdAt', 'updatedAt', 'lastRun'])
   },
 
   async update(id: string, updates: Partial<TestSuite>): Promise<TestSuite> {
-    const dbUpdates: Partial<TestSuiteDB> = {}
-    
-    if (updates.name !== undefined) dbUpdates.name = updates.name
-    if (updates.description !== undefined) dbUpdates.description = updates.description
-    if (updates.projectId !== undefined) dbUpdates.project_id = updates.projectId
-    if (updates.testCaseIds !== undefined) dbUpdates.test_case_ids = updates.testCaseIds
-    if (updates.lastRun !== undefined) dbUpdates.last_run = updates.lastRun
-    if (updates.lastStatus !== undefined) dbUpdates.last_status = updates.lastStatus
-    if (updates.totalTests !== undefined) dbUpdates.total_tests = updates.totalTests
-    if (updates.passedTests !== undefined) dbUpdates.passed_tests = updates.passedTests
-    if (updates.failedTests !== undefined) dbUpdates.failed_tests = updates.failedTests
-    if (updates.pendingTests !== undefined) dbUpdates.pending_tests = updates.pendingTests
-    if (updates.estimatedDuration !== undefined) dbUpdates.estimated_duration = updates.estimatedDuration
-    if (updates.tags !== undefined) dbUpdates.tags = updates.tags
-    if (updates.owner !== undefined) dbUpdates.owner = updates.owner
-    if (updates.isActive !== undefined) dbUpdates.is_active = updates.isActive
-    if (updates.updatedAt !== undefined) dbUpdates.updated_at = updates.updatedAt
-
-    const { data, error } = await supabase
-      .from('test_suites')
-      .update(dbUpdates)
-      .eq('id', id)
-      .select()
-      .single()
-    
-    if (error) throw error
-    return mapTestSuiteFromDB(data)
+    const items = readCollection<TestSuite>('test_suites')
+    const index = items.findIndex((item) => item.id === id)
+    if (index === -1) throw new Error('Test suite not found')
+    items[index] = { ...items[index], ...updates, id, updatedAt: new Date() }
+    await writeCollection('test_suites', items)
+    return reviveDates(items[index], ['createdAt', 'updatedAt', 'lastRun'])
   },
 
   async delete(id: string): Promise<void> {
-    // First, clear the suite_id from all test cases that belong to this suite
-    const { error: updateError } = await supabase
-      .from('test_cases')
-      .update({ suite_id: null })
-      .eq('suite_id', id)
-    
-    if (updateError) {
-      console.error('Failed to clear suite_id from test cases:', updateError)
-      throw updateError
-    }
-    
-    // Then delete the test suite
-    const { error } = await supabase
-      .from('test_suites')
-      .delete()
-      .eq('id', id)
-    
-    if (error) throw error
+    const cases = readCollection<any>('test_cases').map((item) =>
+      item.suiteId === id ? { ...item, suiteId: undefined } : item
+    )
+    await writeCollection('test_cases', cases)
+    await writeCollection('test_suites', readCollection('test_suites').filter((item) => item.id !== id))
   },
 
   async getById(id: string): Promise<TestSuite | null> {
-    const { data, error } = await supabase
-      .from('test_suites')
-      .select('*')
-      .eq('id', id)
-      .single()
-    
-    if (error) {
-      if (error.code === 'PGRST116') return null // No rows returned
-      throw error
-    }
-    
-    return mapTestSuiteFromDB(data)
-  }
+    const item = readCollection<TestSuite>('test_suites').find((suite) => suite.id === id)
+    return item ? reviveDates(item, ['createdAt', 'updatedAt', 'lastRun']) : null
+  },
 }
 
-// Documents
 export const documentService = {
   async getAll(projectId: string): Promise<Document[]> {
-    const { data, error } = await supabase
-      .from('documents')
-      .select('*')
-      .eq('project_id', projectId)
-      .order('created_at', { ascending: false })
-    
-    if (error) throw error
-    return (data || []).map(mapDocumentFromDB)
+    return readCollection<Document>('documents')
+      .filter((item) => item.projectId === projectId)
+      .map((item) => reviveDates(item))
   },
 
   async create(document: CreateDocumentInput): Promise<Document> {
-    const dbData: Omit<DocumentDB, 'id'> = {
-      title: document.title,
-      url: document.url,
-      type: document.type,
-      description: document.description,
-      project_id: document.projectId,
-      size: document.size,
-      uploaded_by: document.uploadedBy,
-      created_at: new Date()
-    }
-
-    const { data, error } = await supabase
-      .from('documents')
-      .insert([dbData])
-      .select()
-      .single()
-    
-    if (error) throw error
-    return mapDocumentFromDB(data)
+    const items = readCollection<Document>('documents')
+    const created = { ...document, id: createId(), createdAt: new Date() } as Document
+    items.push(created)
+    await writeCollection('documents', items)
+    return reviveDates(created)
   },
 
   async delete(id: string): Promise<void> {
-    const { error } = await supabase
-      .from('documents')
-      .delete()
-      .eq('id', id)
-    
-    if (error) throw error
-  }
+    await writeCollection('documents', readCollection('documents').filter((item) => item.id !== id))
+  },
 }
 
-// Important Links
 export const importantLinkService = {
   async getAll(projectId: string): Promise<ImportantLink[]> {
-    const { data, error } = await supabase
-      .from('important_links')
-      .select('*')
-      .eq('project_id', projectId)
-      .order('created_at', { ascending: false })
-    
-    if (error) throw error
-    return (data || []).map(mapImportantLinkFromDB)
+    return readCollection<ImportantLink>('important_links')
+      .filter((item) => item.projectId === projectId)
+      .map((item) => reviveDates(item))
   },
 
   async create(link: CreateImportantLinkInput): Promise<ImportantLink> {
-    const dbData: Omit<ImportantLinkDB, 'id'> = {
-      title: link.title,
-      url: link.url,
-      description: link.description,
-      category: link.category,
-      project_id: link.projectId,
-      created_at: new Date()
-    }
-
-    const { data, error } = await supabase
-      .from('important_links')
-      .insert([dbData])
-      .select()
-      .single()
-    
-    if (error) throw error
-    return mapImportantLinkFromDB(data)
+    const items = readCollection<ImportantLink>('important_links')
+    const created = { ...link, id: createId(), createdAt: new Date() } as ImportantLink
+    items.push(created)
+    await writeCollection('important_links', items)
+    return reviveDates(created)
   },
 
   async delete(id: string): Promise<void> {
-    const { error } = await supabase
-      .from('important_links')
-      .delete()
-      .eq('id', id)
-    
-    if (error) throw error
-  }
+    await writeCollection('important_links', readCollection('important_links').filter((item) => item.id !== id))
+  },
 }
 
-// Platforms
 export const platformService = {
-  async getAll(projectId?: string): Promise<Platform[]> {
-    const { data, error } = await supabase
-      .from('platforms')
-      .select('*')
-      .order('created_at', { ascending: false })
-    
-    if (error) throw error
-    return (data || []).map(mapPlatformFromDB)
+  async getAll(_projectId?: string): Promise<Platform[]> {
+    return readCollection<Platform>('platforms').map((item) => reviveDates(item))
   },
 
   async create(platform: CreatePlatformInput): Promise<Platform> {
-    const dbData = {
-      name: platform.name,
-      description: platform.description,
-      created_at: new Date()
-    }
-
-    const { data, error } = await supabase
-      .from('platforms')
-      .insert([dbData])
-      .select()
-      .single()
-    
-    if (error) throw error
-    return mapPlatformFromDB(data)
+    const items = readCollection<Platform>('platforms')
+    const created = { ...platform, id: createId(), createdAt: new Date() } as Platform
+    items.push(created)
+    await writeCollection('platforms', items)
+    return reviveDates(created)
   },
 
   async delete(id: string): Promise<void> {
-    const { error } = await supabase
-      .from('platforms')
-      .delete()
-      .eq('id', id)
-    
-    if (error) throw error
-  }
+    await writeCollection('platforms', readCollection('platforms').filter((item) => item.id !== id))
+  },
 }
 
-// Projects
 export const projectService = {
   async getAll(): Promise<Project[]> {
-    // Get only projects belonging to the current user
-    const { data: { user } } = await supabase.auth.getUser()
-    
-    if (!user) {
-      console.log('❌ No authenticated user found')
-      return []
-    }
-    
-    const { data, error } = await supabase
-      .from('projects')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-    
-    if (error) {
-      console.error('❌ Error fetching projects:', error)
-      throw error
-    }
-    
-    console.log('📊 Projects fetched:', data?.length || 0, 'projects')
-    if (data && data.length > 0) {
-      console.log('📋 Project details:', data.map(p => ({ id: p.id, name: p.name, user_id: p.user_id })))
-    }
-    
-    // Transform to include team collaboration fields (when available)
-    return (data || []).map((row: any) => ({
-      id: row.id,
-      name: row.name,
-      description: row.description,
-      createdAt: row.created_at,
-      isActive: row.is_active,
-      userId: row.user_id,
-      isOwner: true, // For now, assume user owns all projects they can see
-      sharedBy: null, // Will be populated when team collaboration is working
-      permissionLevel: 'admin' // Will be populated when team collaboration is working
-    }))
+    const user = getCurrentUser()
+    if (!user) return []
+
+    return readCollection<any>('projects')
+      .filter((item) => item.userId === user.id)
+      .map((item) => ({
+        ...reviveDates(item),
+        isOwner: true,
+        sharedBy: null,
+        permissionLevel: 'admin',
+      }))
+      .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
   },
 
   async create(project: CreateProjectInput): Promise<Project> {
-    const { data: { user } } = await supabase.auth.getUser()
-    
-    if (!user) {
-      console.log('❌ No authenticated user found')
-      throw new Error('User not authenticated')
+    const user = requireUser()
+    const items = readCollection<any>('projects')
+    const created = {
+      ...project,
+      id: createId(),
+      createdAt: new Date(),
+      isActive: true,
+      userId: user.id,
     }
-    
-    const dbData: Omit<ProjectDB, 'id'> = {
-      name: project.name,
-      description: project.description,
-      created_at: new Date(),
-      is_active: true,
-      user_id: user.id
-    }
-
-    const { data, error } = await supabase
-      .from('projects')
-      .insert([dbData])
-      .select()
-      .single()
-    
-    if (error) throw error
-    return mapProjectFromDB(data)
+    items.push(created)
+    await writeCollection('projects', items)
+    return reviveDates(created)
   },
 
   async delete(id: string): Promise<void> {
-    const { data: { user } } = await supabase.auth.getUser()
-    
-    if (!user) {
-      console.log('❌ No authenticated user found')
-      throw new Error('User not authenticated')
-    }
-    
-    const { error } = await supabase
-      .from('projects')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', user.id)
-    
-    if (error) throw error
+    const user = requireUser()
+    await writeCollection(
+      'projects',
+      readCollection<any>('projects').filter((item) => !(item.id === id && item.userId === user.id))
+    )
+    await writeCollection('test_cases', readCollection('test_cases').filter((item) => item.projectId !== id))
+    await writeCollection('test_suites', readCollection('test_suites').filter((item) => item.projectId !== id))
+    await writeCollection('custom_columns', readCollection('custom_columns').filter((item) => item.projectId !== id))
   },
 
   async update(id: string, updates: Partial<CreateProjectInput>): Promise<Project> {
-    const { data: { user } } = await supabase.auth.getUser()
-    
-    if (!user) {
-      console.log('❌ No authenticated user found')
-      throw new Error('User not authenticated')
-    }
-    
-    const { data, error } = await supabase
-      .from('projects')
-      .update({
-        name: updates.name,
-        description: updates.description
-      })
-      .eq('id', id)
-      .eq('user_id', user.id)
-      .select()
-      .single()
-    
-    if (error) throw error
-    
-    // Return the same structure as getAll() method
-    return mapProjectFromDB(data)
+    const user = requireUser()
+    const items = readCollection<any>('projects')
+    const index = items.findIndex((item) => item.id === id && item.userId === user.id)
+    if (index === -1) throw new Error('Project not found')
+    items[index] = { ...items[index], ...updates, id }
+    await writeCollection('projects', items)
+    return reviveDates(items[index])
   },
 
   async getById(id: string): Promise<Project | null> {
-    const { data: { user } } = await supabase.auth.getUser()
-    
-    if (!user) {
-      console.log('❌ No authenticated user found')
-      return null
-    }
-    
-    const { data, error } = await supabase
-      .from('projects')
-      .select('*')
-      .eq('id', id)
-      .eq('user_id', user.id)
-      .single()
-    
-    if (error) {
-      if (error.code === 'PGRST116') return null // No rows returned
-      throw error
-    }
-    
-    return mapProjectFromDB(data)
+    const item = readCollection<any>('projects').find((project) => project.id === id)
+    return item ? reviveDates(item) : null
   },
 
-  // Team collaboration methods
-  async shareProject(projectId: string, userEmail: string, permissionLevel: 'view' | 'edit' | 'admin' = 'view'): Promise<any> {
-    const { data, error } = await supabase.rpc('share_project_with_user', {
-      p_project_id: projectId,
-      p_target_user_email: userEmail,
-      p_permission_level: permissionLevel
+  async shareProject(projectId: string, userEmail: string, permissionLevel: 'view' | 'edit' | 'admin' = 'view') {
+    await this.logActivity(projectId, 'share', 'project', projectId, null, { userEmail, permissionLevel }, `Shared with ${userEmail}`)
+    return { success: true, userEmail, permissionLevel }
+  },
+
+  async removeUserFromProject(projectId: string, userEmail: string) {
+    await this.logActivity(projectId, 'unshare', 'project', projectId, null, { userEmail }, `Removed ${userEmail}`)
+    return { success: true, userEmail }
+  },
+
+  async getProjectActivity(projectId: string, limit: number = 50) {
+    return readCollection<any>('project_activity_log')
+      .filter((item) => item.projectId === projectId)
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      .slice(0, limit)
+      .map((item) => ({
+        ...reviveDates(item, ['timestamp']),
+        user: { email: item.userEmail },
+      }))
+  },
+
+  async logActivity(
+    projectId: string,
+    actionType: string,
+    entityType: string,
+    entityId?: string,
+    oldValues?: any,
+    newValues?: any,
+    description?: string
+  ): Promise<void> {
+    const user = getCurrentUser()
+    const items = readCollection<any>('project_activity_log')
+    items.push({
+      id: createId(),
+      projectId,
+      actionType,
+      entityType,
+      entityId,
+      oldValues,
+      newValues,
+      description,
+      timestamp: new Date(),
+      userEmail: user?.email || 'local-user',
+      user: { email: user?.email || 'local-user' },
     })
-    
-    if (error) throw error
-    return data
+    await writeCollection('project_activity_log', items)
   },
-
-  async removeUserFromProject(projectId: string, userEmail: string): Promise<any> {
-    const { data, error } = await supabase.rpc('remove_user_from_project', {
-      p_project_id: projectId,
-      p_target_user_email: userEmail
-    })
-    
-    if (error) throw error
-    return data
-  },
-
-  async getProjectMembers(projectId: string): Promise<any[]> {
-    const { data, error } = await supabase
-      .from('project_members')
-      .select(`
-        *,
-        user:user_id(email),
-        owner:owner_id(email)
-      `)
-      .eq('project_id', projectId)
-    
-    if (error) throw error
-    return data || []
-  },
-
-  async getProjectActivity(projectId: string, limit: number = 50): Promise<any[]> {
-    const { data, error } = await supabase
-      .from('project_activity_log')
-      .select(`
-        *,
-        user:user_id(email)
-      `)
-      .eq('project_id', projectId)
-      .order('timestamp', { ascending: false })
-      .limit(limit)
-    
-    if (error) throw error
-    return data || []
-  },
-
-  async logActivity(projectId: string, actionType: string, entityType: string, entityId?: string, oldValues?: any, newValues?: any, description?: string): Promise<void> {
-    const { error } = await supabase.rpc('log_project_activity', {
-      p_project_id: projectId,
-      p_action_type: actionType,
-      p_entity_type: entityType,
-      p_entity_id: entityId,
-      p_old_values: oldValues,
-      p_new_values: newValues,
-      p_description: description
-    })
-    
-    if (error) {
-      console.error('Failed to log activity:', error)
-      // Don't throw error for logging failures
-    }
-  }
 }
 
-// Settings
 export const settingsService = {
   async getSettings(): Promise<any> {
-    const { data, error } = await supabase
-      .from('app_settings')
-      .select('*')
-    
-    if (error) throw error
-    return data || []
+    return readCollection('app_settings')
   },
 
   async updateSettings(settings: any): Promise<void> {
-    const { error } = await supabase
-      .from('app_settings')
-      .upsert(settings)
-    
-    if (error) throw error
-  }
+    await writeCollection('app_settings', Array.isArray(settings) ? settings : [settings])
+  },
 }
 
-// Comments service
 export const commentService = {
   async getByTestCaseId(testCaseId: string): Promise<Comment[]> {
-    const { data, error } = await supabase
-      .from('comments')
-      .select('*')
-      .eq('test_case_id', testCaseId)
-      .order('timestamp', { ascending: false })
-    
-    if (error) throw error
-    return (data || []).map(mapCommentFromDB)
+    return readCollection<Comment>('comments')
+      .filter((item) => item.testCaseId === testCaseId)
+      .map((item) => reviveDates(item, ['timestamp', 'resolvedAt']))
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
   },
 
   async create(comment: Omit<Comment, 'id'>): Promise<Comment> {
-    const dbData = {
-      test_case_id: comment.testCaseId,
-      content: comment.content,
-      author: comment.author,
-      timestamp: comment.timestamp,
-      type: comment.type,
-      mentions: comment.mentions || [],
-      is_resolved: comment.isResolved || false,
-      resolved_by: comment.resolvedBy,
-      resolved_at: comment.resolvedAt,
-      attachments: comment.attachments || []
-    }
-
-    const { data, error } = await supabase
-      .from('comments')
-      .insert([dbData])
-      .select()
-      .single()
-    
-    if (error) throw error
-    return mapCommentFromDB(data)
+    const items = readCollection<Comment>('comments')
+    const created = { ...comment, id: createId() } as Comment
+    items.push(created)
+    await writeCollection('comments', items)
+    return reviveDates(created, ['timestamp', 'resolvedAt'])
   },
 
   async update(id: string, updates: Partial<Comment>): Promise<Comment> {
-    const dbUpdates: any = {}
-    
-    if (updates.content !== undefined) dbUpdates.content = updates.content
-    if (updates.author !== undefined) dbUpdates.author = updates.author
-    if (updates.timestamp !== undefined) dbUpdates.timestamp = updates.timestamp
-    if (updates.type !== undefined) dbUpdates.type = updates.type
-    if (updates.mentions !== undefined) dbUpdates.mentions = updates.mentions
-    if (updates.isResolved !== undefined) dbUpdates.is_resolved = updates.isResolved
-    if (updates.resolvedBy !== undefined) dbUpdates.resolved_by = updates.resolvedBy
-    if (updates.resolvedAt !== undefined) dbUpdates.resolved_at = updates.resolvedAt
-    if (updates.attachments !== undefined) dbUpdates.attachments = updates.attachments
-
-    const { data, error } = await supabase
-      .from('comments')
-      .update(dbUpdates)
-      .eq('id', id)
-      .select()
-      .single()
-    
-    if (error) throw error
-    return mapCommentFromDB(data)
+    const items = readCollection<Comment>('comments')
+    const index = items.findIndex((item) => item.id === id)
+    if (index === -1) throw new Error('Comment not found')
+    items[index] = { ...items[index], ...updates, id }
+    await writeCollection('comments', items)
+    return reviveDates(items[index], ['timestamp', 'resolvedAt'])
   },
 
   async delete(id: string): Promise<void> {
-    const { error } = await supabase
-      .from('comments')
-      .delete()
-      .eq('id', id)
-    
-    if (error) throw error
-  }
-} 
+    await writeCollection('comments', readCollection('comments').filter((item) => item.id !== id))
+  },
+}
 
-// Project Sharing Service
 export const projectShareService = {
-  async createShare(projectId: string, projectName: string, permissions: ProjectPermissions, options?: {
-    expiresAt?: Date
-    allowedEmails?: string[]
-    maxViews?: number
-  }): Promise<ProjectShare> {
-    const accessToken = crypto.randomUUID()
-    const shareData: Omit<ProjectShareDB, 'id'> = {
-      project_id: projectId,
-      project_name: projectName,
-      access_token: accessToken,
+  async createShare(
+    projectId: string,
+    projectName: string,
+    permissions: ProjectPermissions,
+    options?: { expiresAt?: Date; allowedEmails?: string[]; maxViews?: number }
+  ): Promise<ProjectShare> {
+    const items = readCollection<ProjectShare>('project_shares')
+    const created: ProjectShare = {
+      id: createId(),
+      projectId,
+      projectName,
+      accessToken: createId(),
       permissions,
-      created_by: (await supabase.auth.getUser()).data.user?.id || 'anonymous',
-      created_at: new Date(),
-      expires_at: options?.expiresAt,
-      is_active: true,
-      allowed_emails: options?.allowedEmails,
-      max_views: options?.maxViews,
-      current_views: 0
+      createdBy: getCurrentUser()?.id || 'local-user',
+      createdAt: new Date(),
+      expiresAt: options?.expiresAt,
+      isActive: true,
+      allowedEmails: options?.allowedEmails,
+      maxViews: options?.maxViews,
+      currentViews: 0,
     }
-
-    const { data, error } = await supabase
-      .from('project_shares')
-      .insert([shareData])
-      .select()
-      .single()
-    
-    if (error) throw error
-    return mapProjectShareFromDB(data)
+    items.push(created)
+    await writeCollection('project_shares', items)
+    return reviveDates(created, ['createdAt', 'expiresAt'])
   },
 
   async getShareByToken(accessToken: string): Promise<ProjectShare | null> {
-    const { data, error } = await supabase
-      .from('project_shares')
-      .select('*')
-      .eq('access_token', accessToken)
-      .eq('is_active', true)
-      .single()
-    
-    if (error) {
-      if (error.code === 'PGRST116') return null // No rows returned
-      throw error
-    }
-    
-    return mapProjectShareFromDB(data)
+    const item = readCollection<ProjectShare>('project_shares').find(
+      (share) => share.accessToken === accessToken && share.isActive
+    )
+    return item ? reviveDates(item, ['createdAt', 'expiresAt']) : null
   },
 
   async incrementViews(shareId: string): Promise<void> {
-    // First get the current views count
-    const { data: currentShare, error: fetchError } = await supabase
-      .from('project_shares')
-      .select('current_views')
-      .eq('id', shareId)
-      .single()
-    
-    if (fetchError) throw fetchError
-    
-    // Then increment it
-    const { error } = await supabase
-      .from('project_shares')
-      .update({ current_views: (currentShare.current_views || 0) + 1 })
-      .eq('id', shareId)
-    
-    if (error) throw error
+    const items = readCollection<ProjectShare>('project_shares')
+    const index = items.findIndex((item) => item.id === shareId)
+    if (index === -1) return
+    items[index].currentViews = (items[index].currentViews || 0) + 1
+    await writeCollection('project_shares', items)
   },
 
   async getAllShares(projectId?: string): Promise<ProjectShare[]> {
-    let query = supabase
-      .from('project_shares')
-      .select('*')
-      .order('created_at', { ascending: false })
-    
-    if (projectId) {
-      query = query.eq('project_id', projectId)
-    }
-    
-    const { data, error } = await query
-    
-    if (error) throw error
-    return (data || []).map(mapProjectShareFromDB)
+    return readCollection<ProjectShare>('project_shares')
+      .filter((item) => (projectId ? item.projectId === projectId : true))
+      .map((item) => reviveDates(item, ['createdAt', 'expiresAt']))
   },
 
   async deactivateShare(shareId: string): Promise<void> {
-    const { error } = await supabase
-      .from('project_shares')
-      .update({ is_active: false })
-      .eq('id', shareId)
-    
-    if (error) throw error
+    const items = readCollection<ProjectShare>('project_shares')
+    const index = items.findIndex((item) => item.id === shareId)
+    if (index === -1) return
+    items[index].isActive = false
+    await writeCollection('project_shares', items)
   },
 
   async deleteShare(shareId: string): Promise<void> {
-    const { error } = await supabase
-      .from('project_shares')
-      .delete()
-      .eq('id', shareId)
-    
-    if (error) throw error
-  }
+    await writeCollection('project_shares', readCollection('project_shares').filter((item) => item.id !== shareId))
+  },
 }
 
-// Test Suite Sharing Service
 export const testSuiteShareService = {
   async createShare(
-    testSuiteId: string, 
-    testSuiteName: string, 
-    projectId: string, 
-    projectName: string, 
-    permissions: TestSuitePermissions, 
-    options?: {
-      expiresAt?: Date
-      allowedEmails?: string[]
-      maxViews?: number
-    }
+    testSuiteId: string,
+    testSuiteName: string,
+    projectId: string,
+    projectName: string,
+    permissions: TestSuitePermissions,
+    options?: { expiresAt?: Date; allowedEmails?: string[]; maxViews?: number }
   ): Promise<TestSuiteShare> {
-    const accessToken = crypto.randomUUID()
-    const shareData: Omit<TestSuiteShareDB, 'id'> = {
-      test_suite_id: testSuiteId,
-      test_suite_name: testSuiteName,
-      project_id: projectId,
-      project_name: projectName,
-      access_token: accessToken,
+    const items = readCollection<TestSuiteShare>('test_suite_shares')
+    const created: TestSuiteShare = {
+      id: createId(),
+      testSuiteId,
+      testSuiteName,
+      projectId,
+      projectName,
+      accessToken: createId(),
       permissions,
-      created_by: (await supabase.auth.getUser()).data.user?.id || 'anonymous',
-      created_at: new Date(),
-      expires_at: options?.expiresAt,
-      is_active: true,
-      allowed_emails: options?.allowedEmails,
-      max_views: options?.maxViews,
-      current_views: 0
+      createdBy: getCurrentUser()?.id || 'local-user',
+      createdAt: new Date(),
+      expiresAt: options?.expiresAt,
+      isActive: true,
+      allowedEmails: options?.allowedEmails,
+      maxViews: options?.maxViews,
+      currentViews: 0,
     }
-
-    const { data, error } = await supabase
-      .from('test_suite_shares')
-      .insert([shareData])
-      .select()
-      .single()
-    
-    if (error) throw error
-    return mapTestSuiteShareFromDB(data)
+    items.push(created)
+    await writeCollection('test_suite_shares', items)
+    return reviveDates(created, ['createdAt', 'expiresAt'])
   },
 
   async getShareByToken(accessToken: string): Promise<TestSuiteShare | null> {
-    const { data, error } = await supabase
-      .from('test_suite_shares')
-      .select('*')
-      .eq('access_token', accessToken)
-      .eq('is_active', true)
-      .single()
-    
-    if (error) {
-      if (error.code === 'PGRST116') return null // No rows returned
-      throw error
-    }
-    
-    return mapTestSuiteShareFromDB(data)
+    const item = readCollection<TestSuiteShare>('test_suite_shares').find(
+      (share) => share.accessToken === accessToken && share.isActive
+    )
+    return item ? reviveDates(item, ['createdAt', 'expiresAt']) : null
   },
 
   async incrementViews(shareId: string): Promise<void> {
-    // First get the current views count
-    const { data: currentShare, error: fetchError } = await supabase
-      .from('test_suite_shares')
-      .select('current_views')
-      .eq('id', shareId)
-      .single()
-    
-    if (fetchError) throw fetchError
-    
-    // Then increment it
-    const { error } = await supabase
-      .from('test_suite_shares')
-      .update({ current_views: (currentShare.current_views || 0) + 1 })
-      .eq('id', shareId)
-    
-    if (error) throw error
+    const items = readCollection<TestSuiteShare>('test_suite_shares')
+    const index = items.findIndex((item) => item.id === shareId)
+    if (index === -1) return
+    items[index].currentViews = (items[index].currentViews || 0) + 1
+    await writeCollection('test_suite_shares', items)
   },
 
   async getAllShares(testSuiteId?: string): Promise<TestSuiteShare[]> {
-    let query = supabase
-      .from('test_suite_shares')
-      .select('*')
-      .order('created_at', { ascending: false })
-    
-    if (testSuiteId) {
-      query = query.eq('test_suite_id', testSuiteId)
-    }
-    
-    const { data, error } = await query
-    
-    if (error) throw error
-    return (data || []).map(mapTestSuiteShareFromDB)
+    return readCollection<TestSuiteShare>('test_suite_shares')
+      .filter((item) => (testSuiteId ? item.testSuiteId === testSuiteId : true))
+      .map((item) => reviveDates(item, ['createdAt', 'expiresAt']))
   },
 
   async deactivateShare(shareId: string): Promise<void> {
-    const { error } = await supabase
-      .from('test_suite_shares')
-      .update({ is_active: false })
-      .eq('id', shareId)
-    
-    if (error) throw error
+    const items = readCollection<TestSuiteShare>('test_suite_shares')
+    const index = items.findIndex((item) => item.id === shareId)
+    if (index === -1) return
+    items[index].isActive = false
+    await writeCollection('test_suite_shares', items)
   },
 
   async deleteShare(shareId: string): Promise<void> {
-    const { error } = await supabase
-      .from('test_suite_shares')
-      .delete()
-      .eq('id', shareId)
-    
-    if (error) throw error
-  }
-} 
+    await writeCollection('test_suite_shares', readCollection('test_suite_shares').filter((item) => item.id !== shareId))
+  },
+}
 
 export const statusHistoryService = {
   async getByTestCaseId(testCaseId: string): Promise<StatusHistory[]> {
-    const { data, error } = await supabase
-      .from('status_history')
-      .select('*')
-      .eq('test_case_id', testCaseId)
-      .order('changed_at', { ascending: false })
-    
-    if (error) throw error
-    return data.map(mapStatusHistoryFromDB)
+    return readCollection<StatusHistory>('status_history')
+      .filter((item) => item.testCaseId === testCaseId)
+      .map((item) => reviveDates(item, ['changedAt']))
+      .sort((a, b) => new Date(b.changedAt).getTime() - new Date(a.changedAt).getTime())
   },
 
   async create(history: Omit<StatusHistory, 'id'>): Promise<StatusHistory> {
-    const dbData: Omit<StatusHistoryDB, 'id'> = {
-      test_case_id: history.testCaseId,
-      old_status: history.oldStatus,
-      new_status: history.newStatus,
-      changed_by: history.changedBy,
-      changed_at: history.changedAt,
-      notes: history.notes,
-      reason: history.reason,
-      metadata: history.metadata
-    }
-
-    const { data, error } = await supabase
-      .from('status_history')
-      .insert([dbData])
-      .select()
-      .single()
-    
-    if (error) throw error
-    return mapStatusHistoryFromDB(data)
+    const items = readCollection<StatusHistory>('status_history')
+    const created = { ...history, id: createId() } as StatusHistory
+    items.push(created)
+    await writeCollection('status_history', items)
+    return reviveDates(created, ['changedAt'])
   },
 
-  async getStatusChangeStats(projectId?: string, startDate?: Date, endDate?: Date) {
-    let query = supabase.rpc('get_status_change_stats')
-    
-    if (projectId) {
-      query = query.eq('project_uuid', projectId)
-    }
-    if (startDate) {
-      query = query.gte('start_date', startDate.toISOString())
-    }
-    if (endDate) {
-      query = query.lte('end_date', endDate.toISOString())
-    }
-
-    const { data, error } = await query
-    
-    if (error) throw error
-    return data
+  async getStatusChangeStats() {
+    return []
   },
 
   async getRecentChanges(limit: number = 10): Promise<StatusHistory[]> {
-    const { data, error } = await supabase
-      .from('status_history')
-      .select(`
-        *,
-        test_cases!inner(test_case, project_id)
-      `)
-      .order('changed_at', { ascending: false })
-      .limit(limit)
-    
-    if (error) throw error
-    return data.map(mapStatusHistoryFromDB)
+    return readCollection<StatusHistory>('status_history')
+      .map((item) => reviveDates(item, ['changedAt']))
+      .sort((a, b) => new Date(b.changedAt).getTime() - new Date(a.changedAt).getTime())
+      .slice(0, limit)
   },
 
   async deleteByTestCaseId(testCaseId: string): Promise<void> {
-    const { error } = await supabase
-      .from('status_history')
-      .delete()
-      .eq('test_case_id', testCaseId)
-    
-    if (error) throw error
-  }
+    await writeCollection(
+      'status_history',
+      readCollection('status_history').filter((item) => item.testCaseId !== testCaseId)
+    )
+  },
 }
 
-// Shared Project References Service (Live Sync)
 export const sharedProjectReferenceService = {
   async getAll(): Promise<SharedProjectReference[]> {
-    const { data: { user } } = await supabase.auth.getUser()
-    
-    if (!user) {
-      throw new Error('User not authenticated')
-    }
-    
-    const { data, error } = await supabase
-      .from('shared_project_references')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('is_active', true)
-      .order('created_at', { ascending: false })
-    
-    if (error) throw error
-    return (data || []).map(mapSharedProjectReferenceFromDB)
+    const user = requireUser()
+    return readCollection<any>('shared_project_references')
+      .filter((item) => item.userId === user.id && item.isActive !== false)
+      .map((item) => reviveDates(item, ['createdAt', 'lastSyncedAt']))
   },
 
   async getById(id: string): Promise<SharedProjectReference | null> {
-    const { data: { user } } = await supabase.auth.getUser()
-    
-    if (!user) {
-      throw new Error('User not authenticated')
-    }
-    
-    const { data, error } = await supabase
-      .from('shared_project_references')
-      .select('*')
-      .eq('id', id)
-      .eq('user_id', user.id)
-      .single()
-    
-    if (error) {
-      if (error.code === 'PGRST116') return null
-      throw error
-    }
-    
-    return mapSharedProjectReferenceFromDB(data)
+    const user = requireUser()
+    const item = readCollection<any>('shared_project_references').find(
+      (reference) => reference.id === id && reference.userId === user.id
+    )
+    return item ? reviveDates(item, ['createdAt', 'lastSyncedAt']) : null
   },
 
   async create(reference: Omit<SharedProjectReference, 'id' | 'createdAt' | 'lastSyncedAt'>): Promise<SharedProjectReference> {
-    const { data: { user } } = await supabase.auth.getUser()
-    
-    if (!user) {
-      throw new Error('User not authenticated')
-    }
-    
-    const dbData = mapSharedProjectReferenceToDB({
+    const user = requireUser()
+    const items = readCollection<any>('shared_project_references')
+    const created = {
       ...reference,
-      id: '',
+      id: createId(),
+      userId: user.id,
       createdAt: new Date(),
-      lastSyncedAt: new Date()
-    })
-    
-    const { data, error } = await supabase
-      .from('shared_project_references')
-      .insert([dbData])
-      .select()
-      .single()
-    
-    if (error) throw error
-    return mapSharedProjectReferenceFromDB(data)
+      lastSyncedAt: new Date(),
+      isActive: true,
+    }
+    items.push(created)
+    await writeCollection('shared_project_references', items)
+    return reviveDates(created, ['createdAt', 'lastSyncedAt'])
   },
 
   async delete(id: string): Promise<void> {
-    const { data: { user } } = await supabase.auth.getUser()
-    
-    if (!user) {
-      throw new Error('User not authenticated')
-    }
-    
-    const { error } = await supabase
-      .from('shared_project_references')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', user.id)
-    
-    if (error) throw error
+    const user = requireUser()
+    await writeCollection(
+      'shared_project_references',
+      readCollection<any>('shared_project_references').filter((item) => !(item.id === id && item.userId === user.id))
+    )
   },
 
   async updateLastSynced(id: string): Promise<void> {
-    const { data: { user } } = await supabase.auth.getUser()
-    
-    if (!user) {
-      throw new Error('User not authenticated')
-    }
-    
-    const { error } = await supabase
-      .from('shared_project_references')
-      .update({ last_synced_at: new Date() })
-      .eq('id', id)
-      .eq('user_id', user.id)
-    
-    if (error) throw error
-  }
+    const user = requireUser()
+    const items = readCollection<any>('shared_project_references')
+    const index = items.findIndex((item) => item.id === id && item.userId === user.id)
+    if (index === -1) return
+    items[index].lastSyncedAt = new Date()
+    await writeCollection('shared_project_references', items)
+  },
 }
 
-// Utility: simple UUID validator to prevent 22P02 errors when projectId is empty
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-const isValidUuid = (v: string | null | undefined): boolean => !!v && UUID_REGEX.test(v)
-
-
-
-
-// Project Membership Service
-export const projectMembershipService = {
-  async getAllForUser(): Promise<ProjectWithMembership[]> {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      throw new Error('User not authenticated')
-    }
-
-    const { data, error } = await supabase
-      .rpc('get_user_projects', { user_uuid: user.id })
-    
-    if (error) throw error
-    
-    return (data || []).map((row: any) => ({
-      id: row.project_id,
-      name: row.project_name,
-      description: row.project_description,
-      userRole: row.user_role,
-      isOwner: row.is_owner,
-      memberCount: row.member_count,
-      isMultiUser: true,
-      createdAt: row.created_at
-    }))
-  },
-
-  async getProjectMembers(projectId: string): Promise<ProjectMembership[]> {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      throw new Error('User not authenticated')
-    }
-
-    const { data, error } = await supabase
-      .from('project_memberships')
-      .select('*')
-      .eq('project_id', projectId)
-      .order('created_at', { ascending: false })
-    
-    if (error) throw error
-    return (data || []).map(mapProjectMembershipFromDB)
-  },
-
-  async inviteUser(projectId: string, userEmail: string, role: ProjectRole): Promise<ProjectMembership> {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      throw new Error('User not authenticated')
-    }
-
-    // First, get the user by email
-    const { data: userData, error: userError } = await supabase.auth.admin.listUsers()
-    if (userError) throw userError
-
-    const invitedUser = userData.users.find(u => u.email === userEmail)
-    if (!invitedUser) {
-      throw new Error('User not found with that email address')
-    }
-
-    // Check if user is already a member
-    const { data: existingMembership } = await supabase
-      .from('project_memberships')
-      .select('id')
-      .eq('project_id', projectId)
-      .eq('user_id', invitedUser.id)
-      .single()
-
-    if (existingMembership) {
-      throw new Error('User is already a member of this project')
-    }
-
-    // Create membership
-    const membershipData = mapProjectMembershipToDB({
-      id: '',
-      projectId,
-      userId: invitedUser.id,
-      role,
-      invitedBy: user.id,
-      invitedAt: new Date(),
-      status: 'pending',
-      createdAt: new Date(),
-      updatedAt: new Date()
-    })
-
-    const { data, error } = await supabase
-      .from('project_memberships')
-      .insert([membershipData])
-      .select()
-      .single()
-    
-    if (error) throw error
-    return mapProjectMembershipFromDB(data)
-  },
-
-  async acceptInvitation(membershipId: string): Promise<ProjectMembership> {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      throw new Error('User not authenticated')
-    }
-
-    const { data, error } = await supabase
-      .from('project_memberships')
-      .update({ 
-        status: 'accepted',
-        accepted_at: new Date(),
-        updated_at: new Date()
-      })
-      .eq('id', membershipId)
-      .eq('user_id', user.id)
-      .select()
-      .single()
-    
-    if (error) throw error
-    return mapProjectMembershipFromDB(data)
-  },
-
-  async declineInvitation(membershipId: string): Promise<void> {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      throw new Error('User not authenticated')
-    }
-
-    const { error } = await supabase
-      .from('project_memberships')
-      .update({ 
-        status: 'declined',
-        updated_at: new Date()
-      })
-      .eq('id', membershipId)
-      .eq('user_id', user.id)
-    
-    if (error) throw error
-  },
-
-  async updateUserRole(projectId: string, userId: string, newRole: ProjectRole): Promise<ProjectMembership> {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      throw new Error('User not authenticated')
-    }
-
-    const { data, error } = await supabase
-      .from('project_memberships')
-      .update({ 
-        role: newRole,
-        updated_at: new Date()
-      })
-      .eq('project_id', projectId)
-      .eq('user_id', userId)
-      .select()
-      .single()
-    
-    if (error) throw error
-    return mapProjectMembershipFromDB(data)
-  },
-
-  async removeUser(projectId: string, userId: string): Promise<void> {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      throw new Error('User not authenticated')
-    }
-
-    const { error } = await supabase
-      .from('project_memberships')
-      .delete()
-      .eq('project_id', projectId)
-      .eq('user_id', userId)
-    
-    if (error) throw error
-  },
-
-  async getPendingInvitations(): Promise<ProjectInvitation[]> {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      throw new Error('User not authenticated')
-    }
-
-    // Safer implementation without cross-schema joins that often fail on client
-    const { data, error } = await supabase
-      .from('project_memberships')
-      .select('id, project_id, role, invited_at, status, invited_by')
-      .eq('user_id', user.id)
-      .eq('status', 'pending')
-      .order('invited_at', { ascending: false })
-
-    if (error) throw error
-
-    const projectIds = Array.from(new Set((data || []).map(r => r.project_id).filter(Boolean)))
-    let projectNameById: Record<string, string> = {}
-    if (projectIds.length > 0) {
-      const { data: projectsData } = await supabase
-        .from('projects')
-        .select('id, name')
-        .in('id', projectIds as string[])
-      projectNameById = Object.fromEntries((projectsData || []).map(p => [p.id, p.name]))
-    }
-
-    return (data || []).map((row: {
-      id: string
-      project_id: string
-      role: ProjectRole
-      invited_at: string
-      status: any
-      invited_by: string
-    }) => ({
-      id: row.id as string,
-      projectId: row.project_id as string,
-      projectName: projectNameById[row.project_id as string] || 'Project',
-      invitedBy: row.invited_by as string,
-      invitedByEmail: '',
-      role: row.role as any,
-      invitedAt: row.invited_at as any,
-      status: row.status as any
-    }))
-  },
-
-  async hasPermission(projectId: string, requiredRole: ProjectRole): Promise<boolean> {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      return false
-    }
-
-    const { data, error } = await supabase
-      .rpc('has_project_permission', {
-        project_uuid: projectId,
-        user_uuid: user.id,
-        required_role: requiredRole
-      })
-    
-    if (error) return false
-    return data || false
-  }
-} 
-
-// Custom Column Service
 export const customColumnService = {
   async getAll(projectId: string): Promise<CustomColumn[]> {
-    // Validate project ID
-    if (!projectId || projectId.trim() === '') {
-      console.log('⚠️ No project ID provided, returning empty custom columns list')
-      return []
-    }
-
-    try {
-      const { data, error } = await supabase
-        .from('custom_columns')
-        .select('*')
-        .eq('project_id', projectId)
-        .order('created_at', { ascending: true })
-
-      if (error) {
-        console.error('❌ Database error in customColumnService.getAll:', {
-          error,
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code
-        })
-        
-        // Check if it's a table doesn't exist error
-        if (error.code === '42P01') { // PostgreSQL table doesn't exist error
-          throw new Error('Custom columns table does not exist. Please run the database migration: create-custom-columns-table.sql')
-        }
-        
-        throw error
-      }
-      
-      return data.map(mapCustomColumnFromDB)
-    } catch (error) {
-      console.error('❌ Failed to get custom columns:', {
-        error,
-        message: error instanceof Error ? error.message : 'Unknown error',
-        projectId
-      })
-      throw error
-    }
+    if (!projectId?.trim()) return []
+    const userId = getCurrentUser()?.id
+    return readCollection<CustomColumn>('custom_columns')
+      .filter((item) => item.projectId === projectId)
+      .filter((item) => !item.ownerUserId || item.ownerUserId === userId)
+      .map((item) => reviveDates(item))
+      .sort((a, b) => (a.position || 0) - (b.position || 0))
   },
 
-  async create(column: CreateCustomColumnInput): Promise<CustomColumn> {
-    // Validate project ID
-    if (!column.projectId || column.projectId.trim() === '') {
-      throw new Error('Project ID is required to create a custom column')
-    }
+  async create(column: CreateCustomColumnInput | CustomColumn): Promise<CustomColumn> {
+    const items = readCollection<CustomColumn>('custom_columns')
+    const duplicate = items.find(
+      (item) =>
+        item.projectId === column.projectId &&
+        item.name === column.name &&
+        (item.ownerUserId || '') === ((column as any).ownerUserId || '')
+    )
+    if (duplicate) return reviveDates(duplicate)
 
-    try {
-      // Don't include id field - let database generate it
-      const { data, error } = await supabase
-        .from('custom_columns')
-        .insert({
-          name: column.name,
-          label: column.label,
-          type: column.type,
-          visible: column.visible,
-          width: column.width,
-          min_width: column.minWidth,
-          options: column.options,
-          option_colors: column.optionColors,
-          default_value: column.defaultValue,
-          required: column.required,
-          color: column.color,
-          project_id: column.projectId,
-          created_at: new Date(),
-          updated_at: new Date()
-        })
-        .select()
-        .single()
-
-      if (error) {
-        console.error('❌ Database error in customColumnService.create:', {
-          error,
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code,
-          fullError: JSON.stringify(error, null, 2)
-        })
-        
-        // Check if it's a table doesn't exist error
-        if (error.code === '42P01') { // PostgreSQL table doesn't exist error
-          throw new Error('Custom columns table does not exist. Please run the database migration: create-custom-columns-table.sql')
-        }
-        
-        // Check if it's a column doesn't exist error
-        if (error.code === '42703') { // PostgreSQL column doesn't exist error
-          throw new Error(`Database column missing. Please run: ${error.message}`)
-        }
-        
-        // Check if it's a foreign key constraint violation
-        if (error.code === '23503') { // PostgreSQL foreign key violation
-          throw new Error(`Project not found or user does not have access: ${error.message}`)
-        }
-        
-        // Check if it's a unique constraint violation
-        if (error.code === '23505') { // PostgreSQL unique violation
-          throw new Error(`Custom column with this name already exists: ${error.message}`)
-        }
-        
-        throw error
-      }
-      
-      return mapCustomColumnFromDB(data)
-    } catch (error) {
-      console.error('❌ Failed to create custom column:', {
-        error,
-        message: error instanceof Error ? error.message : 'Unknown error',
-        column
-      })
-      throw error
+    const now = new Date()
+    const created: CustomColumn = {
+      ...column,
+      id: createId(),
+      position: column.position ?? nextPosition(items.filter((item) => item.projectId === column.projectId)),
+      createdAt: now,
+      updatedAt: now,
     }
+    items.push(created)
+    await writeCollection('custom_columns', items)
+    return reviveDates(created)
   },
 
   async update(id: string, updates: Partial<CustomColumn>): Promise<CustomColumn> {
-    // Map frontend field names to database field names
-    const dbUpdates: any = {
-      updated_at: new Date()
-    }
-    
-    if (updates.name !== undefined) dbUpdates.name = updates.name
-    if (updates.label !== undefined) dbUpdates.label = updates.label
-    if (updates.type !== undefined) dbUpdates.type = updates.type
-    if (updates.visible !== undefined) dbUpdates.visible = updates.visible
-    if (updates.width !== undefined) dbUpdates.width = updates.width
-    if (updates.minWidth !== undefined) dbUpdates.min_width = updates.minWidth
-    if (updates.options !== undefined) dbUpdates.options = updates.options
-    if (updates.optionColors !== undefined) dbUpdates.option_colors = updates.optionColors
-    if (updates.defaultValue !== undefined) dbUpdates.default_value = updates.defaultValue
-    if (updates.required !== undefined) dbUpdates.required = updates.required
-    if (updates.color !== undefined) dbUpdates.color = updates.color
-    if (updates.projectId !== undefined) dbUpdates.project_id = updates.projectId
-
-    const { data, error } = await supabase
-      .from('custom_columns')
-      .update(dbUpdates)
-      .eq('id', id)
-      .select()
-      .single()
-
-    if (error) throw error
-    return mapCustomColumnFromDB(data)
+    const items = readCollection<CustomColumn>('custom_columns')
+    const index = items.findIndex((item) => item.id === id)
+    if (index === -1) throw new Error('Custom column not found')
+    items[index] = { ...items[index], ...updates, id, updatedAt: new Date() }
+    await writeCollection('custom_columns', items)
+    return reviveDates(items[index])
   },
 
   async delete(id: string): Promise<void> {
-    const { error } = await supabase
-      .from('custom_columns')
-      .delete()
-      .eq('id', id)
-
-    if (error) throw error
+    await writeCollection('custom_columns', readCollection('custom_columns').filter((item) => item.id !== id))
   },
-
-  async updateTestCaseCustomFields(testCaseId: string, customFields: { [key: string]: any }): Promise<void> {
-    const { error } = await supabase
-      .from('test_cases')
-      .update({ custom_fields: customFields, updated_at: new Date() })
-      .eq('id', testCaseId)
-
-    if (error) throw error
-  }
-} 
+}

@@ -6,20 +6,18 @@ import { useTestCases } from "@/hooks/useTestCases"
 import { useTestSuites } from "@/hooks/useTestSuites"
 import { useSearchAndFilter } from "@/hooks/useSearchAndFilter"
 
-import { TestCaseTable } from "./TestCaseTable"
+import { GoogleSheetsTable } from "./GoogleSheetsTable"
 import { TestCaseDialog } from "./TestCaseDialog"
 import { TestSuiteDialog } from "./TestSuiteDialog"
 import { CommentsDialog } from "./CommentsDialog"
 import { AutomationDialog } from "./AutomationDialog"
-import { ShareProjectDialog } from "./ShareProjectDialog"
+import { ShareDialog } from "./ShareDialog"
+import { AddDocumentDialog, AddLinkDialog } from "./ResourceDialogs"
 import { StatusHistoryDialog } from './StatusHistoryDialog'
 import { PRDToTestCases } from './PRDToTestCases'
 import { ImportPreviewDialog } from './ImportPreviewDialog'
 import { EnhancedImportDialog } from './EnhancedImportDialog'
 import { EnhancedPasteDialog } from './EnhancedPasteDialog'
-import { ShareTestSuiteDialog } from './ShareTestSuiteDialog'
-
-import { ProjectMembersDialog } from './ProjectMembersDialog'
 import { WelcomeProjectModal } from './WelcomeProjectModal'
 import { EmptyState } from './EmptyState'
 import { ActionGuard } from './ActionGuard'
@@ -30,6 +28,7 @@ import {
 } from "@/types/qa-types"
 import type { Comment } from "@/types/qa-types"
 import { DEFAULT_PROJECT, PLATFORM_OPTIONS } from "@/lib/constants"
+import { getLocalShare } from "@/lib/share-client"
 import { getSuiteStatistics, mapImportedDataToTestCase, validateImportedTestCase, parseCSV } from "@/lib/utils"
 import { toast } from "@/hooks/use-toast"
 import * as XLSX from "xlsx"
@@ -42,22 +41,17 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
-  DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
-import { Settings, Eye, Trash2, LogOut, User, Share2, Plus, Upload, Clipboard, Download, X, Folder, Table, FileText, Share, RefreshCw, Mail, EyeOff, BarChart3, RotateCcw, ChevronDown, Briefcase, BookOpen, Users, Link, FileSpreadsheet, Search, Filter } from "lucide-react"
+import { Settings, Eye, Trash2, LogOut, User, Share2, Plus, Upload, Clipboard, Download, X, Folder, Table, FileText, Share, RefreshCw, Mail, EyeOff, BarChart3, RotateCcw, ChevronDown, Briefcase, BookOpen, Users, Link, FileSpreadsheet, Filter, LayoutDashboard, Table2, Bug } from "lucide-react"
 import { useAuth } from "./AuthProvider"
 import { CustomColumnDialog } from './CustomColumnDialog'
 import { ProjectDashboard } from './ProjectDashboard'
 import { ProjectDropdown } from './ProjectDropdown'
+import { ThemeToggle } from './ThemeToggle'
 
 
 
@@ -72,52 +66,9 @@ export function QAApplication() {
   const [isProjectDialogOpen, setIsProjectDialogOpen] = useState(false)
 
   // Helper functions for dropdown management
-  const openDropdown = (dropdownName: string) => {
-    setActiveDropdown(dropdownName)
-  }
-
-  const closeDropdown = () => {
-    setActiveDropdown(null)
-  }
-
   const toggleDropdown = (dropdownName: string) => {
-    if (activeDropdown === dropdownName) {
-      setActiveDropdown(null)
-    } else {
-      setActiveDropdown(dropdownName)
-    }
+    setActiveDropdown((current) => (current === dropdownName ? null : dropdownName))
   }
-
-  // Handler functions for adding links and documents
-  const handleAddLink = () => {
-    if (newLink.title.trim() && newLink.url.trim()) {
-      const linkToAdd: ImportantLink = {
-        id: Date.now().toString(),
-        title: newLink.title.trim(),
-        url: newLink.url.trim(),
-        description: newLink.description.trim(),
-        category: 'general',
-        projectId: currentProjectId || '',
-        createdAt: new Date()
-      }
-      
-      setImportantLinks(prev => [...prev, linkToAdd])
-      setNewLink({ title: '', url: '', description: '' })
-      setIsAddLinkDialogOpen(false)
-      
-      toast({
-        title: "Link Added",
-        description: `"${linkToAdd.title}" has been added to your resources.`,
-      })
-    } else {
-      toast({
-        title: "Missing Information",
-        description: "Please provide both title and URL for the link.",
-        variant: "destructive",
-      })
-    }
-  }
-
 
   const [newProject, setNewProject] = useState('')
   const [isEditProjectDialogOpen, setIsEditProjectDialogOpen] = useState(false)
@@ -155,13 +106,13 @@ export function QAApplication() {
   const [viewingTestCase, setViewingTestCase] = useState<TestCase | null>(null)
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [isSuiteDialogOpen, setIsSuiteDialogOpen] = useState(false)
+  const [suiteDialogKind, setSuiteDialogKind] = useState<'suite' | 'bugs'>('suite')
   const [isCommentsDialogOpen, setIsCommentsDialogOpen] = useState(false)
   const [isAutomationDialogOpen, setIsAutomationDialogOpen] = useState(false)
-  const [isTableSettingsOpen, setIsTableSettingsOpen] = useState(false)
-  const [isProjectSettingsOpen, setIsProjectSettingsOpen] = useState(false)
-  const [isShareProjectDialogOpen, setIsShareProjectDialogOpen] = useState(false)
-  const [isShareTestSuiteDialogOpen, setIsShareTestSuiteDialogOpen] = useState(false)
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false)
+  const [shareKind, setShareKind] = useState<'project' | 'list'>('project')
   const [selectedTestSuiteForSharing, setSelectedTestSuiteForSharing] = useState<TestSuite | null>(null)
+  const [shareTick, setShareTick] = useState(0)
   const [isPasteDialogOpen, setIsPasteDialogOpen] = useState(false)
   const [isImportPreviewDialogOpen, setIsImportPreviewDialogOpen] = useState(false)
   const [isEnhancedImportDialogOpen, setIsEnhancedImportDialogOpen] = useState(false)
@@ -172,10 +123,12 @@ export function QAApplication() {
   const [pendingAction, setPendingAction] = useState<string | null>(null)
   const [projectsLoading, setProjectsLoading] = useState(true)
 
-  const [isProjectMembersDialogOpen, setIsProjectMembersDialogOpen] = useState(false)
   const [showDashboard, setShowDashboard] = useState(false)
   const [currentView, setCurrentView] = useState<'dashboard' | 'test-cases'>('dashboard')
-  const [coreColumnSettings, setCoreColumnSettings] = useState<{[key: string]: { visible: boolean; width: string; minWidth: string; label: string; deleted?: boolean }}>({})
+  const [addCaseNonce, setAddCaseNonce] = useState(0)
+  const [gridReloadNonce, setGridReloadNonce] = useState(0)
+  const [exportNonce, setExportNonce] = useState(0)
+  const [gridFiltersOpen, setGridFiltersOpen] = useState(false)
 
   
   // Selected test case for dialogs
@@ -209,8 +162,6 @@ export function QAApplication() {
   const [isAddCustomColumnDialogOpen, setIsAddCustomColumnDialogOpen] = useState(false)
   const [isAddLinkDialogOpen, setIsAddLinkDialogOpen] = useState(false)
   const [isAddDocumentDialogOpen, setIsAddDocumentDialogOpen] = useState(false)
-  const [newLink, setNewLink] = useState({ title: '', url: '', description: '' })
-  const [newDocument, setNewDocument] = useState({ title: '', url: '', type: '', description: '' })
   const [editingCustomColumn, setEditingCustomColumn] = useState<CustomColumn | null>(null)
   const [editingDefaultColumn, setEditingDefaultColumn] = useState<{key: string, column: any} | null>(null)
   
@@ -228,7 +179,7 @@ export function QAApplication() {
   const [selectedSuiteId, setSelectedSuiteId] = useState<string | null>(null)
 
   // Search and filter state
-  const [isFiltersExpanded, setIsFiltersExpanded] = useState(false)
+
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>({})
 
   // Handle click outside user menu, project menu, and test suites dropdown
@@ -239,24 +190,6 @@ export function QAApplication() {
       }
       if (projectMenuRef.current && !projectMenuRef.current.contains(event.target as Node)) {
         setShowProjectMenu(false)
-      }
-      // Close dropdowns when clicking outside
-      const target = event.target as Node
-      
-      const testSuitesDropdown = document.querySelector('[data-test-suites-dropdown]')
-      const resourcesDropdown = document.querySelector('[data-resources-dropdown]')
-
-      const membersDropdown = document.querySelector('[data-members-dropdown]')
-      
-      // Check if click is outside all dropdowns
-      const isOutsideAllDropdowns = 
-        (!testSuitesDropdown || !testSuitesDropdown.contains(target)) &&
-        (!resourcesDropdown || !resourcesDropdown.contains(target)) &&
-
-        (!membersDropdown || !membersDropdown.contains(target))
-      
-      if (isOutsideAllDropdowns) {
-        closeDropdown()
       }
     }
 
@@ -281,7 +214,8 @@ export function QAApplication() {
     toggleTestCaseSelection, 
     toggleSelectAll, 
     clearAllTestCases,
-    setTestCases 
+    setTestCases,
+    reloadTestCases,
   } = useTestCases(currentProjectId)
 
   const {
@@ -511,7 +445,9 @@ export function QAApplication() {
   // Share project
   const handleShareProject = async (project: Project) => {
     setSelectedProjectForSharing(project)
-    setIsShareProjectDialogOpen(true)
+    setShareKind('project')
+    setSelectedTestSuiteForSharing(null)
+    setIsShareDialogOpen(true)
     setShowProjectMenu(false)
   }
 
@@ -650,9 +586,6 @@ export function QAApplication() {
         
         // Load custom columns
         await loadCustomColumns(currentProjectId)
-        
-        // Load core column settings
-        loadCoreColumnSettings()
       } catch (error) {
         console.error('❌ Failed to load project data:', error)
       }
@@ -833,8 +766,8 @@ export function QAApplication() {
       console.log('Switching to project:', projectName, 'ID:', selectedProject.id)
       setCurrentProjectId(selectedProject.id)
       setCurrentProject(selectedProject.name)
-      setCurrentView('dashboard') // Show dashboard by default for project view
-      setIsFiltersExpanded(false) // Close filters panel when switching to dashboard
+      setCurrentView('dashboard')
+      setGridFiltersOpen(false)
       // Don't clear selectedSuiteId - let user choose suite or stay in project view
       
       // Load project-specific data for the new project
@@ -927,25 +860,33 @@ export function QAApplication() {
   }
 
   // Important links management
-  const handleAddImportantLink = async (link: CreateImportantLinkInput) => {
+  const handleAddImportantLink = async (link: Omit<CreateImportantLinkInput, 'projectId'>) => {
+    if (!currentProjectId) {
+      toast({
+        title: "No project selected",
+        description: "Create or select a project before adding resources.",
+        variant: "destructive",
+      })
+      return
+    }
     try {
-      const newLink = await importantLinkService.create({
+      const created = await importantLinkService.create({
         ...link,
         projectId: currentProjectId
       })
-      
-      setImportantLinks(prev => [...prev, newLink])
+      setImportantLinks(prev => [...prev, created])
       toast({
-        title: "Link Added",
-        description: "Important link has been added.",
+        title: "Link added",
+        description: `"${created.title}" is now in this project's resources.`,
       })
     } catch (error) {
       console.error('Failed to add important link:', error)
       toast({
-        title: "Error Adding Link",
-        description: "Failed to add link to database.",
+        title: "Could not add link",
+        description: "The link was not saved. Try again.",
         variant: "destructive",
       })
+      throw error
     }
   }
 
@@ -954,47 +895,46 @@ export function QAApplication() {
       await importantLinkService.delete(id)
       setImportantLinks(prev => prev.filter(link => link.id !== id))
       toast({
-        title: "Link Deleted",
-        description: "Important link has been deleted.",
+        title: "Link deleted",
+        description: "The link was removed from this project's resources.",
       })
     } catch (error) {
       console.error('Failed to delete important link:', error)
       toast({
-        title: "Error Deleting Link",
-        description: "Failed to delete link from database.",
+        title: "Could not delete link",
+        description: "The link is still in resources. Try again.",
         variant: "destructive",
       })
     }
   }
 
-  const handleRemoveImportantLink = (linkId: string) => {
-    setImportantLinks(prev => prev.filter(link => link.id !== linkId))
-    toast({
-      title: "Link Removed",
-      description: "Important link has been removed.",
-    })
-  }
-
-  // Documents management
-  const handleAddDocument = async (document: CreateDocumentInput) => {
+  const handleAddDocument = async (document: Omit<CreateDocumentInput, 'projectId'>) => {
+    if (!currentProjectId) {
+      toast({
+        title: "No project selected",
+        description: "Create or select a project before adding resources.",
+        variant: "destructive",
+      })
+      return
+    }
     try {
-      const newDoc = await documentService.create({
+      const created = await documentService.create({
         ...document,
         projectId: currentProjectId
       })
-      
-      setDocuments(prev => [...prev, newDoc])
+      setDocuments(prev => [...prev, created])
       toast({
-        title: "Document Added",
-        description: "Document has been added.",
+        title: "Document added",
+        description: `"${created.title}" is now in this project's resources.`,
       })
     } catch (error) {
       console.error('Failed to add document:', error)
       toast({
-        title: "Error Adding Document",
-        description: "Failed to add document to database.",
+        title: "Could not add document",
+        description: "The document was not saved. Try again.",
         variant: "destructive",
       })
+      throw error
     }
   }
 
@@ -1003,53 +943,15 @@ export function QAApplication() {
       await documentService.delete(id)
       setDocuments(prev => prev.filter(doc => doc.id !== id))
       toast({
-        title: "Document Deleted",
-        description: "Document has been deleted.",
+        title: "Document deleted",
+        description: "The document was removed from this project's resources.",
       })
     } catch (error) {
       console.error('Failed to delete document:', error)
       toast({
-        title: "Error Deleting Document",
-        description: "Failed to delete document from database.",
+        title: "Could not delete document",
+        description: "The document is still in resources. Try again.",
         variant: "destructive",
-      })
-    }
-  }
-
-  const handleRemoveDocument = (documentId: string) => {
-    setDocuments(prev => prev.filter(doc => doc.id !== documentId))
-  }
-
-  // Debug function to fix database RLS issues
-  const handleFixDatabase = async () => {
-    try {
-      const response = await fetch('/api/fix-database', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      })
-
-      const data = await response.json()
-      
-      if (data.success) {
-        toast({
-          title: "Database Fix Applied",
-          description: data.message,
-        })
-      } else {
-        toast({
-          title: "Database Fix Failed",
-          description: data.error || "Failed to apply database fixes",
-          variant: "destructive"
-        })
-      }
-    } catch (error) {
-      console.error('Error fixing database:', error)
-      toast({
-        title: "Database Fix Failed",
-        description: "Failed to apply database fixes. Please apply the SQL script manually.",
-        variant: "destructive"
       })
     }
   }
@@ -1353,70 +1255,46 @@ export function QAApplication() {
   }
 
   const handleExportToExcel = async () => {
-    if (finalTestCases.length === 0) {
+    if (!currentProjectId) {
       toast({
-        title: "No Data to Export",
-        description: "There are no test cases to export.",
-        variant: "destructive",
+        title: 'No project selected',
+        description: 'Create or open a project first.',
+        variant: 'destructive',
       })
       return
     }
 
+    if (currentView === 'test-cases' && selectedSuiteId) {
+      setExportNonce((value) => value + 1)
+      return
+    }
+
     try {
-      // Use the enhanced export system with standard Excel template
-      const { exportProcessor, exportTemplateManager } = await import('../lib/export-templates')
-      const template = exportTemplateManager.getTemplate('standard-excel')
-      
-      if (!template) {
-        throw new Error('Standard Excel template not found')
-      }
-
-      const fileName = selectedSuiteId && testSuites.find(s => s.id === selectedSuiteId)
-        ? `${testSuites.find(s => s.id === selectedSuiteId)?.name}_test_cases`
-        : `test-cases-${currentProject}-${new Date().toISOString().split('T')[0]}`
-
-      const result = await exportProcessor.exportData({
-        template,
-        data: finalTestCases,
-        fileName
+      const { exportProjectCases } = await import('@/lib/case-export')
+      const result = await exportProjectCases({
+        projectId: currentProjectId,
+        lists: testSuites.map((suite) => ({ id: suite.id, name: suite.name })),
+        projectName: currentProject,
       })
-
-      if (result.success) {
+      if (result.count === 0) {
         toast({
-          title: "Export Successful",
-          description: `Exported ${result.recordCount} test cases to ${result.fileName}`,
+          title: 'Nothing to export',
+          description: 'There are no cases in this project yet.',
+          variant: 'destructive',
         })
-      } else {
-        throw new Error(result.errors.join(', '))
+        return
       }
+      toast({
+        title: 'Export complete',
+        description: `${result.count} cases saved to ${result.fileName}`,
+      })
     } catch (error) {
-      // Fallback to original export if enhanced system fails
-      console.warn('Enhanced export failed, using fallback:', error)
-      
-      const worksheet = XLSX.utils.json_to_sheet(finalTestCases.map(tc => ({
-      'Test Case': tc.testCase,
-      'Description': tc.description,
-      'Expected Result': tc.expectedResult,
-      'Status': tc.status,
-      'Priority': tc.priority,
-      'Category': tc.category,
-      'Assigned Tester': tc.assignedTester,
-      'Execution Date': tc.executionDate,
-      'Actual Result': tc.actualResult,
-      'Environment': tc.environment,
-      'Prerequisites': tc.prerequisites,
-      'Platform': tc.platform,
-      'Steps to Reproduce': tc.stepsToReproduce
-    })))
-
-    const workbook = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Test Cases')
-    XLSX.writeFile(workbook, `test-cases-${currentProject}-${new Date().toISOString().split('T')[0]}.xlsx`)
-
-    toast({
-      title: "Export Successful",
-      description: "Test cases exported to Excel successfully.",
-    })
+      console.error(error)
+      toast({
+        title: 'Export failed',
+        description: 'Could not create the spreadsheet.',
+        variant: 'destructive',
+      })
     }
   }
 
@@ -1447,42 +1325,33 @@ export function QAApplication() {
       })
       return
     }
+    setShareKind('list')
     setSelectedTestSuiteForSharing(testSuite)
-    setIsShareTestSuiteDialogOpen(true)
+    setIsShareDialogOpen(true)
   }
 
 
 
-  const handleOpenProjectMembers = () => {
-    if (!currentProjectId || currentProjectId.trim() === '' || currentProjectId.trim().length !== 36) {
-      toast({
-        title: 'No Project Selected',
-        description: 'Please select a project first before opening members.',
-        variant: 'destructive',
-      })
-      return
-    }
-    setIsProjectMembersDialogOpen(true)
-  }
 
   const handleShowDashboard = () => {
     setCurrentView('dashboard')
-    // Clear suite filter when switching to dashboard
     setSelectedSuiteId(null)
-    // Close filters panel when switching to dashboard
-    setIsFiltersExpanded(false)
+    setGridFiltersOpen(false)
+    reloadTestCases()
   }
 
   const handleShowTestCases = () => {
+    setSelectedSuiteId(null)
     setCurrentView('test-cases')
+  }
+
+  const openCaseGrid = (addNew = false) => {
+    setCurrentView('test-cases')
+    if (addNew) setAddCaseNonce((value) => value + 1)
   }
 
   const handleExportDashboardData = () => {
     handleExportToExcel()
-  }
-
-  const handleOpenDashboardSettings = () => {
-    setIsProjectSettingsOpen(true)
   }
 
   // Update a single custom field value on a test case
@@ -1532,8 +1401,10 @@ export function QAApplication() {
         console.warn('⚠️ Database setup check failed:', setupError)
       }
       
-      const columns = await customColumnService.getAll(projectId)
-      console.log('✅ Custom columns loaded:', columns.length, 'columns')
+      // Use the new Dynamic Column Service
+      const { DynamicColumnService } = await import('@/lib/dynamic-column-service')
+      const columns = await DynamicColumnService.getProjectColumns(projectId)
+      console.log('✅ Dynamic columns loaded:', columns.length, 'columns')
       setCustomColumnsList(columns)
     } catch (error) {
       console.error('❌ Failed to load custom columns:', {
@@ -1581,111 +1452,6 @@ export function QAApplication() {
 
   const createDefaultCustomColumns = async (projectId: string) => {
     // Intentionally left empty: default custom column seeding removed per new requirements
-  }
-
-  // Load core column settings from localStorage
-  const loadCoreColumnSettings = () => {
-    if (typeof window !== 'undefined' && currentProjectId) {
-      const savedSettings = localStorage.getItem(`qa.coreColumns:${currentProjectId}`)
-      if (savedSettings) {
-        setCoreColumnSettings(JSON.parse(savedSettings))
-      } else {
-        // Set default settings
-        const defaultSettings = {
-          testCase: { visible: true, width: 'w-64', minWidth: 'min-w-[250px]', label: 'Test Case' },
-          description: { visible: true, width: 'w-80', minWidth: 'min-w-[300px]', label: 'Description' },
-          expectedResult: { visible: false, width: 'w-64', minWidth: 'min-w-[250px]', label: 'Expected Result' },
-          status: { visible: true, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Status' },
-          priority: { visible: false, width: 'w-24', minWidth: 'min-w-[100px]', label: 'Priority' },
-          category: { visible: false, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Category' },
-          assignedTester: { visible: false, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Assigned Tester' },
-          executionDate: { visible: false, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Execution Date' },
-  
-          actualResult: { visible: false, width: 'w-64', minWidth: 'min-w-[250px]', label: 'Actual Result' },
-          environment: { visible: false, width: 'w-24', minWidth: 'min-w-[100px]', label: 'Environment' },
-          prerequisites: { visible: false, width: 'w-64', minWidth: 'min-w-[250px]', label: 'Prerequisites' },
-          platform: { visible: false, width: 'w-24', minWidth: 'min-w-[100px]', label: 'Platform' },
-          stepsToReproduce: { visible: true, width: 'w-80', minWidth: 'min-w-[300px]', label: 'Steps to Reproduce' },
-          suite: { visible: false, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Test Suite' },
-          position: { visible: false, width: 'w-16', minWidth: 'min-w-[80px]', label: 'Position' },
-          createdAt: { visible: false, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Created At' },
-          updatedAt: { visible: false, width: 'w-32', minWidth: 'min-w-[120px]', label: 'Updated At' },
-          automationScript: { visible: false, width: 'w-48', minWidth: 'min-w-[200px]', label: 'Automation Script' },
-          customFields: { visible: false, width: 'w-48', minWidth: 'min-w-[200px]', label: 'Custom Fields' }
-        }
-        setCoreColumnSettings(defaultSettings)
-        localStorage.setItem(`qa.coreColumns:${currentProjectId}`, JSON.stringify(defaultSettings))
-      }
-    }
-  }
-
-  // Handle permanent deletion of core columns
-  const handleDeleteCoreColumn = (columnName: string, columnLabel: string) => {
-    const updatedSettings = {
-      ...coreColumnSettings,
-      [columnName]: { 
-        ...coreColumnSettings[columnName], 
-        deleted: true,
-        visible: false 
-      }
-    }
-    setCoreColumnSettings(updatedSettings)
-    localStorage.setItem(`qa.coreColumns:${currentProjectId}`, JSON.stringify(updatedSettings))
-    
-    toast({
-      title: 'Column Deleted',
-      description: `${columnLabel} has been permanently deleted.`,
-      variant: 'destructive'
-    })
-  }
-
-  // Handle restoration of deleted core columns
-  const handleRestoreCoreColumn = (columnName: string, columnLabel: string) => {
-    const updatedSettings = {
-      ...coreColumnSettings,
-      [columnName]: { 
-        ...coreColumnSettings[columnName], 
-        deleted: false,
-        visible: false // Start hidden when restored
-      }
-    }
-    setCoreColumnSettings(updatedSettings)
-    localStorage.setItem(`qa.coreColumns:${currentProjectId}`, JSON.stringify(updatedSettings))
-    
-    toast({
-      title: 'Column Restored',
-      description: `${columnLabel} has been restored.`,
-    })
-  }
-
-  // Handle restoration of all deleted core columns
-  const handleRestoreAllDeletedColumns = () => {
-    const deletedColumns = Object.entries(coreColumnSettings).filter(([_, settings]) => settings.deleted)
-    
-    if (deletedColumns.length === 0) {
-      toast({
-        title: 'No Deleted Columns',
-        description: 'There are no deleted columns to restore.',
-      })
-      return
-    }
-
-    const updatedSettings = { ...coreColumnSettings }
-    deletedColumns.forEach(([columnName, settings]) => {
-      updatedSettings[columnName] = {
-        ...settings,
-        deleted: false,
-        visible: false // Start hidden when restored
-      }
-    })
-    
-    setCoreColumnSettings(updatedSettings)
-    localStorage.setItem(`qa.coreColumns:${currentProjectId}`, JSON.stringify(updatedSettings))
-    
-    toast({
-      title: 'All Columns Restored',
-      description: `${deletedColumns.length} deleted columns have been restored.`,
-    })
   }
 
   const handleAddCustomColumn = async (column: Omit<CustomColumn, 'id' | 'createdAt' | 'updatedAt'>) => {
@@ -1839,32 +1605,43 @@ export function QAApplication() {
   const clearSuite = () => {
     setSelectedSuiteId(null)
     setCurrentView('dashboard')
-    setIsFiltersExpanded(false) // Close filters panel when switching to dashboard
+    setGridFiltersOpen(false)
   }
 
   const handleSuiteClick = (suiteId: string | null) => {
     setSelectedSuiteId(suiteId)
-    // Always switch to test cases view when a suite is clicked (including "All Test Cases")
     setCurrentView('test-cases')
   }
+
+  const openListDialog = (kind: 'suite' | 'bugs') => {
+    setSuiteDialogKind(kind)
+    setActiveDropdown(kind === 'bugs' ? 'bugLists' : 'testSuites')
+    setIsSuiteDialogOpen(true)
+  }
+
+  const caseSuites = testSuites.filter((suite) => suite.kind !== 'bugs')
+  const bugLists = testSuites.filter((suite) => suite.kind === 'bugs')
+  const selectedList = testSuites.find((suite) => suite.id === selectedSuiteId)
+  const activeShare = shareTick >= 0 ? getLocalShare(currentProjectId, selectedSuiteId) : null
 
   return (
     <>
       <GlobalLoadingIndicator />
-      <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-800">
+      <div className="flex h-screen flex-col overflow-hidden bg-gradient-to-b from-slate-950 via-slate-900 to-slate-800">
 
 
-        {/* Header */}
-        <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-800 border-b border-slate-700/50 shadow-lg relative z-[5]">
-          <div className="w-full px-6 lg:px-8 xl:px-12">
-            <div className="flex items-center justify-between h-20">
+        {/* Header - Only show when there are projects */}
+        {projects.length > 0 && (
+          <div className="relative z-30 shrink-0 border-b border-slate-700/50 bg-slate-950/90">
+          <div className="px-4">
+            <div className="flex h-14 items-center justify-between">
               <div className="flex items-center space-x-6">
                 <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 flex items-center justify-center">
+                  <div className="flex h-9 w-9 items-center justify-center">
                     <img 
                       src="/favicon.png" 
                       alt="QA Management" 
-                      className="w-12 h-12 object-contain"
+                      className="h-9 w-9 object-contain"
                       onError={(e) => {
                         // Fallback to favicon.ico if png fails
                         const target = e.target as HTMLImageElement;
@@ -1875,15 +1652,16 @@ export function QAApplication() {
                     />
                   </div>
                   <div>
-                    <h1 className="text-2xl font-bold text-white">QA Management</h1>
-                    <p className="text-sm text-blue-200 font-medium">Professional Test Case Management</p>
+                    <h1 className="text-base font-semibold text-white">QA Management</h1>
+                    <p className="text-[11px] font-medium text-slate-400">Professional Test Case Management</p>
                   </div>
                 </div>
                 
                 
               </div>
               
-              <div className="flex items-center space-x-6">
+              <div className="flex items-center space-x-2">
+                <ThemeToggle />
                 <div className="relative" ref={userMenuRef}>
                   <Button
                     variant="ghost"
@@ -1895,9 +1673,9 @@ export function QAApplication() {
                   </Button>
                   
                   {showUserMenu && (
-                    <div className="absolute right-0 top-full mt-2 w-64 bg-slate-900/95 backdrop-blur-sm rounded-xl shadow-lg border border-slate-700/60 py-2 z-[999999999]">
-                      <div className="px-4 py-2 border-b border-white/10">
-                        <p className="text-xs font-medium text-blue-200 uppercase tracking-wide">User Profile</p>
+                    <div className="absolute right-0 top-full mt-2 w-64 rounded-xl border border-slate-200 bg-white py-2 shadow-lg dark:border-slate-700/60 dark:bg-slate-900/95 z-[999999999]">
+                      <div className="px-4 py-2 border-b border-slate-200 dark:border-white/10">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-blue-800 dark:text-blue-200">User Profile</p>
                       </div>
                       
                       <div className="px-4 py-3">
@@ -1906,7 +1684,7 @@ export function QAApplication() {
                             <User className="w-4 h-4 text-white" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-white truncate">
+                            <p className="text-sm font-medium text-slate-900 truncate dark:text-white">
                               {user?.user_metadata?.name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'}
                             </p>
                             <p className="text-xs text-blue-200 truncate">
@@ -1915,52 +1693,10 @@ export function QAApplication() {
                           </div>
                         </div>
                       </div>
-                      
-                      <div className="px-4 py-2 border-t border-white/10">
-                        <p className="text-xs font-medium text-blue-200 uppercase tracking-wide">Settings</p>
-                      </div>
-                      
-                      <button
-                        onClick={() => setIsProjectSettingsOpen(true)}
-                        className="w-full px-4 py-3 text-left text-sm text-white hover:bg-white/10 flex items-center space-x-3 transition-colors"
-                      >
-                        <Folder className="w-4 h-4 text-blue-300" />
-                        <span className="font-medium">Project Settings</span>
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (!currentProjectId || currentProjectId.trim() === '') {
-                            toast({
-                              title: 'No Project Selected',
-                              description: 'Please select a project first to configure table settings.',
-                              variant: 'destructive',
-                            })
-                            return
-                          }
-                          setIsTableSettingsOpen(true)
-                        }}
-                        className="w-full px-4 py-3 text-left text-sm text-white hover:bg-white/10 flex items-center space-x-3 transition-colors"
-                      >
-                        <Settings className="w-4 h-4 text-amber-300" />
-                        <span className="font-medium">Table Settings</span>
-                      </button>
 
-                      
-                      <div className="px-4 py-2 border-t border-white/10">
-                        <p className="text-xs font-medium text-blue-200 uppercase tracking-wide">Other</p>
-                      </div>
-                      
-                      <button
-                        onClick={handleFixDatabase}
-                        className="w-full px-4 py-3 text-left text-sm text-white hover:bg-white/10 flex items-center space-x-3 transition-colors"
-                      >
-                        <Settings className="w-4 h-4 text-blue-300" />
-                        <span className="font-medium">Fix Database RLS</span>
-                      </button>
-                      
                       <button
                         onClick={signOut}
-                        className="w-full px-4 py-3 text-left text-sm text-white hover:bg-white/10 flex items-center space-x-3 transition-colors"
+                        className="w-full px-4 py-3 text-left text-sm text-slate-800 hover:bg-slate-100 dark:text-white dark:hover:bg-white/10 flex items-center space-x-3 transition-colors"
                       >
                         <LogOut className="w-4 h-4 text-blue-300" />
                         <span className="font-medium">Sign out</span>
@@ -1972,14 +1708,13 @@ export function QAApplication() {
             </div>
           </div>
         </div>
+        )}
 
-        {/* Second Navbar */}
-        <div className="bg-slate-900/80 border-b border-slate-700/30 shadow-sm relative z-[10]">
-          <div className="w-full px-6 lg:px-8 xl:px-12">
-            <div className="flex items-center justify-between h-14">
-              {/* Left side - Navigation sections */}
-              <div className="flex items-center space-x-6">
-                {/* Project Selector */}
+        {projects.length > 0 ? (
+          <div className="flex min-h-0 flex-1">
+          <aside className="relative z-20 flex w-[272px] shrink-0 flex-col border-r border-slate-800 bg-slate-950/95">
+              <div className="border-b border-slate-800 p-3">
+                    <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-500">Project</p>
                 <ProjectDropdown
                   ref={projectMenuRef}
                   currentProject={currentProject}
@@ -1992,636 +1727,446 @@ export function QAApplication() {
                   onShareProject={handleShareProject}
                   onDeleteProject={handleDeleteProject}
                   onOpenProjectDialog={() => setIsProjectDialogOpen(true)}
+                  fullWidth
                 />
+              </div>
 
-                {/* Partition Line */}
-                <div className="w-px h-6 bg-slate-600/50"></div>
-                
-                {/* Test Suites Section */}
-                <div className="relative z-[999999999]">
-                  <div 
-                    className="flex items-center space-x-3 cursor-pointer hover:bg-emerald-500/10 rounded-lg px-3 py-2 transition-colors"
+              <nav className="space-y-1 border-b border-slate-800 p-2">
+                <button
+                  type="button"
+                  onClick={handleShowDashboard}
+                  className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
+                    currentView === 'dashboard'
+                      ? 'bg-blue-50 text-blue-800 dark:bg-blue-500/15 dark:text-blue-200'
+                      : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/80 dark:hover:text-white'
+                  }`}
+                >
+                  <LayoutDashboard className="h-4 w-4" />
+                  Dashboard
+                </button>
+                <button
+                  type="button"
+                  onClick={handleShowTestCases}
+                  className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
+                    currentView === 'test-cases' && !selectedSuiteId
+                      ? 'bg-blue-50 text-blue-800 dark:bg-blue-500/15 dark:text-blue-200'
+                      : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/80 dark:hover:text-white'
+                  }`}
+                >
+                  <Table2 className="h-4 w-4" />
+                  Cases
+                </button>
+              </nav>
+
+              <div className="min-h-0 flex-1 space-y-1 overflow-y-auto p-2">
+                {/* Test Suites accordion */}
+                <div>
+                  <button
+                    type="button"
+                    className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors ${
+                      selectedSuiteId && selectedList?.kind !== 'bugs'
+                        ? 'bg-emerald-500/15'
+                        : 'hover:bg-emerald-500/10'
+                    }`}
                     onClick={() => toggleDropdown('testSuites')}
                   >
-                    <div className="w-6 h-6 bg-emerald-500/20 rounded-lg flex items-center justify-center border border-emerald-400/20">
-                      <FileSpreadsheet className="w-3 h-3 text-emerald-300" />
+                    <div className="flex h-6 w-6 items-center justify-center rounded-lg border border-emerald-400/20 bg-emerald-500/20">
+                      <FileSpreadsheet className="h-3 w-3 text-emerald-300" />
                     </div>
-                    <span className="text-sm font-medium text-white">Test Suites</span>
-                    <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-400/20 text-xs px-2 py-0.5">
-                      {testSuites.length}
+                    <span className="flex-1 text-sm font-medium text-slate-800 dark:text-white">Test Suites</span>
+                    <Badge className="border-emerald-400/20 bg-emerald-500/20 px-2 py-0.5 text-xs text-emerald-300">
+                      {caseSuites.length}
                     </Badge>
-                    <ChevronDown className={`w-3 h-3 text-emerald-300 transition-transform ${activeDropdown === 'testSuites' ? 'rotate-180' : ''}`} />
-                  </div>
-                  
-                  {activeDropdown === 'testSuites' && (
-                    <div 
-                      data-test-suites-dropdown
-                      className="absolute top-full left-0 mt-2 w-80 bg-slate-900/95 backdrop-blur-sm rounded-xl shadow-lg border border-slate-700/60 py-2 z-[999999999] max-h-96 overflow-y-auto"
-                    >
-                      <div className="px-4 py-2 border-b border-white/10">
-                        <p className="text-xs font-medium text-emerald-200 uppercase tracking-wide">Test Suites</p>
-                      </div>
-                      
+                    <ChevronDown className={`h-3 w-3 text-emerald-300 transition-transform ${activeDropdown === 'testSuites' ? 'rotate-180' : ''}`} />
+                  </button>
 
-                      
-                      {testSuites.length > 0 && (
-                        <div className="py-2 border-t border-white/10">
-                          {testSuites.map((suite) => (
+                  {activeDropdown === 'testSuites' && (
+                    <div className="mt-1 rounded-lg border border-emerald-500/15 bg-slate-900/60">
+                      <div className="flex items-center justify-between px-2 py-1.5">
+                        <p className="text-[10px] font-medium uppercase tracking-wide text-emerald-300/80">Suites</p>
+                        <button
+                          type="button"
+                          onClick={() => openListDialog('suite')}
+                          className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium text-emerald-300 hover:bg-emerald-500/15"
+                        >
+                          <Plus className="h-3 w-3" />
+                          New
+                        </button>
+                      </div>
+                      <div className="max-h-52 overflow-y-auto px-1 pb-1">
+                        {caseSuites.length === 0 ? (
+                          <p className="px-2 py-3 text-center text-xs text-slate-500">No test suites yet</p>
+                        ) : (
+                          caseSuites.map((suite) => (
                             <div
                               key={suite.id}
-                              onClick={() => {
-                                handleSuiteClick(suite.id)
-                                closeDropdown()
-                              }}
-                              className={`w-full px-4 py-3 text-left hover:bg-white/10 flex items-center space-x-3 transition-colors group cursor-pointer ${
-                                selectedSuiteId === suite.id ? 'bg-emerald-500/20 text-emerald-200' : 'text-white'
+                              onClick={() => handleSuiteClick(suite.id)}
+                              className={`group mb-0.5 flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 ${
+                                selectedSuiteId === suite.id
+                                  ? 'bg-emerald-500/20 text-emerald-200'
+                                  : 'text-slate-200 hover:bg-white/5'
                               }`}
                             >
-                              <FileSpreadsheet className={`w-4 h-4 ${
-                                selectedSuiteId === suite.id ? 'text-emerald-300' : 'text-slate-400'
+                              <FileSpreadsheet className={`h-3.5 w-3.5 shrink-0 ${
+                                selectedSuiteId === suite.id ? 'text-emerald-300' : 'text-slate-500'
                               }`} />
-                              <div className="flex-1 min-w-0">
-                                <p className={`font-medium truncate ${
-                                  selectedSuiteId === suite.id ? 'text-emerald-200' : 'text-white'
-                                }`}>
-                                  {suite.name}
-                                </p>
-                                <p className="text-xs text-slate-400 truncate">
-                                  {suite.totalTests || 0} test cases
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-xs font-medium">{suite.name}</p>
+                                <p className="text-[10px] text-slate-500">
+                                  {testCases.filter((item) => item.suiteId === suite.id).length} cases
                                 </p>
                               </div>
-                              <div className="flex items-center space-x-1">
-                                {selectedSuiteId === suite.id && (
-                                  <div className="flex items-center space-x-1">
-                                    <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
-                                    <span className="text-xs text-emerald-300 font-medium">Active</span>
-                                  </div>
-                                )}
-                                <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      handleOpenShareTestSuite(suite)
-                                      closeDropdown()
-                                    }}
-                                    className="p-1 hover:bg-blue-500/20 rounded text-blue-300 hover:text-blue-200 transition-colors"
-                                    title="Share Test Suite"
-                                  >
-                                    <Share2 className="w-3 h-3" />
-                                  </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      deleteTestSuite(suite.id)
-                                      closeDropdown()
-                                    }}
-                                    className="p-1 hover:bg-red-500/20 rounded text-red-300 hover:text-red-200 transition-colors"
-                                    title="Delete Test Suite"
-                                  >
-                                    <Trash2 className="w-3 h-3" />
-                                  </button>
-                                </div>
-                              </div>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleOpenShareTestSuite(suite)
+                                }}
+                                className="rounded p-1 text-slate-500 opacity-0 hover:bg-sky-500/15 hover:text-sky-300 group-hover:opacity-100"
+                                title="Share test suite"
+                              >
+                                <Share2 className="h-3 w-3" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  deleteTestSuite(suite.id)
+                                }}
+                                className="rounded p-1 text-slate-500 opacity-0 hover:bg-red-500/15 hover:text-red-300 group-hover:opacity-100"
+                                title="Delete test suite"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </button>
                             </div>
-                          ))}
-                        </div>
-                      )}
-                      
-                      {testSuites.length === 0 && (
-                        <div className="px-4 py-6 text-center">
-                          <p className="text-sm text-slate-400 mb-3">No test suites available</p>
-                          <Button
-                            onClick={() => {
-                              setIsSuiteDialogOpen(true)
-                              closeDropdown()
-                            }}
-                            className="bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white"
-                          >
-                            <Plus className="w-4 h-4 mr-2" />
-                            Create Test Suite
-                          </Button>
-                        </div>
-                      )}
-                      
+                          ))
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
 
-                {/* Partition Line */}
-                <div className="w-px h-6 bg-slate-600/50 mx-3"></div>
+                {/* Bug Lists accordion */}
+                <div>
+                  <button
+                    type="button"
+                    className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors ${
+                      selectedList?.kind === 'bugs'
+                        ? 'bg-rose-500/15'
+                        : 'hover:bg-rose-500/10'
+                    }`}
+                    onClick={() => toggleDropdown('bugLists')}
+                  >
+                    <div className="flex h-6 w-6 items-center justify-center rounded-lg border border-rose-400/20 bg-rose-500/20">
+                      <Bug className="h-3 w-3 text-rose-300" />
+                    </div>
+                    <span className="flex-1 text-sm font-medium text-slate-800 dark:text-white">Bug Lists</span>
+                    <Badge className="border-rose-400/20 bg-rose-500/20 px-2 py-0.5 text-xs text-rose-300">
+                      {bugLists.length}
+                    </Badge>
+                    <ChevronDown className={`h-3 w-3 text-rose-300 transition-transform ${activeDropdown === 'bugLists' ? 'rotate-180' : ''}`} />
+                  </button>
 
-                {/* Resources Section */}
-                <div className="relative z-[999999999]">
-                  <div 
-                    className="flex items-center space-x-3 cursor-pointer hover:bg-indigo-500/10 rounded-lg px-3 py-2 transition-colors"
+                  {activeDropdown === 'bugLists' && (
+                    <div className="mt-1 rounded-lg border border-rose-500/15 bg-slate-900/60">
+                      <div className="flex items-center justify-between px-2 py-1.5">
+                        <p className="text-[10px] font-medium uppercase tracking-wide text-rose-300/80">Lists</p>
+                        <button
+                          type="button"
+                          onClick={() => openListDialog('bugs')}
+                          className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium text-rose-300 hover:bg-rose-500/15"
+                        >
+                          <Plus className="h-3 w-3" />
+                          New
+                        </button>
+                      </div>
+                      <div className="max-h-52 overflow-y-auto px-1 pb-1">
+                        {bugLists.length === 0 ? (
+                          <p className="px-2 py-3 text-center text-xs text-slate-500">No bug lists yet</p>
+                        ) : (
+                          bugLists.map((suite) => (
+                            <div
+                              key={suite.id}
+                              onClick={() => handleSuiteClick(suite.id)}
+                              className={`group mb-0.5 flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 ${
+                                selectedSuiteId === suite.id
+                                  ? 'bg-rose-500/20 text-rose-200'
+                                  : 'text-slate-200 hover:bg-white/5'
+                              }`}
+                            >
+                              <Bug className={`h-3.5 w-3.5 shrink-0 ${
+                                selectedSuiteId === suite.id ? 'text-rose-300' : 'text-slate-500'
+                              }`} />
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-xs font-medium">{suite.name}</p>
+                                <p className="text-[10px] text-slate-500">
+                                  {testCases.filter((item) => item.suiteId === suite.id).length} cases
+                                </p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleOpenShareTestSuite(suite)
+                                }}
+                                className="rounded p-1 text-slate-500 opacity-0 hover:bg-sky-500/15 hover:text-sky-300 group-hover:opacity-100"
+                                title="Share bug list"
+                              >
+                                <Share2 className="h-3 w-3" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  deleteTestSuite(suite.id)
+                                }}
+                                className="rounded p-1 text-slate-500 opacity-0 hover:bg-red-500/15 hover:text-red-300 group-hover:opacity-100"
+                                title="Delete bug list"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Resources accordion */}
+                <div>
+                  <button
+                    type="button"
+                    className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors ${
+                      activeDropdown === 'resources'
+                        ? 'bg-indigo-50 dark:bg-indigo-500/15'
+                        : 'hover:bg-indigo-50 dark:hover:bg-indigo-500/10'
+                    }`}
                     onClick={() => toggleDropdown('resources')}
                   >
-                    <div className="w-6 h-6 bg-indigo-500/20 rounded-lg flex items-center justify-center border border-indigo-400/20">
-                      <BookOpen className="w-3 h-3 text-indigo-300" />
+                    <div className="flex h-6 w-6 items-center justify-center rounded-lg border border-indigo-300 bg-indigo-100 dark:border-indigo-400/20 dark:bg-indigo-500/20">
+                      <BookOpen className="h-3 w-3 text-indigo-700 dark:text-indigo-300" />
                     </div>
-                    <span className="text-sm font-medium text-white">Resources</span>
-                    <Badge className="bg-indigo-500/20 text-indigo-300 border-indigo-400/20 text-xs px-2 py-0.5">
+                    <span className="flex-1 text-sm font-medium text-slate-800 dark:text-white">Resources</span>
+                    <Badge className="border-indigo-200 bg-indigo-100 px-2 py-0.5 text-xs text-indigo-700 dark:border-indigo-400/20 dark:bg-indigo-500/20 dark:text-indigo-300">
                       {importantLinks.length + documents.length}
                     </Badge>
-                    <ChevronDown className={`w-3 h-3 text-indigo-300 transition-transform ${activeDropdown === 'resources' ? 'rotate-180' : ''}`} />
-                  </div>
-                  
+                    <ChevronDown className={`h-3 w-3 text-indigo-600 transition-transform dark:text-indigo-300 ${activeDropdown === 'resources' ? 'rotate-180' : ''}`} />
+                  </button>
+
                   {activeDropdown === 'resources' && (
-                    <div 
-                      data-resources-dropdown
-                      className="absolute top-full left-0 mt-2 w-80 bg-slate-900/95 backdrop-blur-sm rounded-xl shadow-lg border border-slate-700/60 py-2 z-[999999999] max-h-96 overflow-y-auto"
-                    >
-                      <div className="px-4 py-2 border-b border-white/10">
-                        <p className="text-xs font-medium text-indigo-200 uppercase tracking-wide">Resources</p>
-                      </div>
-                      
-                      <div className="py-2">
-                        {/* Links Section */}
-                        <div className="px-4 py-2">
-                          <div className="flex items-center justify-between mb-2">
-                            <p className="text-sm font-medium text-indigo-300">Important Links</p>
-                            <Badge className="bg-indigo-500/20 text-indigo-300 border-indigo-400/20 text-xs px-2 py-0.5">
-                              {importantLinks.length}
-                            </Badge>
-                          </div>
-                          {importantLinks.length > 0 ? (
-                            <div className="space-y-1">
-                              {importantLinks.map((link, index) => (
-                                <div key={index} className="flex items-center justify-between p-2 hover:bg-white/5 rounded-lg group">
-                                  <div 
-                                    className="flex items-center space-x-2 cursor-pointer flex-1 min-w-0"
-                                    onClick={() => {
-                                      window.open(link.url, '_blank', 'noopener,noreferrer')
-                                    }}
-                                    title={`Click to open: ${link.url}`}
-                                  >
-                                    <Link className="w-3 h-3 text-indigo-400 flex-shrink-0" />
-                                    <span className="text-xs text-white truncate hover:text-indigo-300 transition-colors">{link.title}</span>
-                                  </div>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      if (confirm(`Are you sure you want to delete "${link.title}"?`)) {
-                                        setImportantLinks(prev => prev.filter(l => l.id !== link.id))
-                toast({
-                                          title: "Link Deleted",
-                                          description: `"${link.title}" has been removed from your resources.`,
-                                        })
-                                      }
-                                    }}
-                                    className="ml-2 p-1 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors opacity-0 group-hover:opacity-100"
-                                    title="Delete link"
-                                  >
-                                    <Trash2 className="w-3 h-3" />
-                                  </button>
-                                </div>
-                              ))}
+                    <div className="mt-1 rounded-lg border border-indigo-200 bg-white dark:border-indigo-500/15 dark:bg-slate-900/60">
+                      <div className="max-h-52 overflow-y-auto px-1 py-1">
+                        <p className="px-2 py-1 text-[10px] font-medium uppercase tracking-wide text-indigo-700 dark:text-indigo-300/80">Links</p>
+                        {importantLinks.length === 0 ? (
+                          <p className="px-2 pb-2 text-[11px] text-slate-600 dark:text-slate-400">No links yet</p>
+                        ) : (
+                          importantLinks.map((link, index) => (
+                            <div key={link.id || index} className="group mb-0.5 flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-indigo-50 dark:hover:bg-white/5">
+                              <button
+                                type="button"
+                                className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                                onClick={() => window.open(link.url, '_blank', 'noopener,noreferrer')}
+                                title={link.description || link.url}
+                              >
+                                <Link className="h-3 w-3 shrink-0 text-indigo-600 dark:text-indigo-400" />
+                                <span className="truncate text-xs text-slate-800 dark:text-slate-200">{link.title}</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (confirm(`Delete "${link.title}" from resources?`)) {
+                                    void handleDeleteImportantLink(link.id)
+                                  }
+                                }}
+                                className="rounded p-1 text-slate-400 opacity-0 hover:bg-red-50 hover:text-red-600 group-hover:opacity-100 dark:text-slate-500 dark:hover:bg-red-500/15 dark:hover:text-red-300"
+                                title="Delete link"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </button>
                             </div>
-                          ) : (
-                            <p className="text-xs text-slate-400">No links added yet</p>
-                          )}
-                        </div>
-                        
-                        {/* Documents Section */}
-                        <div className="px-4 py-2 border-t border-white/10">
-                          <div className="flex items-center justify-between mb-2">
-                            <p className="text-sm font-medium text-indigo-300">Documents</p>
-                            <Badge className="bg-indigo-500/20 text-indigo-300 border-indigo-400/20 text-xs px-2 py-0.5">
-                              {documents.length}
-                            </Badge>
-                          </div>
-                          {documents.length > 0 ? (
-                            <div className="space-y-1">
-                              {documents.map((doc, index) => (
-                                <div key={index} className="flex items-center justify-between p-2 hover:bg-white/5 rounded-lg group">
-                                  <div 
-                                    className="flex items-center space-x-2 cursor-pointer flex-1 min-w-0"
-                                    onClick={() => {
-                                      window.open(doc.url, '_blank', 'noopener,noreferrer')
-                                    }}
-                                    title={`Click to open: ${doc.url}`}
-                                  >
-                                    <BookOpen className="w-3 h-3 text-indigo-400 flex-shrink-0" />
-                                    <span className="text-xs text-white truncate hover:text-indigo-300 transition-colors">{doc.title}</span>
-                                  </div>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      if (confirm(`Are you sure you want to delete "${doc.title}"?`)) {
-                                        setDocuments(prev => prev.filter(d => d.id !== doc.id))
-                                        toast({
-                                          title: "Document Deleted",
-                                          description: `"${doc.title}" has been removed from your resources.`,
-                                        })
-                                      }
-                                    }}
-                                    className="ml-2 p-1 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors opacity-0 group-hover:opacity-100"
-                                    title="Delete document"
-                                  >
-                                    <Trash2 className="w-3 h-3" />
-                                  </button>
-                                </div>
-                              ))}
+                          ))
+                        )}
+
+                        <p className="mt-1 px-2 py-1 text-[10px] font-medium uppercase tracking-wide text-indigo-700 dark:text-indigo-300/80">Documents</p>
+                        {documents.length === 0 ? (
+                          <p className="px-2 pb-2 text-[11px] text-slate-600 dark:text-slate-400">No documents yet</p>
+                        ) : (
+                          documents.map((doc, index) => (
+                            <div key={doc.id || index} className="group mb-0.5 flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-indigo-50 dark:hover:bg-white/5">
+                              <button
+                                type="button"
+                                className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                                onClick={() => window.open(doc.url, '_blank', 'noopener,noreferrer')}
+                                title={doc.description || doc.url}
+                              >
+                                <BookOpen className="h-3 w-3 shrink-0 text-indigo-600 dark:text-indigo-400" />
+                                <span className="truncate text-xs text-slate-800 dark:text-slate-200">{doc.title}</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (confirm(`Delete "${doc.title}" from resources?`)) {
+                                    void handleDeleteDocument(doc.id)
+                                  }
+                                }}
+                                className="rounded p-1 text-slate-400 opacity-0 hover:bg-red-50 hover:text-red-600 group-hover:opacity-100 dark:text-slate-500 dark:hover:bg-red-500/15 dark:hover:text-red-300"
+                                title="Delete document"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </button>
                             </div>
-                          ) : (
-                            <p className="text-xs text-slate-400">No documents added yet</p>
-                          )}
-                        </div>
+                          ))
+                        )}
                       </div>
-                      
-                      <div className="px-4 py-2 border-t border-white/10">
+                      <div className="flex gap-1 border-t border-slate-200 px-1 py-1 dark:border-white/5">
                         <button
+                          type="button"
                           onClick={() => {
+                            if (!currentProjectId) {
+                              toast({
+                                title: "No project selected",
+                                description: "Create or select a project first.",
+                                variant: "destructive",
+                              })
+                              return
+                            }
                             setIsAddLinkDialogOpen(true)
-                            closeDropdown()
                           }}
-                          className="w-full px-4 py-2 text-left text-sm text-indigo-300 hover:bg-indigo-500/20 flex items-center space-x-3 transition-colors rounded-lg"
+                          className="flex flex-1 items-center justify-center gap-1 rounded-md px-2 py-1.5 text-[11px] font-medium text-indigo-700 hover:bg-indigo-50 dark:text-indigo-300 dark:hover:bg-indigo-500/15"
                         >
-                          <Link className="w-4 h-4" />
-                          <span className="font-medium">Add New Link</span>
+                          <Plus className="h-3 w-3" />
+                          Link
                         </button>
                         <button
+                          type="button"
                           onClick={() => {
+                            if (!currentProjectId) {
+                              toast({
+                                title: "No project selected",
+                                description: "Create or select a project first.",
+                                variant: "destructive",
+                              })
+                              return
+                            }
                             setIsAddDocumentDialogOpen(true)
-                            closeDropdown()
                           }}
-                          className="w-full px-4 py-2 text-left text-sm text-indigo-300 hover:bg-indigo-500/20 flex items-center space-x-3 transition-colors rounded-lg mt-1"
+                          className="flex flex-1 items-center justify-center gap-1 rounded-md px-2 py-1.5 text-[11px] font-medium text-indigo-700 hover:bg-indigo-50 dark:text-indigo-300 dark:hover:bg-indigo-500/15"
                         >
-                          <BookOpen className="w-4 h-4" />
-                          <span className="font-medium">Add New Document</span>
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-
-
-                {/* Partition Line */}
-                <div className="w-px h-6 bg-slate-600/50 mx-3"></div>
-
-                {/* Members Section */}
-                <div className="relative z-[999999999]">
-                  <div 
-                    className="flex items-center space-x-3 cursor-pointer hover:bg-purple-500/10 rounded-lg px-3 py-2 transition-colors"
-                    onClick={() => toggleDropdown('members')}
-                  >
-                    <div className="w-6 h-6 bg-purple-500/20 rounded-lg flex items-center justify-center border border-purple-400/20">
-                      <Users className="w-3 h-3 text-purple-300" />
-                    </div>
-                    <span className="text-sm font-medium text-white">Members</span>
-                    <ChevronDown className={`w-3 h-3 text-purple-300 transition-transform ${activeDropdown === 'members' ? 'rotate-180' : ''}`} />
-                  </div>
-                  
-                  {activeDropdown === 'members' && (
-                    <div 
-                      data-members-dropdown
-                      className="absolute top-full left-0 mt-2 w-80 bg-slate-900/95 backdrop-blur-sm rounded-xl shadow-lg border border-slate-700/60 py-2 z-[999999999] max-h-96 overflow-y-auto"
-                    >
-                      <div className="px-4 py-2 border-b border-white/10">
-                        <p className="text-xs font-medium text-purple-200 uppercase tracking-wide">Project Members</p>
-                      </div>
-                      
-                      <div className="px-4 py-4">
-                        <div className="flex items-center space-x-3 mb-4">
-                          <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg flex items-center justify-center">
-                            <User className="w-4 h-4 text-white" />
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-sm font-medium text-white">Project Owner</p>
-                            <p className="text-xs text-purple-300">Full access</p>
-                          </div>
-                          <Badge className="bg-purple-500/20 text-purple-300 border-purple-400/20 text-xs px-2 py-0.5">
-                            Owner
-                          </Badge>
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <div className="flex items-center space-x-2 p-2 hover:bg-white/5 rounded-lg">
-                            <div className="w-6 h-6 bg-blue-500/20 rounded-lg flex items-center justify-center">
-                              <User className="w-3 h-3 text-blue-300" />
-                            </div>
-                            <span className="text-sm text-white">QA Team</span>
-                            <Badge className="bg-blue-500/20 text-blue-300 border-blue-400/20 text-xs px-2 py-0.5 ml-auto">
-                              Editor
-                            </Badge>
-                          </div>
-                          <div className="flex items-center space-x-2 p-2 hover:bg-white/5 rounded-lg">
-                            <div className="w-6 h-6 bg-green-500/20 rounded-lg flex items-center justify-center">
-                              <User className="w-3 h-3 text-green-300" />
-                            </div>
-                            <span className="text-sm text-white">Development Team</span>
-                            <Badge className="bg-green-500/20 text-green-300 border-green-400/20 text-xs px-2 py-0.5 ml-auto">
-                              Viewer
-                            </Badge>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="px-4 py-2 border-t border-white/10">
-                        <button
-                          onClick={() => {
-                            setIsProjectMembersDialogOpen(true)
-                            closeDropdown()
-                          }}
-                          className="w-full px-4 py-2 text-left text-sm text-purple-300 hover:bg-purple-500/20 flex items-center space-x-3 transition-colors rounded-lg"
-                        >
-                          <Users className="w-4 h-4" />
-                          <span className="font-medium">Manage Members</span>
+                          <Plus className="h-3 w-3" />
+                          Doc
                         </button>
                       </div>
                     </div>
                   )}
                 </div>
               </div>
-              
-              {/* Right side - Search and Actions - Only show when on test cases view */}
-              {currentView === 'test-cases' && (
-                <div className="flex items-center space-x-6">
-                  {/* Search Bar */}
-                  <div className="flex-1 max-w-md relative group">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Search className="h-4 w-4 text-blue-400 group-focus-within:text-blue-300 transition-colors" />
-              </div>
-                    <Input
-                      className="pl-9 pr-9 h-8 bg-slate-800/70 border-slate-600/60 text-slate-200 placeholder:text-slate-400 focus:border-blue-500/60 focus:ring-2 focus:ring-blue-500/20 text-sm"
-                      placeholder="Search test cases..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                    <Button 
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 p-0 hover:bg-blue-500/20 rounded-md"
-                      title="Advanced Search Options"
-                    >
-                      <Settings className="w-3 h-3 text-blue-400 hover:text-blue-300 transition-colors" />
-                    </Button>
-                  </div>
 
-                  {/* Partition Line */}
-                  <div className="w-px h-6 bg-slate-600/50 mx-2"></div>
-
-                  {/* Action Buttons */}
-                  <div className="flex items-center gap-2">
-                    {/* Import */}
+              <div className="mt-auto space-y-3 border-t border-slate-800 p-3">
+                  <div className="grid grid-cols-2 gap-2">
                     <Button 
                       variant="outline" 
                       size="sm"
                       onClick={() => setIsEnhancedImportDialogOpen(true)}
-                      className="h-8 px-3 bg-emerald-500/20 border-emerald-400/30 text-emerald-300 hover:bg-emerald-500/30 hover:border-emerald-400/50 text-xs"
+                      className="h-8 justify-start border-emerald-300 bg-emerald-50 px-2.5 text-xs font-medium text-emerald-800 hover:border-emerald-400 hover:bg-emerald-100 hover:text-emerald-900 dark:border-emerald-400/30 dark:bg-emerald-500/20 dark:text-emerald-300 dark:hover:border-emerald-400/50 dark:hover:bg-emerald-500/30"
                     >
-                      <Upload className="w-3 h-3 mr-1.5 text-emerald-300" />
+                      <Upload className="mr-1.5 h-3 w-3 text-emerald-700 dark:text-emerald-300" />
                       Import
                     </Button>
-                    
-                    {/* Paste */}
                     <Button 
                       variant="outline" 
                       size="sm"
                       onClick={() => setIsEnhancedPasteDialogOpen(true)}
-                      className="h-8 px-3 bg-blue-500/20 border-blue-400/30 text-blue-300 hover:bg-blue-500/30 hover:border-blue-400/50 text-xs"
+                      className="h-8 justify-start border-blue-300 bg-blue-50 px-2.5 text-xs font-medium text-blue-800 hover:border-blue-400 hover:bg-blue-100 hover:text-blue-900 dark:border-blue-400/30 dark:bg-blue-500/20 dark:text-blue-300 dark:hover:border-blue-400/50 dark:hover:bg-blue-500/30"
                     >
-                      <Clipboard className="w-3 h-3 mr-1.5 text-blue-300" />
+                      <Clipboard className="mr-1.5 h-3 w-3 text-blue-700 dark:text-blue-300" />
                       Paste
                     </Button>
-
-                    {/* Export */}
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={handleExportToExcel}
-                      className="h-8 px-3 bg-purple-500/20 border-purple-400/30 text-purple-300 hover:bg-purple-500/30 hover:border-purple-400/50 text-xs"
+                      className="h-8 justify-start border-purple-300 bg-purple-50 px-2.5 text-xs font-medium text-purple-800 hover:border-purple-400 hover:bg-purple-100 hover:text-purple-900 dark:border-purple-400/30 dark:bg-purple-500/20 dark:text-purple-300 dark:hover:border-purple-400/50 dark:hover:bg-purple-500/30"
                     >
-                      <Download className="w-3 h-3 mr-1.5 text-purple-300" />
+                      <Download className="mr-1.5 h-3 w-3 text-purple-700 dark:text-purple-300" />
                       Export
                     </Button>
-                    
-                    {/* Filters */}
                     <Button 
                       variant="outline" 
                       size="sm"
-                      onClick={() => setIsFiltersExpanded(!isFiltersExpanded)}
-                      className="h-8 px-3 bg-orange-500/20 border-orange-400/30 text-orange-300 hover:bg-orange-500/30 hover:border-orange-400/50 text-xs"
+                      onClick={() => {
+                        if (!selectedSuiteId) {
+                          toast({
+                            title: 'Pick a list first',
+                            description: 'Open a test suite or bug list to filter cases.',
+                          })
+                          return
+                        }
+                        setCurrentView('test-cases')
+                        setGridFiltersOpen((open) => !open)
+                      }}
+                      className={`h-8 justify-start border-orange-300 bg-orange-50 px-2.5 text-xs font-medium text-orange-800 hover:border-orange-400 hover:bg-orange-100 hover:text-orange-900 dark:border-orange-400/30 dark:bg-orange-500/20 dark:text-orange-300 dark:hover:border-orange-400/50 dark:hover:bg-orange-500/30 ${
+                        gridFiltersOpen ? 'border-orange-400 bg-orange-100 dark:border-orange-400/50 dark:bg-orange-500/30' : ''
+                      }`}
                     >
-                      <Filter className="w-3 h-3 mr-1.5 text-orange-300" />
+                      <Filter className="mr-1.5 h-3 w-3 text-orange-700 dark:text-orange-300" />
                       Filters
                     </Button>
-
                   </div>
-                </div>
-              )}
-            </div>
-          </div>
+              </div>
+          </aside>
+          <main className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <div className="min-h-0 flex-1 overflow-hidden">
+                  {currentView === 'dashboard' ? (
+                    <div className="h-full overflow-auto">
+                    <ProjectDashboard
+                      project={{ id: currentProjectId, name: currentProject, createdAt: new Date() }}
+                      testCases={testCases.filter(tc => tc.projectId === currentProjectId)}
+                      testSuites={testSuites}
+                      onAddTestCase={() => {
+                        toast({
+                          title: 'Pick a list first',
+                          description: 'Open a test suite or bug list, then add cases there.',
+                        })
+                      }}
+                      onAddTestSuite={() => openListDialog('suite')}
+                      onExportData={handleExportDashboardData}
+                      onViewAllTestCases={handleShowTestCases}
+                    />
+                    </div>
+                  ) : (
+                    <GoogleSheetsTable
+                      projectId={currentProjectId || ''}
+                      addCaseNonce={addCaseNonce}
+                      reloadNonce={gridReloadNonce}
+                      exportNonce={exportNonce}
+                      filtersOpen={gridFiltersOpen}
+                      onFiltersOpenChange={setGridFiltersOpen}
+                      suiteId={selectedSuiteId}
+                      listKind={selectedList?.kind === 'bugs' ? 'bugs' : 'suite'}
+                      listName={selectedList?.name}
+                      shareToken={activeShare?.token}
+                      shareMode="owner"
+                    />
+                  )}
         </div>
-
-        {/* Filters Panel - Only show when on test cases view */}
-        {isFiltersExpanded && currentView === 'test-cases' && (
-          <div className="bg-slate-800/50 border-b border-slate-700/30 shadow-sm">
-            <div className="w-full px-6 lg:px-8 xl:px-12 py-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {/* Status Filter */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-300">Status</label>
-                  <Select>
-                    <SelectTrigger className="h-8 bg-slate-700/50 border-slate-600/60 text-slate-200">
-                      <SelectValue placeholder="All Statuses" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Statuses</SelectItem>
-                      <SelectItem value="pass">Pass</SelectItem>
-                      <SelectItem value="fail">Fail</SelectItem>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="in-progress">In Progress</SelectItem>
-                      <SelectItem value="blocked">Blocked</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Priority Filter */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-300">Priority</label>
-                  <Select>
-                    <SelectTrigger className="h-8 bg-slate-700/50 border-slate-600/60 text-slate-200">
-                      <SelectValue placeholder="All Priorities" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Priorities</SelectItem>
-                      <SelectItem value="high">High</SelectItem>
-                      <SelectItem value="medium">Medium</SelectItem>
-                      <SelectItem value="low">Low</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Category Filter */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-300">Category</label>
-                  <Select>
-                    <SelectTrigger className="h-8 bg-slate-700/50 border-slate-600/60 text-slate-200">
-                      <SelectValue placeholder="All Categories" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Categories</SelectItem>
-                      <SelectItem value="functional">Functional</SelectItem>
-                      <SelectItem value="non-functional">Non-Functional</SelectItem>
-                      <SelectItem value="regression">Regression</SelectItem>
-                      <SelectItem value="smoke">Smoke</SelectItem>
-                      <SelectItem value="integration">Integration</SelectItem>
-                      <SelectItem value="unit">Unit</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Platform Filter */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-300">Platform</label>
-                  <Select>
-                    <SelectTrigger className="h-8 bg-slate-700/50 border-slate-600/60 text-slate-200">
-                      <SelectValue placeholder="All Platforms" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Platforms</SelectItem>
-                      <SelectItem value="web">Web</SelectItem>
-                      <SelectItem value="mobile">Mobile</SelectItem>
-                      <SelectItem value="desktop">Desktop</SelectItem>
-                      <SelectItem value="api">API</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* Filter Actions */}
-              <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-700/30">
-                <div className="flex items-center space-x-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={clearFilters}
-                    className="h-8 px-3 bg-slate-700/50 border-slate-600/60 text-slate-200 hover:bg-slate-600/50 text-xs"
-                  >
-                    Clear All
-                  </Button>
-                  <span className="text-xs text-slate-400">
-                    {finalTestCases.length} test case{finalTestCases.length !== 1 ? 's' : ''} found
-                  </span>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsFiltersExpanded(false)}
-                  className="h-8 px-3 bg-slate-700/50 border-slate-600/60 text-slate-200 hover:bg-slate-600/50 text-xs"
-                >
-                  <X className="w-3 h-3 mr-1.5" />
-                  Close
-                </Button>
-              </div>
-            </div>
+          </main>
           </div>
-        )}
-
-        {/* Main Content - Full Width */}
-          <div className="flex flex-col h-full overflow-hidden relative z-[1]">
-            {/* Loading Overlay */}
-
-            
-
-
-            {/* Suite Filter Banner - moved out of table area; now shown via sidebar indicator only */}
-
-            {/* Main Content */}
-            <div className="flex-1 flex flex-col">
-
-
-              {/* Show loading state while projects are being fetched */}
-              {projectsLoading ? (
-                <div className="flex-1 flex items-center justify-center">
+        ) : projectsLoading ? (
+                <div className="flex flex-1 items-center justify-center">
                   <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                    <p className="text-slate-600">Loading your projects...</p>
+                    <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-blue-600"></div>
+                    <p className="text-slate-400">Loading your projects...</p>
                   </div>
                 </div>
-              ) : projects.length === 0 ? (
+              ) : (
                 <FullScreenWelcome 
                   onCreateProject={handleAddProject}
                   isLoading={isCreatingProject}
                   onSignOut={signOut}
                   user={user}
                 />
-              ) : (
-                /* Main Content Area */
-                <div className="flex-1 flex flex-col overflow-hidden">
-                  {/* Removed top section header per request */}
-
-                  {/* Dashboard or Test Cases Content */}
-                  {currentView === 'dashboard' ? (
-                    <ProjectDashboard
-                      project={{ id: currentProjectId, name: currentProject, createdAt: new Date() }}
-                      testCases={finalTestCases}
-                      testSuites={testSuites}
-                      onAddTestCase={() => setIsAddDialogOpen(true)}
-                      onAddTestSuite={() => setIsSuiteDialogOpen(true)}
-                      onExportData={handleExportDashboardData}
-                      onOpenSettings={handleOpenDashboardSettings}
-                      onViewAllTestCases={() => {
-                        setSelectedSuiteId(null)
-                        setCurrentView('test-cases')
-                      }}
-                    />
-                  ) : (
-                    <TestCaseTable
-                      testCases={finalTestCases}
-                      selectedTestCases={selectedTestCases}
-                      searchQuery={searchQuery}
-                      setSearchQuery={setSearchQuery}
-                      statusFilter={statusFilter}
-                      setStatusFilter={setStatusFilter}
-                      priorityFilter={priorityFilter}
-                      setPriorityFilter={setPriorityFilter}
-                      platformFilter={platformFilter}
-                      setPlatformFilter={setPlatformFilter}
-                      categoryFilter={categoryFilter}
-                      setCategoryFilter={setCategoryFilter}
-                      assignedTesterFilter={assignedTesterFilter}
-                      setAssignedTesterFilter={setAssignedTesterFilter}
-                      savedFilters={savedFilters}
-                      tableColumns={tableColumns}
-                      currentPage={currentPage}
-                      setCurrentPage={setCurrentPage}
-                      rowsPerPage={rowsPerPage}
-                      setRowsPerPage={setRowsPerPage}
-                      onAddTestCase={() => setIsAddDialogOpen(true)}
-                      onEditTestCase={handleEditTestCase}
-                      onViewTestCase={handleViewTestCase}
-                      onRemoveTestCase={removeTestCase}
-                      onRemoveSelectedTestCases={removeSelectedTestCases}
-                      onUpdateTestCase={(testCase) => updateTestCase(testCase.id, testCase)}
-                      deleteLoading={deleteLoading}
-                      onUpdateTestCaseStatus={updateTestCaseStatus}
-                      onBulkUpdateStatus={bulkUpdateStatus}
-                      onToggleTestCaseSelection={toggleTestCaseSelection}
-                      onToggleSelectAll={(filteredTestCases) => toggleSelectAll(filteredTestCases)}
-                      onClearAllTestCases={clearAllTestCases}
-                      onFileUpload={handleFileUpload}
-                      onExportToExcel={handleExportToExcel}
-                      onSaveFilter={saveCurrentFilter}
-                      onLoadFilter={(filter) => loadSavedFilter(filter)}
-                      onDeleteFilter={deleteSavedFilter}
-                      onClearAllFilters={clearFilters}
-                      onOpenComments={handleOpenComments}
-                      onOpenAutomation={handleOpenAutomation}
-                      onAddTestCaseFromPaste={handleAddTestCaseFromPaste}
-                      currentProject={currentProjectId}
-                      isPasteDialogOpen={isPasteDialogOpen}
-                      setIsPasteDialogOpen={setIsPasteDialogOpen}
-                      customColumns={customColumnsList}
-                      onUpdateCustomField={handleUpdateCustomField}
-                    />
-                  )}
-                </div>
               )}
-          </div>
-        </div>
       </div>
 
       {/* Dialogs */}
@@ -2648,7 +2193,17 @@ export function QAApplication() {
       <TestSuiteDialog
         isOpen={isSuiteDialogOpen}
         onClose={() => setIsSuiteDialogOpen(false)}
-        onSubmit={createTestSuite}
+        listKind={suiteDialogKind}
+        onSubmit={async (suite) => {
+          const created = await createTestSuite({
+            ...suite,
+            projectId: currentProjectId || suite.projectId,
+            kind: suiteDialogKind,
+          })
+          if (created?.id) {
+            handleSuiteClick(created.id)
+          }
+        }}
         testSuites={testSuites}
         testCases={testCases}
         onAddTestCaseToSuite={addTestCaseToSuite}
@@ -2678,677 +2233,154 @@ export function QAApplication() {
         />
       )}
 
-      <ShareProjectDialog
-        isOpen={isShareProjectDialogOpen}
-        onClose={() => setIsShareProjectDialogOpen(false)}
-        projectId={currentProjectId}
-        projectName={currentProject}
-        onShareCreated={(share) => {
-          console.log('Project shared:', share)
-          toast({
-            title: "Project Shared!",
-            description: "Share link has been created successfully.",
-          })
-        }}
+      <ShareDialog
+        isOpen={isShareDialogOpen}
+        onClose={() => setIsShareDialogOpen(false)}
+        kind={shareKind}
+        projectId={selectedProjectForSharing?.id || currentProjectId}
+        projectName={selectedProjectForSharing?.name || currentProject}
+        lists={testSuites}
+        suite={shareKind === 'list' ? selectedTestSuiteForSharing : null}
+        onChanged={() => setShareTick((value) => value + 1)}
       />
 
-      {selectedTestSuiteForSharing && (
-        <ShareTestSuiteDialog
-          isOpen={isShareTestSuiteDialogOpen}
-          onClose={() => setIsShareTestSuiteDialogOpen(false)}
-          testSuite={selectedTestSuiteForSharing}
-          projectId={currentProjectId}
-          projectName={currentProject}
-          onShareCreated={(share) => {
-            console.log('Test suite shared:', share)
-            toast({
-              title: "Test Suite Shared!",
-              description: "Share link has been created successfully.",
-            })
-          }}
-        />
-      )}
 
 
 
-      {/* Project Members Dialog */}
-      <ProjectMembersDialog
-        isOpen={isProjectMembersDialogOpen}
-        onClose={() => setIsProjectMembersDialogOpen(false)}
-        project={{
-          id: currentProjectId,
-          name: currentProject,
-          userRole: 'owner', // TODO: Fetch actual role from membership service
-          isOwner: true,
-          memberCount: 1,
-          isMultiUser: true
-        }}
-      />
-
-      {/* Create Project Dialog */}
       <Dialog open={isProjectDialogOpen} onOpenChange={setIsProjectDialogOpen}>
-        <DialogContent className="max-w-2xl w-[90vw] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-slate-700/60">
-          <DialogHeader className="space-y-3">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                <Briefcase className="w-5 h-5 text-white" />
+        <DialogContent
+          variant="dark"
+          className="w-[min(92vw,440px)] max-w-[440px] gap-0 border border-slate-200 bg-white p-0 shadow-[0_24px_80px_rgba(15,23,42,0.18)] dark:border-slate-700/80 dark:bg-slate-950 dark:shadow-[0_24px_80px_rgba(0,0,0,0.55)]"
+        >
+          <div className="relative overflow-hidden border-b border-slate-200 bg-gradient-to-br from-blue-50 via-white to-white px-6 pb-5 pt-6 dark:border-slate-800 dark:from-blue-500/15 dark:via-slate-950 dark:to-slate-950">
+            <div className="pointer-events-none absolute -right-8 -top-10 h-32 w-32 rounded-full bg-blue-500/20 blur-3xl" />
+            <div className="relative flex items-start gap-3 pr-8">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-blue-300 bg-blue-100 text-blue-700 shadow-inner dark:border-blue-400/30 dark:bg-blue-500/20 dark:text-blue-200">
+                <Briefcase className="h-5 w-5" />
               </div>
               <div>
-                <DialogTitle className="text-lg font-semibold text-white">Create New Project</DialogTitle>
-                <DialogDescription className="text-sm text-slate-300">
-                  Create a new project to organize your test cases and suites.
+                <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-blue-700 dark:text-blue-300/80">Project</p>
+                <DialogTitle className="text-[18px] font-semibold tracking-tight text-slate-900 dark:text-white">Create new project</DialogTitle>
+                <DialogDescription className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+                  Organize cases, suites, and resources under one project.
                 </DialogDescription>
               </div>
             </div>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="project-name" className="text-sm font-medium text-white">
-                Project Name
+          </div>
+          <form
+            id="create-project-form"
+            className="space-y-4 px-6 py-5"
+            onSubmit={(event) => {
+              event.preventDefault()
+              if (!newProject.trim()) return
+              handleAddProject(newProject.trim())
+              setIsProjectDialogOpen(false)
+              setNewProject('')
+            }}
+          >
+            <div className="space-y-1.5">
+              <Label htmlFor="project-name" className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                Project name
               </Label>
               <Input
                 id="project-name"
                 value={newProject}
                 onChange={(e) => setNewProject(e.target.value)}
-                placeholder="Enter project name"
-                className="h-11 border-slate-600/50 bg-slate-800/50 text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                placeholder="Courtmesh"
+                required
+                autoFocus
+                className="h-10 border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus-visible:ring-2 focus-visible:ring-blue-500/30 focus-visible:ring-offset-0 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-100 dark:placeholder:text-slate-500"
               />
-              <p className="text-xs text-slate-400">Choose a descriptive name for your project</p>
             </div>
-          </div>
-          <DialogFooter className="gap-2">
-            <Button 
-              type="button" 
-              variant="outline" 
+          </form>
+          <div className="flex items-center justify-end gap-2 border-t border-slate-200 bg-slate-50 px-6 py-4 dark:border-slate-800 dark:bg-slate-900/50">
+            <Button
+              type="button"
+              variant="outline"
               onClick={() => {
                 setIsProjectDialogOpen(false)
                 setNewProject('')
-              }} 
-              className="h-10 border-slate-600/50 text-slate-300 hover:bg-slate-800/50"
+              }}
+              className="h-9 border-slate-300 text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
             >
               Cancel
             </Button>
             <Button
-              type="button"
-              onClick={() => {
-                if (newProject.trim()) {
-                  handleAddProject(newProject.trim())
-                  setIsProjectDialogOpen(false)
-                  setNewProject('')
-                }
-              }}
-              className="h-10 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+              type="submit"
+              form="create-project-form"
               disabled={!newProject.trim()}
+              className="h-9 bg-blue-600 text-white hover:bg-blue-500"
             >
-              Create Project
+              Create project
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 
-      {/* Edit Project Dialog */}
       <Dialog open={isEditProjectDialogOpen} onOpenChange={setIsEditProjectDialogOpen}>
-        <DialogContent className="max-w-2xl w-[90vw] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-slate-700/60">
-          <DialogHeader className="space-y-3">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                <Settings className="w-5 h-5 text-white" />
+        <DialogContent
+          variant="dark"
+          className="w-[min(92vw,440px)] max-w-[440px] gap-0 border border-slate-200 bg-white p-0 shadow-[0_24px_80px_rgba(15,23,42,0.18)] dark:border-slate-700/80 dark:bg-slate-950 dark:shadow-[0_24px_80px_rgba(0,0,0,0.55)]"
+        >
+          <div className="relative overflow-hidden border-b border-slate-200 bg-gradient-to-br from-blue-50 via-white to-white px-6 pb-5 pt-6 dark:border-slate-800 dark:from-blue-500/15 dark:via-slate-950 dark:to-slate-950">
+            <div className="pointer-events-none absolute -right-8 -top-10 h-32 w-32 rounded-full bg-blue-500/20 blur-3xl" />
+            <div className="relative flex items-start gap-3 pr-8">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-blue-300 bg-blue-100 text-blue-700 shadow-inner dark:border-blue-400/30 dark:bg-blue-500/20 dark:text-blue-200">
+                <Settings className="h-5 w-5" />
               </div>
               <div>
-                <DialogTitle className="text-lg font-semibold text-white">Edit Project</DialogTitle>
-                <DialogDescription className="text-sm text-slate-300">
-                  Update your project name and description.
+                <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-blue-700 dark:text-blue-300/80">Project</p>
+                <DialogTitle className="text-[18px] font-semibold tracking-tight text-slate-900 dark:text-white">Edit project</DialogTitle>
+                <DialogDescription className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+                  Update the name for this project.
                 </DialogDescription>
               </div>
             </div>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-project-name" className="text-sm font-medium text-white">
-                Project Name
+          </div>
+          <form
+            id="edit-project-form"
+            className="space-y-4 px-6 py-5"
+            onSubmit={(event) => {
+              event.preventDefault()
+              handleSaveEditedProject()
+            }}
+          >
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-project-name" className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                Project name
               </Label>
               <Input
                 id="edit-project-name"
                 value={editingProjectName}
                 onChange={(e) => setEditingProjectName(e.target.value)}
-                placeholder="Enter project name"
-                className="h-11 border-slate-600/50 bg-slate-800/50 text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                placeholder="Project name"
+                required
+                className="h-10 border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus-visible:ring-2 focus-visible:ring-blue-500/30 focus-visible:ring-offset-0 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-100 dark:placeholder:text-slate-500"
               />
-              <p className="text-xs text-slate-400">Update the name for your project</p>
             </div>
-          </div>
-          <DialogFooter className="gap-2">
-            <Button 
-              type="button" 
-              variant="outline" 
+          </form>
+          <div className="flex items-center justify-end gap-2 border-t border-slate-200 bg-slate-50 px-6 py-4 dark:border-slate-800 dark:bg-slate-900/50">
+            <Button
+              type="button"
+              variant="outline"
               onClick={() => {
                 setIsEditProjectDialogOpen(false)
                 setEditingProject(null)
                 setEditingProjectName('')
-              }} 
-              className="h-10 border-slate-600/50 text-slate-300 hover:bg-slate-800/50"
+              }}
+              className="h-9 border-slate-300 text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
             >
               Cancel
             </Button>
             <Button
-              type="button"
-              onClick={handleSaveEditedProject}
-              className="h-10 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+              type="submit"
+              form="edit-project-form"
               disabled={!editingProjectName.trim()}
+              className="h-9 bg-blue-600 text-white hover:bg-blue-500"
             >
-              Save Changes
+              Save changes
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Table Settings Dialog */}
-      <Dialog open={isTableSettingsOpen} onOpenChange={setIsTableSettingsOpen}>
-        <DialogContent className="max-w-7xl w-[95vw] max-h-[95vh] overflow-y-auto bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-slate-700/60">
-          <DialogHeader className="border-b border-slate-700/60 pb-4">
-            <DialogTitle className="flex items-center gap-2 text-2xl font-bold text-white">
-              <Settings className="w-6 h-6 text-blue-400" />
-              Table Settings & Customization
-            </DialogTitle>
-            <DialogDescription className="text-slate-300">
-              Configure table columns, add custom fields, and manage data options.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-8 pt-4">
-            {/* Column Management */}
-            <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-slate-700/60">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                  <h3 className="text-lg font-semibold text-white">Column Management</h3>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    onClick={() => {
-                      // Navigate to the enhanced table settings page
-                      window.open('/table-settings?projectId=' + currentProjectId, '_blank')
-                    }}
-                    variant="outline"
-                    className="border-blue-500/50 text-blue-300 hover:bg-blue-500/20 hover:border-blue-400/60"
-                  >
-                    <Eye className="w-4 h-4 mr-2" />
-                    Show All Columns
-                  </Button>
-                <Button
-                  onClick={() => setIsAddCustomColumnDialogOpen(true)}
-                  className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white border-0"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Custom Column
-                </Button>
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                {/* Column Summary */}
-                <div className="mb-4 p-3 bg-slate-700/50 rounded-lg border border-slate-600/50">
-                  <div className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-4">
-                      <span className="text-slate-300">
-                        <strong className="text-white">{customColumnsList.length + Object.values(coreColumnSettings).filter(s => !s.deleted).length}</strong> total columns available
-                      </span>
-                      <span className="text-slate-300">
-                        <strong className="text-green-400">{customColumnsList.filter(c => c.visible).length + Object.values(coreColumnSettings).filter(s => s.visible && !s.deleted).length}</strong> visible
-                      </span>
-                      <span className="text-slate-300">
-                        <strong className="text-amber-400">{customColumnsList.filter(c => !c.visible).length + Object.values(coreColumnSettings).filter(s => !s.visible && !s.deleted).length}</strong> hidden
-                      </span>
-                      {Object.values(coreColumnSettings).some(s => s.deleted) && (
-                        <span className="text-red-400">
-                          <strong>{Object.values(coreColumnSettings).filter(s => s.deleted).length}</strong> deleted
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-slate-400">
-                      {Object.values(coreColumnSettings).filter(s => !s.deleted).length} core columns • {customColumnsList.length} custom columns
-                    </div>
-                  </div>
-                </div>
-
-                {/* Core Columns Section */}
-                <div className="mb-4">
-                  <h4 className="text-sm font-medium text-slate-300 mb-3 flex items-center gap-2">
-                    <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                    Core Columns
-                  </h4>
-                  <div className="space-y-2">
-                    {[
-                      { name: 'testCase', label: 'Test Case', type: 'text' },
-                      { name: 'description', label: 'Description', type: 'text' },
-                      { name: 'expectedResult', label: 'Expected Result', type: 'text' },
-                      { name: 'status', label: 'Status', type: 'select' },
-                      { name: 'priority', label: 'Priority', type: 'select' },
-                      { name: 'category', label: 'Category', type: 'select' },
-                      { name: 'assignedTester', label: 'Assigned Tester', type: 'text' },
-                      { name: 'executionDate', label: 'Execution Date', type: 'date' },
-                      { name: 'actualResult', label: 'Actual Result', type: 'text' },
-                      { name: 'environment', label: 'Environment', type: 'select' },
-                      { name: 'prerequisites', label: 'Prerequisites', type: 'text' },
-                      { name: 'platform', label: 'Platform', type: 'select' },
-                      { name: 'stepsToReproduce', label: 'Steps to Reproduce', type: 'text' },
-                      { name: 'suite', label: 'Test Suite', type: 'select' },
-                      { name: 'position', label: 'Position', type: 'number' },
-                      { name: 'createdAt', label: 'Created At', type: 'date' },
-                      { name: 'updatedAt', label: 'Updated At', type: 'date' },
-                      { name: 'automationScript', label: 'Automation Script', type: 'text' },
-                      { name: 'customFields', label: 'Custom Fields', type: 'text' }
-                    ].map((column) => {
-                      const settings = coreColumnSettings[column.name] || { visible: false, label: column.label, deleted: false }
-                      
-                      // Skip deleted columns in the main list
-                      if (settings.deleted) return null
-                      
-                      return (
-                        <div key={column.name} className="flex items-center justify-between p-3 border border-slate-600/50 rounded-lg hover:bg-slate-700/50 transition-colors bg-slate-800/30">
-                          <div className="flex items-center gap-3 flex-1">
-                            <Checkbox
-                              checked={settings.visible}
-                              onCheckedChange={(checked) => {
-                                // Update core column visibility in localStorage and state
-                                const updatedSettings = {
-                                  ...coreColumnSettings,
-                                  [column.name]: { 
-                                    ...settings, 
-                                    visible: checked as boolean,
-                                    label: column.label
-                                  }
-                                }
-                                setCoreColumnSettings(updatedSettings)
-                                localStorage.setItem(`qa.coreColumns:${currentProjectId}`, JSON.stringify(updatedSettings))
-                                
-                                // Show toast notification
-                                toast({
-                                  title: checked ? 'Column Shown' : 'Column Hidden',
-                                  description: `${column.label} is now ${checked ? 'visible' : 'hidden'}.`
-                                })
-                              }}
-                            />
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2">
-                                <Label className="font-medium text-white">{settings.label}</Label>
-                                <Badge variant="outline" className="text-xs bg-slate-600/50 text-slate-300 border-slate-500/50">
-                                  {column.type}
-                                </Badge>
-                              </div>
-                              <p className="text-sm text-slate-400">
-                                {column.name} • Core column
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="text-xs border-blue-500/50 text-blue-300 bg-blue-500/20">
-                              Core
-                            </Badge>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeleteCoreColumn(column.name, column.label)}
-                              className="text-red-400 hover:text-red-300 hover:bg-red-500/20"
-                              title="Delete column permanently"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-
-                {/* Deleted Core Columns Section */}
-                {Object.values(coreColumnSettings).some(s => s.deleted) && (
-                  <div className="mb-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="text-sm font-medium text-slate-300 flex items-center gap-2">
-                        <div className="w-2 h-2 bg-red-400 rounded-full"></div>
-                        Deleted Core Columns
-                      </h4>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleRestoreAllDeletedColumns}
-                        className="border-green-500/50 text-green-400 hover:bg-green-500/20"
-                      >
-                        <RotateCcw className="w-3 h-3 mr-1" />
-                        Restore All
-                      </Button>
-                    </div>
-                    <div className="space-y-2">
-                      {[
-                        { name: 'testCase', label: 'Test Case', type: 'text' },
-                        { name: 'description', label: 'Description', type: 'text' },
-                        { name: 'expectedResult', label: 'Expected Result', type: 'text' },
-                        { name: 'status', label: 'Status', type: 'select' },
-                        { name: 'priority', label: 'Priority', type: 'select' },
-                        { name: 'category', label: 'Category', type: 'select' },
-                        { name: 'assignedTester', label: 'Assigned Tester', type: 'text' },
-                        { name: 'executionDate', label: 'Execution Date', type: 'date' },
-                        { name: 'actualResult', label: 'Actual Result', type: 'text' },
-                        { name: 'environment', label: 'Environment', type: 'select' },
-                        { name: 'prerequisites', label: 'Prerequisites', type: 'text' },
-                        { name: 'platform', label: 'Platform', type: 'select' },
-                        { name: 'stepsToReproduce', label: 'Steps to Reproduce', type: 'text' },
-                        { name: 'suite', label: 'Test Suite', type: 'select' },
-                        { name: 'position', label: 'Position', type: 'number' },
-                        { name: 'createdAt', label: 'Created At', type: 'date' },
-                        { name: 'updatedAt', label: 'Updated At', type: 'date' },
-                        { name: 'automationScript', label: 'Automation Script', type: 'text' },
-                        { name: 'customFields', label: 'Custom Fields', type: 'text' }
-                      ].map((column) => {
-                        const settings = coreColumnSettings[column.name]
-                        
-                        // Only show deleted columns
-                        if (!settings || !settings.deleted) return null
-                        
-                        return (
-                          <div key={column.name} className="flex items-center justify-between p-3 border border-red-500/50 rounded-lg bg-red-500/10 hover:bg-red-500/20 transition-colors">
-                            <div className="flex items-center gap-3 flex-1">
-                              <div className="w-4 h-4 bg-red-500/30 rounded flex items-center justify-center">
-                                <Trash2 className="w-3 h-3 text-red-400" />
-                              </div>
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2">
-                                  <Label className="font-medium text-slate-300 line-through">{settings.label}</Label>
-                                  <Badge variant="outline" className="text-xs bg-slate-600/50 text-slate-300 border-slate-500/50">
-                                    {column.type}
-                                  </Badge>
-                                </div>
-                                <p className="text-sm text-slate-400">
-                                  {column.name} • Deleted core column
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline" className="text-xs bg-red-50 text-red-700 border-red-200">
-                                Deleted
-                              </Badge>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleRestoreCoreColumn(column.name, column.label)}
-                                className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                                title="Restore column"
-                              >
-                                <RotateCcw className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Custom Columns Section */}
-                <div className="mb-4">
-                  <h4 className="text-sm font-medium text-slate-700 mb-3 flex items-center gap-2">
-                    <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                    Custom Columns
-                  </h4>
-                {customColumnsList.map((column) => (
-                  <div key={column.id} className="flex items-center justify-between p-3 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
-                    <div className="flex items-center gap-3 flex-1">
-                      <Checkbox
-                        checked={column.visible}
-                        onCheckedChange={(checked) => 
-                          handleUpdateCustomColumn(column.id, { visible: checked as boolean })
-                        }
-                      />
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <Label className="font-medium text-slate-900">{column.label}</Label>
-                          <Badge variant="outline" className="text-xs">
-                            {column.type}
-                          </Badge>
-                          {column.required && (
-                            <Badge variant="destructive" className="text-xs">
-                              Required
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-sm text-slate-600">
-                          {column.name} • {column.width} • {column.options?.length || 0} options
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700">
-                        Custom
-                      </Badge>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setEditingCustomColumn(column)
-                          setIsAddCustomColumnDialogOpen(true)
-                        }}
-                        title="Edit column"
-                      >
-                        <Settings className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDeleteCustomColumn(column.id)}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                        title="Delete column"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-                
-                  {/* Empty Custom Columns State */}
-                {customColumnsList.length === 0 && (
-                    <div className="text-center py-6 border border-dashed border-slate-300 rounded-lg">
-                      <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                        <Table className="w-4 h-4 text-purple-600" />
-                    </div>
-                      <h4 className="text-sm font-medium text-slate-900 mb-1">No Custom Columns</h4>
-                      <p className="text-xs text-slate-600 mb-3">Create custom columns to track additional data.</p>
-                    <Button
-                      onClick={() => setIsAddCustomColumnDialogOpen(true)}
-                      variant="outline"
-                        size="sm"
-                      className="border-purple-200 text-purple-700 hover:bg-purple-50"
-                    >
-                        <Plus className="w-3 h-3 mr-1" />
-                        Add Custom Column
-                    </Button>
-                  </div>
-                )}
-                </div>
-              </div>
-            </div>
-            
-            {/* Data Options */}
-            <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-slate-700/60">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                  <h3 className="text-lg font-semibold text-white">Data Options</h3>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <Label className="text-sm font-medium text-slate-300">Rows per page</Label>
-                  <Select value={rowsPerPage.toString()} onValueChange={(value) => setRowsPerPage(parseInt(value))}>
-                    <SelectTrigger className="mt-1 bg-slate-700/50 border-slate-600/50 text-white">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-slate-800 border-slate-600">
-                      <SelectItem value="10">10 rows</SelectItem>
-                      <SelectItem value="25">25 rows</SelectItem>
-                      <SelectItem value="50">50 rows</SelectItem>
-                      <SelectItem value="100">100 rows</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div>
-                  <Label className="text-sm font-medium text-slate-300">Table Density</Label>
-                  <Select defaultValue="default">
-                    <SelectTrigger className="mt-1 bg-slate-700/50 border-slate-600/50 text-white">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-slate-800 border-slate-600">
-                      <SelectItem value="default">Default</SelectItem>
-                      <SelectItem value="compact">Compact</SelectItem>
-                      <SelectItem value="spacious">Spacious</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              
-              <div className="space-y-4 mt-6">
-                <div>
-                  <Label className="text-sm font-medium text-slate-300">Auto-save Settings</Label>
-                  <div className="flex items-center space-x-2 mt-1">
-                    <Checkbox id="auto-save" defaultChecked />
-                    <Label htmlFor="auto-save" className="text-sm text-slate-300">Automatically save changes</Label>
-                  </div>
-                </div>
-                
-                <div>
-                  <Label className="text-sm font-medium text-slate-300">Show Row Numbers</Label>
-                  <div className="flex items-center space-x-2 mt-1">
-                    <Checkbox id="row-numbers" />
-                    <Label htmlFor="row-numbers" className="text-sm text-slate-300">Display row numbers</Label>
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
-
-          <DialogFooter className="bg-gradient-to-r from-slate-800/50 to-slate-900/50 p-6 rounded-xl border-t border-slate-700/60">
-            <div className="flex items-center justify-between w-full">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  // Reset all settings to default
-                  setTableColumns({
-                    id: { visible: true, width: "w-16", minWidth: "min-w-[80px]" },
-                    testCase: { visible: true, width: "w-48", minWidth: "min-w-[200px]" },
-                    description: { visible: true, width: "w-64", minWidth: "min-w-[250px]" },
-                    expectedResult: { visible: true, width: "w-56", minWidth: "min-w-[200px]" },
-                    status: { visible: true, width: "w-32", minWidth: "min-w-[120px]" },
-                    category: { visible: true, width: "w-32", minWidth: "min-w-[120px]" },
-                    platform: { visible: true, width: "w-24", minWidth: "min-w-[100px]" },
-                    suite: { visible: true, width: "w-32", minWidth: "min-w-[120px]" },
-                    date: { visible: false, width: "w-24", minWidth: "min-w-[100px]" },
-                    actions: { visible: true, width: "w-32", minWidth: "min-w-[140px]" },
-                    automationActions: { visible: true, width: "w-24", minWidth: "min-w-[100px]" },
-                    stepsToReproduce: { visible: false, width: "w-56", minWidth: "min-w-[200px]" },
-                    priority: { visible: false, width: "w-24", minWidth: "min-w-[100px]" },
-                    environment: { visible: false, width: "w-24", minWidth: "min-w-[100px]" },
-                    prerequisites: { visible: false, width: "w-48", minWidth: "min-w-[180px]" },
-                    automation: { visible: true, width: "w-24", minWidth: "min-w-[100px]" },
-                  })
-                  setRowsPerPage(25)
-                  toast({
-                    title: "Success",
-                    description: "All table settings have been reset to default",
-                  })
-                }}
-                className="text-red-400 hover:text-red-300 border-red-500/50 hover:bg-red-500/20"
-              >
-                <Settings className="w-4 h-4 mr-2" />
-                Reset All Settings
-              </Button>
-              <Button onClick={() => setIsTableSettingsOpen(false)} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white">
-                Save & Close
-              </Button>
-            </div>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Project Settings Dialog */}
-      <Dialog open={isProjectSettingsOpen} onOpenChange={setIsProjectSettingsOpen}>
-        <DialogContent className="max-w-4xl w-[90vw]">
-          <DialogHeader>
-            <DialogTitle>Project Settings</DialogTitle>
-            <DialogDescription>
-              Manage your projects and view statistics.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            {projects.map((project) => {
-              const projectTestCases = testCases.filter(tc => tc.projectId === project.id)
-              const projectStats = {
-                total: projectTestCases.length,
-                pending: projectTestCases.filter(tc => tc.status === "Not Executed").length,
-                pass: projectTestCases.filter(tc => tc.status === "Pass").length,
-                fail: projectTestCases.filter(tc => tc.status === "Fail").length,
-              }
-              
-              return (
-                <div key={project.id} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3">
-                      <h3 className="font-semibold">{project.name}</h3>
-                      {project.id === currentProjectId && (
-                        <Badge variant="secondary" className="text-xs">Active</Badge>
-                      )}
-                    </div>
-                    <div className="flex gap-4 mt-2 text-sm text-slate-600">
-                      <span>Total: {projectStats.total}</span>
-                      <span className="text-green-600">Pass: {projectStats.pass}</span>
-                      <span className="text-red-600">Fail: {projectStats.fail}</span>
-                      <span className="text-orange-600">Pending: {projectStats.pending}</span>
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    {project.id !== currentProjectId && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={async () => {
-                          await handleProjectChange(project.name)
-                          setIsProjectSettingsOpen(false)
-                        }}
-                      >
-                        Switch
-                      </Button>
-                    )}
-                    {project.name !== "Default Project" && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleRemoveProject(project.name)}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        Delete
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-          <DialogFooter>
-            <div className="flex items-center justify-between w-full">
-              <Button 
-                variant="outline" 
-                onClick={clearAllTestCases}
-                className="text-red-600 hover:text-red-700 border-red-200 hover:border-red-300"
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Clear All Test Cases
-              </Button>
-              <Button variant="outline" onClick={() => setIsProjectSettingsOpen(false)}>
-                Close
-              </Button>
-            </div>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -3367,39 +2399,32 @@ export function QAApplication() {
         onCreateTestSuite={createTestSuite}
       />
 
-      {/* Enhanced Import Dialog */}
       <EnhancedImportDialog
         isOpen={isEnhancedImportDialogOpen}
         onClose={() => setIsEnhancedImportDialogOpen(false)}
-        onImport={(importedTestCases) => {
+        onImported={({ suiteId }) => {
           setIsEnhancedImportDialogOpen(false)
-          // Add the imported test cases directly to the state
-          setTestCases(prev => [...prev, ...importedTestCases])
-          toast({
-            title: "Import Successful",
-            description: `Successfully imported ${importedTestCases.length} test cases`,
-          })
+          handleSuiteClick(suiteId)
+          setGridReloadNonce((value) => value + 1)
         }}
-        currentProject={currentProjectId}
+        projectId={currentProjectId}
         selectedSuiteId={selectedSuiteId || undefined}
         testSuites={testSuites}
         onCreateTestSuite={createTestSuite}
       />
 
-      {/* Enhanced Paste Dialog */}
       <EnhancedPasteDialog
         isOpen={isEnhancedPasteDialogOpen}
         onClose={() => setIsEnhancedPasteDialogOpen(false)}
-        onImport={(importedTestCases) => {
+        onImported={({ suiteId }) => {
           setIsEnhancedPasteDialogOpen(false)
-          handleAddMultipleTestCases(importedTestCases)
+          handleSuiteClick(suiteId)
+          setGridReloadNonce((value) => value + 1)
         }}
-        currentProject={currentProjectId}
+        projectId={currentProjectId}
         selectedSuiteId={selectedSuiteId || undefined}
-        onCustomColumnsCreated={(newColumns) => {
-          // Add new columns to the existing list
-          setCustomColumnsList(prev => [...prev, ...newColumns])
-        }}
+        testSuites={testSuites}
+        onCreateTestSuite={createTestSuite}
       />
 
              {/* Custom Column Dialog */}
@@ -3416,191 +2441,16 @@ export function QAApplication() {
          defaultColumn={editingDefaultColumn}
        />
 
-      {/* Add Link Dialog */}
-      <Dialog open={isAddLinkDialogOpen} onOpenChange={setIsAddLinkDialogOpen}>
-        <DialogContent className="max-w-2xl w-[90vw] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-slate-700/60">
-          <DialogHeader className="space-y-3">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
-                <Link className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <DialogTitle className="text-lg font-semibold text-white">Add New Link</DialogTitle>
-                <DialogDescription className="text-sm text-slate-300">
-                  Add an important link to your project resources.
-                </DialogDescription>
-              </div>
-            </div>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="link-title" className="text-sm font-medium text-white">
-                Link Title
-              </Label>
-              <Input
-                id="link-title"
-                value={newLink.title}
-                onChange={(e) => setNewLink(prev => ({ ...prev, title: e.target.value }))}
-                placeholder="Enter link title"
-                className="h-11 border-slate-600/50 bg-slate-800/50 text-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
-              />
-              <p className="text-xs text-slate-400">Give your link a descriptive name</p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="link-url" className="text-sm font-medium text-white">
-                URL
-              </Label>
-              <Input
-                id="link-url"
-                value={newLink.url}
-                onChange={(e) => setNewLink(prev => ({ ...prev, url: e.target.value }))}
-                placeholder="https://example.com"
-                className="h-11 border-slate-600/50 bg-slate-800/50 text-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
-              />
-              <p className="text-xs text-slate-400">Enter the full URL including https://</p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="link-description" className="text-sm font-medium text-white">
-                Description (Optional)
-              </Label>
-              <Textarea
-                id="link-description"
-                placeholder="Brief description of this link..."
-                className="border-slate-600/50 bg-slate-800/50 text-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
-                rows={3}
-              />
-            </div>
-          </div>
-          <DialogFooter className="gap-2">
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={() => setIsAddLinkDialogOpen(false)} 
-              className="h-10 border-slate-600/50 text-slate-300 hover:bg-slate-800/50"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              onClick={handleAddLink}
-              className="h-10 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
-            >
-              Add Link
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Add Document Dialog */}
-      <Dialog open={isAddDocumentDialogOpen} onOpenChange={setIsAddDocumentDialogOpen}>
-        <DialogContent className="max-w-2xl w-[90vw] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-slate-700/60">
-          <DialogHeader className="space-y-3">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-600 rounded-lg flex items-center justify-center">
-                <BookOpen className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <DialogTitle className="text-lg font-semibold text-white">Add New Document</DialogTitle>
-                <DialogDescription className="text-sm text-slate-300">
-                  Add a document to your project resources.
-                </DialogDescription>
-              </div>
-            </div>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="document-title" className="text-sm font-medium text-white">
-                Document Title
-              </Label>
-              <Input
-                id="document-title"
-                value={newDocument.title}
-                onChange={(e) => setNewDocument(prev => ({ ...prev, title: e.target.value }))}
-                placeholder="Enter document title"
-                className="h-11 border-slate-600/50 bg-slate-800/50 text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
-              />
-              <p className="text-xs text-slate-400">Give your document a descriptive name</p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="document-url" className="text-sm font-medium text-white">
-                Document URL
-              </Label>
-              <Input
-                id="document-url"
-                value={newDocument.url}
-                onChange={(e) => setNewDocument(prev => ({ ...prev, url: e.target.value }))}
-                placeholder="https://example.com/document.pdf"
-                className="h-11 border-slate-600/50 bg-slate-800/50 text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
-              />
-              <p className="text-xs text-slate-400">Enter the URL where the document is hosted</p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="document-type" className="text-sm font-medium text-white">
-                Document Type
-              </Label>
-              <Select value={newDocument.type} onValueChange={(value) => setNewDocument(prev => ({ ...prev, type: value }))}>
-                <SelectTrigger className="h-11 border-slate-600/50 bg-slate-800/50 text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20">
-                  <SelectValue placeholder="Select document type" />
-                </SelectTrigger>
-                <SelectContent className="bg-slate-800 border-slate-700">
-                  <SelectItem value="requirement">Requirement Document</SelectItem>
-                  <SelectItem value="specification">Specification Document</SelectItem>
-                  <SelectItem value="test-plan">Test Plan</SelectItem>
-                  <SelectItem value="report">Report</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="document-description" className="text-sm font-medium text-white">
-                Description (Optional)
-              </Label>
-              <Textarea
-                id="document-description"
-                value={newDocument.description}
-                onChange={(e) => setNewDocument(prev => ({ ...prev, description: e.target.value }))}
-                placeholder="Brief description of this document..."
-                className="border-slate-600/50 bg-slate-800/50 text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
-                rows={3}
-              />
-            </div>
-          </div>
-          <DialogFooter className="gap-2">
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={() => setIsAddDocumentDialogOpen(false)} 
-              className="h-10 border-slate-600/50 text-slate-300 hover:bg-slate-800/50"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              onClick={() => {
-                if (newDocument.title.trim() && newDocument.url.trim()) {
-                  handleAddDocument({
-                    title: newDocument.title.trim(),
-                    url: newDocument.url.trim(),
-                    type: (newDocument.type as 'requirement' | 'specification' | 'test-plan' | 'report') || 'requirement',
-                    description: newDocument.description.trim(),
-                    projectId: currentProjectId || ''
-                  })
-                  setNewDocument({ title: '', url: '', type: '', description: '' })
-                  setIsAddDocumentDialogOpen(false)
-                } else {
-                  toast({
-                    title: "Missing Information",
-                    description: "Please provide both title and URL for the document.",
-                    variant: "destructive",
-                  })
-                }
-              }}
-              className="h-10 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700"
-            >
-              Add Document
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <AddLinkDialog
+        isOpen={isAddLinkDialogOpen}
+        onClose={() => setIsAddLinkDialogOpen(false)}
+        onSubmit={handleAddImportantLink}
+      />
+      <AddDocumentDialog
+        isOpen={isAddDocumentDialogOpen}
+        onClose={() => setIsAddDocumentDialogOpen(false)}
+        onSubmit={handleAddDocument}
+      />
 
     </>
   )

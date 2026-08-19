@@ -80,26 +80,25 @@ export function SignupForm({ onSwitchToLogin, onSignupSuccess }: SignupFormProps
 
     try {
       const { error } = await signUp(email, password, name)
-      
+
       if (error) {
-        setError(error.message)
-      } else {
-        toast({
-          title: "Account created successfully! 🎉",
-          description: "You can now sign in with your email and password.",
-        })
-        // Clear form
-        setName('')
-        setEmail('')
-        setPassword('')
-        setConfirmPassword('')
-        // Call success callback if provided
-        if (onSignupSuccess) {
-          onSignupSuccess(email)
-        }
+        setError(error.message || 'Failed to create account')
+        return
       }
+
+      toast({
+        title: "Account created successfully!",
+        description: "You are now signed in. Data is stored locally in this browser.",
+      })
+
+      setName('')
+      setEmail('')
+      setPassword('')
+      setConfirmPassword('')
+      onSignupSuccess?.(email)
     } catch (err) {
-      setError('An unexpected error occurred')
+      console.error('Signup error:', err)
+      setError('An unexpected error occurred. Please try again.')
     } finally {
       setIsLoading(false)
     }

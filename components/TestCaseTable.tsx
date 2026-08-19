@@ -367,22 +367,12 @@ export function TestCaseTable({
     }
   }
 
-  const selectedProjectId = typeof window !== 'undefined' ? localStorage.getItem('selectedProjectId') : null
-  const coreSettingsRaw = typeof window !== 'undefined' ? localStorage.getItem(`qa.coreColumns:${selectedProjectId || currentProject}`) : null
-  const coreSettings = coreSettingsRaw ? (() => { try { return JSON.parse(coreSettingsRaw) } catch { return defaultCoreSettings } })() : defaultCoreSettings
-
+  // NEW DYNAMIC SYSTEM - Only system columns, no predefined columns
   type CoreCol = { key: string; label: string; width: number; type: string; visible: boolean; options?: string[] }
   const coreColumns: CoreCol[] = [
     { key: 'select', label: '', width: 50, type: 'checkbox', visible: true },
     { key: 'index', label: '#', width: 60, type: 'number', visible: true },
-    ...(Object.entries(coreSettings) as Array<[string, any]>).map(([key, cfg]) => ({
-      key,
-      label: cfg?.label || (defaultCoreSettings as any)[key]?.label || key,
-      width: twWidthToPx(cfg?.width || (defaultCoreSettings as any)[key]?.width),
-      type: key === 'status' ? 'select' : key === 'priority' ? 'select' : key === 'category' ? 'select' : 'text',
-      options: key === 'status' ? (STATUS_OPTIONS as unknown as string[]) : key === 'priority' ? (PRIORITY_OPTIONS as unknown as string[]) : key === 'category' ? (CATEGORY_OPTIONS as unknown as string[]) : undefined,
-      visible: cfg?.visible !== false
-    })).filter(col => col.visible)
+    // No more predefined columns - everything is now dynamic!
   ]
 
   
@@ -538,49 +528,29 @@ export function TestCaseTable({
   const getCellValue = (testCase: TestCase, columnKey: string): string => {
     switch (columnKey) {
       case 'index': return ''
-      case 'testCase': return testCase.testCase || ''
-      case 'description': return testCase.description || ''
-      case 'status': return testCase.status || ''
-      case 'priority': return testCase.priority || ''
-      case 'category': return testCase.category || ''
-      case 'stepsToReproduce': return testCase.stepsToReproduce || ''
-      case 'expectedResult': return testCase.expectedResult || ''
+      case 'select': return ''
+      case 'actions': return ''
       default: {
         if (columnKey.startsWith('custom:')) {
           const field = columnKey.slice('custom:'.length)
-          return String((testCase.customFields || {})[field] ?? '')
+          // NEW: Use dynamic fields from the new TestCase structure
+          return String((testCase.dynamicFields || {})[field] ?? '')
         }
         return ''
       }
     }
   }
   
-  // Validation rules per column
+  // Validation rules per column - NEW DYNAMIC SYSTEM
   const validateValue = (columnKey: string, value: string): { valid: boolean; message?: string } => {
     const trimmed = value?.toString().trim() ?? ''
-    switch (columnKey) {
-      case 'testCase':
-        if (!trimmed) return { valid: false, message: 'Test Case is required.' }
-        if (trimmed.length > 200) return { valid: false, message: 'Max 200 characters.' }
-        return { valid: true }
-      case 'description':
-        if (trimmed.length > 2000) return { valid: false, message: 'Description max 2000 characters.' }
-        return { valid: true }
-      case 'status':
-        return { valid: STATUS_OPTIONS.includes(trimmed as TestCaseStatus), message: 'Invalid status.' }
-      case 'priority':
-        return { valid: PRIORITY_OPTIONS.includes(trimmed as TestCasePriority), message: 'Invalid priority.' }
-      case 'category':
-        return { valid: CATEGORY_OPTIONS.includes(trimmed as TestCaseCategory), message: 'Invalid category.' }
-      case 'stepsToReproduce':
-        if (trimmed.length > 5000) return { valid: false, message: 'Steps max 5000 characters.' }
-        return { valid: true }
-      case 'expectedResult':
-        if (trimmed.length > 2000) return { valid: false, message: 'Expected result max 2000 characters.' }
-        return { valid: true }
-      default:
-        return { valid: true }
-    }
+    
+    // Basic validation for all dynamic fields
+    if (trimmed.length > 1000) return { valid: false, message: 'Max 1000 characters.' }
+    
+    // Custom validation based on column type could be added here
+    // For now, all fields are optional and just have length limits
+    return { valid: true }
   }
   
   const handleSaveEdit = async () => {
@@ -600,34 +570,11 @@ export function TestCaseTable({
     const updatedTestCase = { ...testCase }
     
     const columnKey = editingCell.columnKey
-    switch (columnKey) {
-      case 'testCase':
-        updatedTestCase.testCase = editingValue
-        break
-      case 'description':
-        updatedTestCase.description = editingValue
-        break
-      case 'status':
-        updatedTestCase.status = editingValue as TestCaseStatus
-        break
-      case 'priority':
-        updatedTestCase.priority = editingValue as TestCasePriority
-        break
-      case 'category':
-        updatedTestCase.category = editingValue as TestCaseCategory
-        break
-      case 'stepsToReproduce':
-        updatedTestCase.stepsToReproduce = editingValue
-        break
-      case 'expectedResult':
-        updatedTestCase.expectedResult = editingValue
-        break
-      default:
-        if (columnKey.startsWith('custom:')) {
-          const field = columnKey.slice('custom:'.length)
-          const nextCustom = { ...(updatedTestCase.customFields || {}), [field]: editingValue }
-          updatedTestCase.customFields = nextCustom
-        }
+    // NEW DYNAMIC SYSTEM - All data goes into dynamicFields
+    if (columnKey.startsWith('custom:')) {
+      const field = columnKey.slice('custom:'.length)
+      const nextDynamic = { ...(updatedTestCase.dynamicFields || {}), [field]: editingValue }
+      updatedTestCase.dynamicFields = nextDynamic
     }
     
     if (columnKey.startsWith('custom:') && onUpdateCustomField) {

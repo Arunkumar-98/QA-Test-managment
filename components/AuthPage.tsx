@@ -4,13 +4,12 @@ import { useState } from 'react'
 import { LoginForm } from './LoginForm'
 import { SignupForm } from './SignupForm'
 import { ForgotPasswordForm } from './ForgotPasswordForm'
-
+import { ThemeToggle } from './ThemeToggle'
 
 type AuthMode = 'login' | 'signup' | 'forgot-password'
 
 export function AuthPage() {
   const [authMode, setAuthMode] = useState<AuthMode>('login')
-  const [pendingEmail, setPendingEmail] = useState('')
 
   const renderAuthForm = () => {
     switch (authMode) {
@@ -25,23 +24,14 @@ export function AuthPage() {
         return (
           <SignupForm 
             onSwitchToLogin={() => setAuthMode('login')}
-            onSignupSuccess={(email) => {
-              // After successful signup, switch to login
-              setAuthMode('login')
-            }}
+            onSignupSuccess={() => setAuthMode('login')}
           />
         )
       case 'forgot-password':
         return (
           <ForgotPasswordForm 
             onSwitchToLogin={() => setAuthMode('login')}
-            onEmailSent={(email) => {
-              // For password reset, we still need email confirmation
-              setPendingEmail(email)
-              // You can add a simple success message here instead
-              alert('Password reset email sent! Please check your inbox.')
-              setAuthMode('login')
-            }}
+            onEmailSent={() => setAuthMode('login')}
           />
         )
       default:
@@ -50,7 +40,10 @@ export function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-r from-slate-900 via-blue-900 to-purple-900 flex items-center justify-center p-4">
+    <div className="relative min-h-screen bg-gradient-to-r from-slate-900 via-blue-900 to-purple-900 flex items-center justify-center p-4">
+      <div className="absolute right-4 top-4">
+        <ThemeToggle className="bg-white/10 hover:bg-white/20" />
+      </div>
       <div className="w-full max-w-md">
         {/* Logo and Brand */}
         <div className="text-center mb-8">
@@ -78,7 +71,7 @@ export function AuthPage() {
         {/* Footer */}
         <div className="mt-8 text-center">
           <p className="text-sm text-white/60">
-            Secure authentication powered by Supabase
+            Local accounts stored in this browser
           </p>
         </div>
       </div>

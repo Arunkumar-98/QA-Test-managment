@@ -10,7 +10,10 @@ const nextConfig = {
     unoptimized: true,
   },
   output: 'standalone',
-  serverExternalPackages: ['xlsx']
+  serverExternalPackages: ['xlsx'],
+  experimental: {
+    proxyClientMaxBodySize: '160mb',
+  },
 }
 
 export default nextConfig

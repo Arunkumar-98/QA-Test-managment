@@ -1,677 +1,355 @@
 "use client"
 
-import React, { useState, useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Progress } from '@/components/ui/progress'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { 
-  Upload, 
-  Download, 
-  Eye, 
-  EyeOff, 
-  Check, 
-  X, 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
   AlertTriangle,
-  Info,
-  Settings,
-  FileText,
-  Table as TableIcon,
-  FolderPlus,
-  Folder,
-  RefreshCw,
-  Zap,
-  AlertCircle,
-  CheckCircle,
-  Clock,
-  Users
+  Bug,
+  FileSpreadsheet,
+  Loader2,
+  Upload,
 } from 'lucide-react'
-import { TestCase, TestSuite, CreateTestSuiteInput } from '@/types/qa-types'
-import { ImportProcessor, ImportOptions, ImportProgress, ImportResult } from '@/lib/import-processor'
-import { DuplicateGroup, generateResolutionSuggestions } from '@/lib/duplicate-detector'
-import { ValidationError } from '@/lib/import-validator'
+import { TestSuite, CreateTestSuiteInput } from '@/types/qa-types'
+import { googleSheetsService } from '@/lib/google-sheets-service'
+import {
+  buildColumnMappings,
+  mapImportRows,
+  parseSpreadsheetFile,
+  persistImportedCases,
+  type ColumnMapping,
+  type ImportListKind,
+  type MappedImportCase,
+  type ParsedImportTable,
+} from '@/lib/case-import'
 import { toast } from '@/hooks/use-toast'
 
 interface EnhancedImportDialogProps {
   isOpen: boolean
   onClose: () => void
-  onImport: (testCases: TestCase[]) => void
-  currentProject: string
+  onImported: (result: { suiteId: string; imported: number }) => void
+  projectId: string
   selectedSuiteId?: string
   testSuites?: TestSuite[]
   onCreateTestSuite?: (suite: CreateTestSuiteInput) => Promise<TestSuite>
 }
 
-type ImportStage = 'upload' | 'processing' | 'review' | 'duplicates' | 'validation' | 'complete'
-
 export function EnhancedImportDialog({
   isOpen,
   onClose,
-  onImport,
-  currentProject,
+  onImported,
+  projectId,
   selectedSuiteId,
   testSuites = [],
-  onCreateTestSuite
+  onCreateTestSuite,
 }: EnhancedImportDialogProps) {
-  const [currentStage, setCurrentStage] = useState<ImportStage>('upload')
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [importProgress, setImportProgress] = useState<ImportProgress | null>(null)
-  const [importResult, setImportResult] = useState<ImportResult | null>(null)
-  const [duplicateResolutions, setDuplicateResolutions] = useState<Map<number, string>>(new Map())
-  const [validationFilter, setValidationFilter] = useState<'all' | 'errors' | 'warnings'>('all')
-  const [importSuiteId, setImportSuiteId] = useState<string | undefined>(selectedSuiteId)
-  const [newSuiteName, setNewSuiteName] = useState('')
-  const [suiteSelectionMode, setSuiteSelectionMode] = useState<'existing' | 'new' | 'none'>('existing')
+  const [file, setFile] = useState<File | null>(null)
+  const [table, setTable] = useState<ParsedImportTable | null>(null)
+  const [mappings, setMappings] = useState<ColumnMapping[]>([])
+  const [cases, setCases] = useState<MappedImportCase[]>([])
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const [destination, setDestination] = useState(selectedSuiteId || '')
+  const [createKind, setCreateKind] = useState<ImportListKind>('suite')
+  const [newListName, setNewListName] = useState('')
 
-  // Reset state when dialog opens/closes
+  const caseSuites = testSuites.filter((suite) => suite.kind !== 'bugs')
+  const bugLists = testSuites.filter((suite) => suite.kind === 'bugs')
+  const selectedList = testSuites.find((suite) => suite.id === destination)
+  const listKind: ImportListKind = selectedList?.kind === 'bugs' ? 'bugs' : createKind === 'bugs' && destination === '__new__' ? 'bugs' : 'suite'
+
   useEffect(() => {
-    if (isOpen) {
-      setCurrentStage('upload')
-      setSelectedFile(null)
-      setImportProgress(null)
-      setImportResult(null)
-      setDuplicateResolutions(new Map())
-      setImportSuiteId(selectedSuiteId)
-    }
+    if (!isOpen) return
+    setFile(null)
+    setTable(null)
+    setMappings([])
+    setCases([])
+    setBusy(false)
+    setError('')
+    setDestination(selectedSuiteId || '')
+    setCreateKind('suite')
+    setNewListName('')
   }, [isOpen, selectedSuiteId])
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (file) {
-      setSelectedFile(file)
-    }
-  }
+  const previewRows = useMemo(() => cases.slice(0, 5), [cases])
 
-  const handleDragOver = (event: React.DragEvent) => {
-    event.preventDefault()
+  useEffect(() => {
+    if (!table) return
+    setCases(mapImportRows(table.rows, mappings, listKind))
+  }, [listKind, mappings, table])
+
+  const loadFile = async (nextFile: File) => {
+    setFile(nextFile)
+    setError('')
+    setBusy(true)
+    try {
+      const parsed = await parseSpreadsheetFile(nextFile)
+      if (parsed.rows.length === 0) {
+        throw new Error('No data rows found in that file')
+      }
+      const columns = projectId ? await googleSheetsService.ensureDefaultColumns(projectId) : []
+      const nextMappings = buildColumnMappings(parsed.headers, columns)
+      const kind = testSuites.find((suite) => suite.id === (destination || selectedSuiteId))?.kind === 'bugs' ? 'bugs' : 'suite'
+      setTable(parsed)
+      setMappings(nextMappings)
+      setCases(mapImportRows(parsed.rows, nextMappings, kind))
+    } catch (err) {
+      setTable(null)
+      setCases([])
+      setError(err instanceof Error ? err.message : 'Could not read that file')
+    } finally {
+      setBusy(false)
+    }
   }
 
   const handleDrop = (event: React.DragEvent) => {
     event.preventDefault()
-    const file = event.dataTransfer.files[0]
-    if (file && (file.name.endsWith('.csv') || file.name.endsWith('.xlsx') || file.name.endsWith('.xls') || file.name.endsWith('.json') || file.name.endsWith('.tsv') || file.name.endsWith('.txt'))) {
-      setSelectedFile(file)
-    } else {
-      toast({
-        title: "Invalid File Type",
-        description: "Please select a CSV, TSV, JSON, or Excel file.",
-        variant: "destructive"
-      })
-    }
+    const nextFile = event.dataTransfer.files[0]
+    if (nextFile) void loadFile(nextFile)
   }
 
-  const processImport = async () => {
-    if (!selectedFile) return
-
-    setCurrentStage('processing')
-    
-    const options: ImportOptions = {
-      file: selectedFile,
-      projectId: currentProject,
-      suiteId: suiteSelectionMode === 'existing' ? importSuiteId : undefined,
-      duplicateDetection: {
-        fields: ['testCase'], // Only compare test case names
-        similarity: 0.95, // Much higher threshold for exact matches
-        caseSensitive: false,
-        trimWhitespace: true
-      },
-      validation: {
-        autoFix: true,
-        strictMode: false // Keep relaxed validation
-      },
-      processing: {
-        batchSize: 100,
-        maxConcurrency: 3
-      }
+  const handleImport = async () => {
+    if (!projectId) {
+      toast({ title: 'No project selected', variant: 'destructive' })
+      return
     }
+    if (cases.length === 0) return
 
-    const processor = new ImportProcessor(options, (progress) => {
-      setImportProgress(progress)
-    })
-
+    setBusy(true)
+    setError('')
     try {
-      const result = await processor.processImport()
-      setImportResult(result)
-      
-      if (result.duplicates && result.duplicates.duplicateGroups.length > 0) {
-        setCurrentStage('duplicates')
-      } else if (result.validation && (result.validation.errors.length > 0 || result.validation.warnings.length > 0)) {
-        setCurrentStage('validation')
-      } else {
-        setCurrentStage('review')
-      }
-    } catch (error) {
-      toast({
-        title: "Import Failed",
-        description: error instanceof Error ? error.message : "Unknown error occurred",
-        variant: "destructive"
-      })
-      setCurrentStage('upload')
-    }
-  }
+      let suiteId = destination
+      let kind: ImportListKind = listKind
 
-  const handleDuplicateResolution = (groupIndex: number, strategy: string) => {
-    setDuplicateResolutions(prev => new Map(prev.set(groupIndex, strategy)))
-  }
-
-  const proceedFromDuplicates = () => {
-    if (importResult?.validation && (importResult.validation.errors.length > 0 || importResult.validation.warnings.length > 0)) {
-      setCurrentStage('validation')
-    } else {
-      setCurrentStage('review')
-    }
-  }
-
-  const proceedFromValidation = () => {
-    setCurrentStage('review')
-  }
-
-  const finalizeImport = async () => {
-    if (!importResult) return
-
-    // Create new test suite if needed
-    if (suiteSelectionMode === 'new' && newSuiteName.trim() && onCreateTestSuite) {
-      try {
-        const newSuite = await onCreateTestSuite({
-          name: newSuiteName.trim(),
-          description: `Created during import of ${selectedFile?.name}`,
-          projectId: currentProject,
+      if (destination === '__new__') {
+        const name = newListName.trim()
+        if (!name || !onCreateTestSuite) {
+          throw new Error('Enter a name for the new list')
+        }
+        const created = await onCreateTestSuite({
+          name,
+          description: `Created while importing ${file?.name || 'cases'}`,
+          projectId,
           testCaseIds: [],
           tags: [],
           owner: '',
-          isActive: true
+          isActive: true,
+          kind: createKind,
         })
-        
-        // Update imported test cases with new suite ID
-        importResult.imported.forEach(testCase => {
-          testCase.suiteId = newSuite.id
-        })
-      } catch (error) {
-        toast({
-          title: "Failed to Create Test Suite",
-          description: "Import will proceed without test suite assignment",
-          variant: "destructive"
-        })
+        suiteId = created.id
+        kind = created.kind === 'bugs' ? 'bugs' : 'suite'
       }
-    }
 
-    onImport(importResult.imported)
-    setCurrentStage('complete')
-  }
+      if (!suiteId) {
+        throw new Error('Pick a test suite or bug list first')
+      }
 
-  const renderUploadStage = () => (
-    <div className="space-y-6">
-      <div className="text-center">
-        <h3 className="text-lg font-semibold text-slate-900 mb-2">Import Test Cases</h3>
-        <p className="text-slate-600">Upload a CSV or Excel file containing your test cases</p>
-      </div>
+      const mapped = mapImportRows(table?.rows || [], mappings, kind)
+      const result = await persistImportedCases({
+        projectId,
+        suiteId,
+        listKind: kind,
+        cases: mapped,
+        extraColumns: mappings.filter((mapping) => mapping.isNew),
+      })
 
-      <div 
-        className="border-2 border-dashed border-slate-300 rounded-lg p-8 text-center hover:border-slate-400 transition-colors"
-        onDragOver={handleDragOver}
-        onDrop={handleDrop}
-      >
-        <Upload className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-        <div className="space-y-2">
-          <p className="text-lg font-medium text-slate-700">
-            {selectedFile ? selectedFile.name : 'Drop your file here, or click to browse'}
-          </p>
-          <p className="text-sm text-slate-500">Supports CSV, TSV, JSON, Excel (.xlsx, .xls) files up to 10MB</p>
-        </div>
-        
-        <input
-          type="file"
-          accept=".csv,.xlsx,.xls,.json,.tsv,.txt"
-          onChange={handleFileSelect}
-          className="hidden"
-          id="file-upload"
-        />
-        <label htmlFor="file-upload">
-          <Button variant="outline" className="mt-4" asChild>
-            <span>Browse Files</span>
-          </Button>
-        </label>
-      </div>
-
-      {selectedFile && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">File Details</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="font-medium text-slate-700">Name:</span>
-                <span className="ml-2 text-slate-600">{selectedFile.name}</span>
-              </div>
-              <div>
-                <span className="font-medium text-slate-700">Size:</span>
-                <span className="ml-2 text-slate-600">{Math.round(selectedFile.size / 1024)} KB</span>
-              </div>
-              <div>
-                <span className="font-medium text-slate-700">Type:</span>
-                <span className="ml-2 text-slate-600">{selectedFile.type || 'Unknown'}</span>
-              </div>
-              <div>
-                <span className="font-medium text-slate-700">Last Modified:</span>
-                <span className="ml-2 text-slate-600">{new Date(selectedFile.lastModified).toLocaleDateString()}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      <div className="space-y-4">
-        <Label className="text-base font-medium text-slate-900">Test Suite Assignment</Label>
-        
-        <div className="space-y-3">
-          <div className="flex items-center space-x-2">
-            <Checkbox 
-              id="existing-suite"
-              checked={suiteSelectionMode === 'existing'}
-              onCheckedChange={(checked) => setSuiteSelectionMode(checked ? 'existing' : 'none')}
-            />
-            <Label htmlFor="existing-suite" className="text-sm">Assign to existing test suite</Label>
-          </div>
-          
-          {suiteSelectionMode === 'existing' && (
-            <Select value={importSuiteId} onValueChange={setImportSuiteId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select test suite" />
-              </SelectTrigger>
-              <SelectContent>
-                {testSuites.map((suite) => (
-                  <SelectItem key={suite.id} value={suite.id}>
-                    {suite.name} ({suite.totalTests || 0} tests)
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-          
-          <div className="flex items-center space-x-2">
-            <Checkbox 
-              id="new-suite"
-              checked={suiteSelectionMode === 'new'}
-              onCheckedChange={(checked) => setSuiteSelectionMode(checked ? 'new' : 'none')}
-            />
-            <Label htmlFor="new-suite" className="text-sm">Create new test suite</Label>
-          </div>
-          
-          {suiteSelectionMode === 'new' && (
-            <Input
-              placeholder="Enter test suite name"
-              value={newSuiteName}
-              onChange={(e) => setNewSuiteName(e.target.value)}
-            />
-          )}
-          
-          <div className="flex items-center space-x-2">
-            <Checkbox 
-              id="no-suite"
-              checked={suiteSelectionMode === 'none'}
-              onCheckedChange={(checked) => setSuiteSelectionMode(checked ? 'none' : 'existing')}
-            />
-            <Label htmlFor="no-suite" className="text-sm">Don't assign to any test suite</Label>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-
-  const renderProcessingStage = () => (
-    <div className="space-y-6 text-center">
-      <div className="space-y-2">
-        <h3 className="text-lg font-semibold text-slate-900">Processing Import</h3>
-        <p className="text-slate-600">Please wait while we process your file...</p>
-      </div>
-
-      {importProgress && (
-        <div className="space-y-4">
-          <Progress value={importProgress.progress} className="w-full" />
-          
-          <div className="space-y-2">
-            <p className="text-sm font-medium text-slate-700 capitalize">
-              {importProgress.stage.replace('_', ' ')}: {importProgress.message}
-            </p>
-            
-            {importProgress.current > 0 && importProgress.total > 0 && (
-              <p className="text-xs text-slate-500">
-                {importProgress.current} of {importProgress.total} items
-              </p>
-            )}
-          </div>
-
-          <div className="flex justify-center">
-            <RefreshCw className="w-6 h-6 text-blue-500 animate-spin" />
-          </div>
-        </div>
-      )}
-    </div>
-  )
-
-  const renderDuplicatesStage = () => {
-    if (!importResult?.duplicates) return null
-
-    return (
-      <div className="space-y-6">
-        <div className="text-center">
-          <h3 className="text-lg font-semibold text-slate-900 mb-2">Duplicate Detection</h3>
-          <p className="text-slate-600">
-            We found {importResult.duplicates.totalDuplicates} potential duplicates. 
-            Please choose how to handle them.
-          </p>
-        </div>
-
-        <div className="space-y-4">
-          {importResult.duplicates.duplicateGroups.map((group, index) => (
-            <Card key={index}>
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 text-amber-500" />
-                  Duplicate Group {index + 1}
-                  <Badge variant={group.matchType === 'exact' ? 'destructive' : 'secondary'}>
-                    {group.matchType === 'exact' ? 'Exact Match' : `${Math.round(group.similarity * 100)}% Similar`}
-                  </Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="font-medium text-slate-900 mb-2">Original:</h4>
-                    <div className="bg-slate-50 p-3 rounded border text-sm">
-                      <strong>{group.original.testCase}</strong>
-                      {group.original.description && (
-                        <p className="text-slate-600 mt-1">{group.original.description}</p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="font-medium text-slate-900 mb-2">
-                      Duplicates ({group.duplicates.length}):
-                    </h4>
-                    <div className="space-y-2">
-                      {group.duplicates.map((dup, dupIndex) => (
-                        <div key={dupIndex} className="bg-red-50 p-3 rounded border border-red-200 text-sm">
-                          <strong>{dup.testCase}</strong>
-                          {dup.description && (
-                            <p className="text-slate-600 mt-1">{dup.description}</p>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label className="text-sm font-medium text-slate-900">Resolution Strategy:</Label>
-                    <Select 
-                      value={duplicateResolutions.get(index) || 'keep_first'}
-                      onValueChange={(value) => handleDuplicateResolution(index, value)}
-                    >
-                      <SelectTrigger className="mt-2">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="keep_first">Keep first occurrence</SelectItem>
-                        <SelectItem value="keep_last">Keep last occurrence</SelectItem>
-                        <SelectItem value="merge_fields">Merge all fields</SelectItem>
-                        <SelectItem value="skip_all">Skip all duplicates</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-    )
-  }
-
-  const renderValidationStage = () => {
-    if (!importResult?.validation) return null
-
-    const { errors, warnings, info } = importResult.validation
-    const allIssues = [...errors, ...warnings, ...info]
-    
-    const filteredIssues = allIssues.filter(issue => {
-      if (validationFilter === 'errors') return issue.severity === 'error'
-      if (validationFilter === 'warnings') return issue.severity === 'warning'
-      return true
-    })
-
-    return (
-      <div className="space-y-6">
-        <div className="text-center">
-          <h3 className="text-lg font-semibold text-slate-900 mb-2">Validation Results</h3>
-          <p className="text-slate-600">
-            Review the validation results before proceeding with the import
-          </p>
-        </div>
-
-        <div className="flex items-center gap-4">
-          <Select value={validationFilter} onValueChange={(value: any) => setValidationFilter(value)}>
-            <SelectTrigger className="w-48">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Issues ({allIssues.length})</SelectItem>
-              <SelectItem value="errors">Errors Only ({errors.length})</SelectItem>
-              <SelectItem value="warnings">Warnings Only ({warnings.length})</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <div className="flex items-center gap-4 text-sm">
-            <div className="flex items-center gap-1">
-              <AlertCircle className="w-4 h-4 text-red-500" />
-              <span>{errors.length} Errors</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <AlertTriangle className="w-4 h-4 text-amber-500" />
-              <span>{warnings.length} Warnings</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="max-h-96 overflow-y-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Row</TableHead>
-                <TableHead>Field</TableHead>
-                <TableHead>Issue</TableHead>
-                <TableHead>Severity</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredIssues.map((issue, index) => (
-                <TableRow key={index}>
-                  <TableCell>{issue.row}</TableCell>
-                  <TableCell className="font-mono text-sm">{issue.field}</TableCell>
-                  <TableCell>{issue.message}</TableCell>
-                  <TableCell>
-                    <Badge variant={
-                      issue.severity === 'error' ? 'destructive' : 
-                      issue.severity === 'warning' ? 'secondary' : 'outline'
-                    }>
-                      {issue.severity}
-                    </Badge>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      </div>
-    )
-  }
-
-  const renderReviewStage = () => {
-    if (!importResult) return null
-
-    return (
-      <div className="space-y-6">
-        <div className="text-center">
-          <h3 className="text-lg font-semibold text-slate-900 mb-2">Import Summary</h3>
-          <p className="text-slate-600">Review the import results before finalizing</p>
-        </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-green-600">{importResult.summary.successfulImports}</div>
-              <div className="text-sm text-slate-600">Test Cases</div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-amber-600">{importResult.summary.skippedRows}</div>
-              <div className="text-sm text-slate-600">Skipped</div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-red-600">{importResult.summary.errorCount}</div>
-              <div className="text-sm text-slate-600">Errors</div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-blue-600">{Math.round(importResult.summary.processingTime / 1000)}s</div>
-              <div className="text-sm text-slate-600">Processing Time</div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {importResult.warnings.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-amber-500" />
-                Warnings & Fixes Applied
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-1 max-h-32 overflow-y-auto">
-                {importResult.warnings.map((warning, index) => (
-                  <div key={index} className="text-sm text-slate-600">
-                    • {warning}
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </div>
-    )
-  }
-
-  const renderCompleteStage = () => (
-    <div className="space-y-6 text-center">
-      <div className="space-y-2">
-        <CheckCircle className="w-16 h-16 text-green-500 mx-auto" />
-        <h3 className="text-lg font-semibold text-slate-900">Import Complete!</h3>
-        <p className="text-slate-600">
-          Successfully imported {importResult?.summary.successfulImports} test cases
-        </p>
-      </div>
-    </div>
-  )
-
-  const getStageActions = () => {
-    switch (currentStage) {
-      case 'upload':
-        return (
-          <Button 
-            onClick={processImport} 
-            disabled={!selectedFile}
-            className="bg-blue-600 hover:bg-blue-700"
-          >
-            Start Import
-          </Button>
-        )
-      
-      case 'processing':
-        return null
-      
-      case 'duplicates':
-        return (
-          <Button onClick={proceedFromDuplicates}>
-            Continue with Resolutions
-          </Button>
-        )
-      
-      case 'validation':
-        return (
-          <Button onClick={proceedFromValidation}>
-            Continue Despite Issues
-          </Button>
-        )
-      
-      case 'review':
-        return (
-          <Button 
-            onClick={finalizeImport}
-            className="bg-green-600 hover:bg-green-700"
-          >
-            Finalize Import
-          </Button>
-        )
-      
-      case 'complete':
-        return (
-          <Button onClick={onClose}>
-            Close
-          </Button>
-        )
-      
-      default:
-        return null
+      toast({
+        title: 'Import complete',
+        description: `${result.imported} cases added${result.extraColumns.length ? ` · ${result.extraColumns.length} extra columns` : ''}`,
+      })
+      onImported({ suiteId, imported: result.imported })
+      onClose()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Import failed')
+    } finally {
+      setBusy(false)
     }
   }
+
+  const canImport = Boolean(projectId && cases.length && (destination === '__new__' ? newListName.trim() : destination))
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] overflow-y-auto bg-white border border-slate-200 shadow-2xl">
-        <DialogHeader>
-          <DialogTitle className="text-slate-900">Enhanced Import</DialogTitle>
-          <DialogDescription className="text-slate-600">
-            Import test cases with advanced validation and duplicate detection
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-6">
-          {currentStage === 'upload' && renderUploadStage()}
-          {currentStage === 'processing' && renderProcessingStage()}
-          {currentStage === 'duplicates' && renderDuplicatesStage()}
-          {currentStage === 'validation' && renderValidationStage()}
-          {currentStage === 'review' && renderReviewStage()}
-          {currentStage === 'complete' && renderCompleteStage()}
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose() }}>
+      <DialogContent
+        variant="dark"
+        className="w-[min(92vw,640px)] max-w-[640px] max-h-[90vh] gap-0 overflow-hidden border border-slate-200 bg-white p-0 shadow-[0_24px_80px_rgba(15,23,42,0.18)] dark:border-slate-700/80 dark:bg-slate-950 dark:shadow-[0_24px_80px_rgba(0,0,0,0.55)]"
+      >
+        <div className="relative overflow-hidden border-b border-slate-200 bg-gradient-to-br from-emerald-50 via-white to-white px-6 pb-5 pt-6 dark:border-slate-800 dark:from-emerald-500/15 dark:via-slate-950 dark:to-slate-950">
+          <div className="pointer-events-none absolute -right-8 -top-10 h-32 w-32 rounded-full bg-emerald-500/20 blur-3xl" />
+          <div className="relative flex items-start gap-3 pr-8">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-emerald-300 bg-emerald-100 text-emerald-700 shadow-inner dark:border-emerald-400/30 dark:bg-emerald-500/20 dark:text-emerald-200">
+              <Upload className="h-5 w-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-emerald-700 dark:text-emerald-300/80">Cases</p>
+              <DialogTitle className="text-[18px] font-semibold tracking-tight text-slate-900 dark:text-white">Import cases</DialogTitle>
+              <DialogDescription className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+                Map spreadsheet columns to Title, Steps, Status, and the rest of the current grid.
+              </DialogDescription>
+            </div>
+          </div>
         </div>
 
-        <DialogFooter>
-          <div className="flex justify-between w-full">
-            <Button 
-              variant="outline" 
-              onClick={onClose}
-              disabled={currentStage === 'processing'}
-            >
-              Cancel
+        <div className="space-y-4 overflow-y-auto px-6 py-5">
+          <div
+            className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-5 text-center dark:border-slate-600/70 dark:bg-slate-900/50"
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={handleDrop}
+          >
+            <p className="text-sm font-medium text-slate-900 dark:text-white">
+              {file ? file.name : 'Drop a CSV or Excel file, or browse'}
+            </p>
+            <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">CSV, TSV, XLSX, XLS, or JSON</p>
+            <input
+              id="case-import-file"
+              type="file"
+              accept=".csv,.tsv,.xlsx,.xls,.json,.txt"
+              className="hidden"
+              onChange={(event) => {
+                const nextFile = event.target.files?.[0]
+                if (nextFile) void loadFile(nextFile)
+              }}
+            />
+            <Button asChild variant="outline" className="mt-3 h-9 border-slate-300 bg-white text-slate-700 hover:bg-slate-100 dark:border-slate-600/60 dark:bg-slate-800/60 dark:text-slate-200 dark:hover:bg-slate-800">
+              <label htmlFor="case-import-file">Browse files</label>
             </Button>
-            {getStageActions()}
           </div>
-        </DialogFooter>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium text-slate-700 dark:text-slate-300">Import into</Label>
+            <Select value={destination} onValueChange={setDestination}>
+              <SelectTrigger className="h-10 border-slate-300 bg-white text-slate-900 dark:border-slate-600/50 dark:bg-slate-800/50 dark:text-white">
+                <SelectValue placeholder="Choose a test suite or bug list" />
+              </SelectTrigger>
+              <SelectContent className="border-slate-200 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+                {caseSuites.length > 0 && (
+                  <>
+                    {caseSuites.map((suite) => (
+                      <SelectItem key={suite.id} value={suite.id} className="text-slate-100 focus:bg-slate-800">
+                        <span className="inline-flex items-center gap-2">
+                          <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-300" />
+                          {suite.name}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </>
+                )}
+                {bugLists.map((suite) => (
+                  <SelectItem key={suite.id} value={suite.id} className="text-slate-100 focus:bg-slate-800">
+                    <span className="inline-flex items-center gap-2">
+                      <Bug className="h-3.5 w-3.5 text-rose-300" />
+                      {suite.name}
+                    </span>
+                  </SelectItem>
+                ))}
+                <SelectItem value="__new__" className="text-slate-100 focus:bg-slate-800">
+                  Create new list…
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {destination === '__new__' && (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-slate-700 dark:text-slate-300">List type</Label>
+                <Select value={createKind} onValueChange={(value) => setCreateKind(value as ImportListKind)}>
+                  <SelectTrigger className="h-10 border-slate-300 bg-white text-slate-900 dark:border-slate-600/50 dark:bg-slate-800/50 dark:text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="border-slate-200 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+                    <SelectItem value="suite">Test suite</SelectItem>
+                    <SelectItem value="bugs">Bug list</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-slate-700 dark:text-slate-300">Name</Label>
+                <Input
+                  value={newListName}
+                  onChange={(event) => setNewListName(event.target.value)}
+                  placeholder={createKind === 'bugs' ? 'Login bugs' : 'Regression suite'}
+                  className="h-10 border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 dark:border-slate-600/50 dark:bg-slate-800/50 dark:text-white"
+                />
+              </div>
+            </div>
+          )}
+
+          {cases.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400">
+                <span>{cases.length} rows · {mappings.length} columns mapped</span>
+                {mappings.some((mapping) => mapping.isNew) && (
+                  <span className="text-sky-700 dark:text-sky-300">{mappings.filter((mapping) => mapping.isNew).length} extra columns</span>
+                )}
+              </div>
+              <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-100 text-slate-600 dark:bg-slate-900 dark:text-slate-400">
+                    <tr>
+                      <th className="px-3 py-2 font-medium">Title</th>
+                      <th className="px-3 py-2 font-medium">Status</th>
+                      <th className="px-3 py-2 font-medium">Priority</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {previewRows.map((row, index) => (
+                      <tr key={index} className="border-t border-slate-200 text-slate-800 dark:border-slate-800 dark:text-slate-200">
+                        <td className="max-w-[280px] truncate px-3 py-2">{row.dynamicFields.title || 'Untitled'}</td>
+                        <td className="px-3 py-2">{row.dynamicFields.status}</td>
+                        <td className="px-3 py-2">{row.dynamicFields.priority}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {cases.length > 5 && (
+                <p className="text-xs text-slate-500">and {cases.length - 5} more rows</p>
+              )}
+            </div>
+          )}
+
+          {error && (
+            <div className="flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              {error}
+            </div>
+          )}
+        </div>
+
+        <div className="flex justify-end gap-2 border-t border-slate-200 bg-slate-50 px-6 py-4 dark:border-slate-800 dark:bg-transparent">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onClose}
+            className="h-10 border-slate-300 text-slate-700 hover:bg-slate-100 dark:border-slate-600/50 dark:text-slate-300 dark:hover:bg-slate-800/50"
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            onClick={handleImport}
+            disabled={!canImport || busy}
+            className="h-10 bg-emerald-600 text-white hover:bg-emerald-500"
+          >
+            {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            Import {cases.length || ''} cases
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   )

@@ -19,9 +19,16 @@ yarn-error.log*
 # env files
 .env*
 
+# local share snapshots
+/data
+
+# vercel
+
 # vercel
 .vercel
 
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+# local secrets (do not commit)
+cluadeflaretokens.txt

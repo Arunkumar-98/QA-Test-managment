@@ -14,51 +14,21 @@ export const useTestCases = (currentProjectId: string) => {
   const [loading, setLoading] = useState(false)
   const [deleteLoading, setDeleteLoading] = useState(false)
 
-  // Load test cases from Supabase on mount and when project changes
-  useEffect(() => {
-    const loadTestCases = async () => {
-      console.log('🔍 Loading test cases for projectId:', currentProjectId)
-      
-      if (!currentProjectId) {
-        console.log('⚠️ No currentProjectId provided, skipping test case load')
-        return
-      }
-      
-      const loadingId = loadingStateManager.startLoading(
-        LOADING_TYPES.LOAD_TEST_CASES,
-        { projectId: currentProjectId, component: 'useTestCases' },
-        'Loading test cases...'
-      )
-      
-      setLoading(true)
-      try {
-        console.log('📡 Calling testCaseService.getAll with projectId:', currentProjectId)
-        const data = await testCaseService.getAll(currentProjectId)
-        console.log('✅ Test cases loaded successfully:', data.length, 'cases')
-        setTestCases(data)
-        loadingStateManager.completeLoading(loadingId, `Loaded ${data.length} test cases`)
-      } catch (error) {
-        console.error('❌ Error loading test cases:', error)
-        const appError = createSupabaseError(error, {
-          projectId: currentProjectId,
-          component: 'useTestCases',
-          action: 'loadTestCases'
-        })
-        
-        toast({
-          title: appError.message,
-          description: appError.userMessage,
-          variant: "destructive",
-        })
-        
-        loadingStateManager.completeLoadingWithError(loadingId, error, appError.userMessage)
-      } finally {
-        setLoading(false)
-      }
+  const reloadTestCases = useCallback(async () => {
+    if (!currentProjectId) return
+    try {
+      await testCaseService.deleteUnassigned(currentProjectId)
+      const data = await testCaseService.getAll(currentProjectId)
+      setTestCases(data)
+    } catch (error) {
+      console.error('Error reloading test cases:', error)
     }
-
-    loadTestCases()
   }, [currentProjectId])
+
+  // Load test cases on mount and when project changes
+  useEffect(() => {
+    reloadTestCases()
+  }, [reloadTestCases])
 
   const addTestCase = useCallback(async (testCase: Partial<TestCase> & { testCase: string; description: string; status: TestCase["status"] }) => {
     const newTestCase: CreateTestCaseInput = {
@@ -335,6 +305,7 @@ export const useTestCases = (currentProjectId: string) => {
     toggleTestCaseSelection,
     toggleSelectAll,
     clearAllTestCases,
-    setTestCases: setTestCasesData
+    setTestCases: setTestCasesData,
+    reloadTestCases,
   }
 } 

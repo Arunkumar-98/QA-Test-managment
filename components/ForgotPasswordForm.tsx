@@ -9,7 +9,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2, Mail, ArrowLeft, CheckCircle } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
-import { supabase } from '@/lib/supabase'
 
 interface ForgotPasswordFormProps {
   onSwitchToLogin: () => void
@@ -21,7 +20,7 @@ export function ForgotPasswordForm({ onSwitchToLogin, onEmailSent }: ForgotPassw
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
-  
+  const { resetPassword } = useAuth()
   const { toast } = useToast()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -36,18 +35,16 @@ export function ForgotPasswordForm({ onSwitchToLogin, onEmailSent }: ForgotPassw
     }
 
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      })
-      
+      const { error } = await resetPassword(email)
+
       if (error) {
         setError(error.message)
       } else {
         setSuccess(true)
         onEmailSent(email)
         toast({
-          title: "Reset email sent!",
-          description: "Please check your email for password reset instructions.",
+          title: 'Reset email sent',
+          description: 'Check your inbox for a link to choose a new password.',
         })
       }
     } catch (err) {
@@ -68,32 +65,16 @@ export function ForgotPasswordForm({ onSwitchToLogin, onEmailSent }: ForgotPassw
           </div>
           <CardTitle className="text-2xl font-bold text-center text-white">Check your email</CardTitle>
           <CardDescription className="text-center text-white/80">
-            We've sent password reset instructions to {email}
+            We sent a password reset link if that account exists.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            <div className="bg-blue-500/20 border border-blue-400/30 rounded-lg p-4">
-              <p className="text-sm text-blue-200">
-                Didn't receive the email? Check your spam folder or try again.
-              </p>
-            </div>
-            
-            <Button
-              onClick={handleSubmit}
-              className="w-full h-11 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-medium shadow-lg"
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Sending...
-                </>
-              ) : (
-                'Resend email'
-              )}
-            </Button>
-          </div>
+          <Button
+            onClick={onSwitchToLogin}
+            className="w-full h-11 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-medium shadow-lg"
+          >
+            Back to sign in
+          </Button>
         </CardContent>
       </Card>
     )
@@ -109,7 +90,7 @@ export function ForgotPasswordForm({ onSwitchToLogin, onEmailSent }: ForgotPassw
         </div>
         <CardTitle className="text-2xl font-bold text-center text-white">Reset password</CardTitle>
         <CardDescription className="text-center text-white/80">
-          Enter your email address and we'll send you a link to reset your password
+          Enter your email and we will send a reset link
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -119,7 +100,7 @@ export function ForgotPasswordForm({ onSwitchToLogin, onEmailSent }: ForgotPassw
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
-          
+
           <div className="space-y-2">
             <Label htmlFor="email" className="text-sm font-medium text-white/90">
               Email address
@@ -167,4 +148,4 @@ export function ForgotPasswordForm({ onSwitchToLogin, onEmailSent }: ForgotPassw
       </CardContent>
     </Card>
   )
-} 
+}
