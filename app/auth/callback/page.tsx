@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { Loader2 } from 'lucide-react'
+import type { EmailOtpType } from '@supabase/supabase-js'
 
 function firstParam(search: URLSearchParams, hash: URLSearchParams, key: string) {
   return search.get(key) || hash.get(key)
@@ -21,31 +22,49 @@ export default function AuthCallbackPage() {
       const errorDescription = firstParam(url.searchParams, hash, 'error_description')
       const code = firstParam(url.searchParams, hash, 'code')
       const tokenHash = firstParam(url.searchParams, hash, 'token_hash')
-      const type = firstParam(url.searchParams, hash, 'type')
+      const token = firstParam(url.searchParams, hash, 'token')
+      const type = (firstParam(url.searchParams, hash, 'type') || 'signup') as EmailOtpType
       const next = firstParam(url.searchParams, hash, 'next')
+      const accessToken = hash.get('access_token')
+      const refreshToken = hash.get('refresh_token')
 
       if (error) {
         setMessage(errorDescription || error)
         return
       }
 
-      if (code) {
-        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
-        if (exchangeError) {
-          setMessage(exchangeError.message)
+      if (accessToken && refreshToken) {
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        })
+        if (sessionError) {
+          setMessage(sessionError.message)
           return
         }
-      } else if (tokenHash && type) {
+      } else if (tokenHash || token) {
         const { error: verifyError } = await supabase.auth.verifyOtp({
-          token_hash: tokenHash,
-          type: type as 'signup' | 'email' | 'recovery' | 'invite' | 'email_change',
+          token_hash: tokenHash || token || '',
+          type,
         })
         if (verifyError) {
           setMessage(verifyError.message)
           return
         }
+      } else if (code) {
+        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
+        if (exchangeError) {
+          setMessage(
+            'Open Confirm email address in the same browser where you signed up, or go back and request a new confirmation email after this update.'
+          )
+          return
+        }
       } else {
-        await supabase.auth.getSession()
+        const { data } = await supabase.auth.getSession()
+        if (!data.session) {
+          setMessage('This confirmation link is missing its sign-in details. Request a new email and click Confirm email address.')
+          return
+        }
       }
 
       const isRecovery = next === 'reset' || type === 'recovery'
@@ -53,6 +72,7 @@ export default function AuthCallbackPage() {
         sessionStorage.setItem('qa-password-recovery', '1')
       }
 
+      window.history.replaceState({}, '', '/auth/callback')
       router.replace('/')
     }
 
