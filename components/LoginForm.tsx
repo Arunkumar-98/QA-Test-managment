@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2, Mail, Lock, Eye, EyeOff } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { friendlyAuthError } from '@/lib/auth-errors'
 
 interface LoginFormProps {
   onSwitchToSignup: () => void
@@ -42,7 +43,7 @@ export function LoginForm({ onSwitchToSignup, onSwitchToForgotPassword, onNeedVe
       
       if (error) {
         const message = error.message || 'Could not sign in'
-        setError(message)
+        setError(friendlyAuthError(message))
         if (needsVerification || /confirm|not confirmed|verif/i.test(message)) {
           const pending = email.trim().toLowerCase()
           sessionStorage.setItem('pendingEmailConfirmation', pending)

@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2, Mail, ArrowLeft, ShieldCheck } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { friendlyAuthError } from '@/lib/auth-errors'
 
 export function VerifyEmailForm({
   email,
@@ -37,7 +38,7 @@ export function VerifyEmailForm({
     try {
       const { error } = await verifyEmailCode(email, token)
       if (error) {
-        setError(error.message || 'That code is invalid or expired. Use the confirmation link in the email.')
+        setError(friendlyAuthError(error.message) || 'That code is invalid or expired. Use the confirmation link in the email.')
         return
       }
       sessionStorage.removeItem('pendingEmailConfirmation')
@@ -58,7 +59,7 @@ export function VerifyEmailForm({
     try {
       const { error } = await resendConfirmation(email)
       if (error) {
-        setError(error.message)
+        setError(friendlyAuthError(error.message))
         return
       }
       toast({
@@ -94,7 +95,7 @@ export function VerifyEmailForm({
           )}
 
           <p className="text-sm text-white/70 text-center">
-            After you click the link, this page will sign you in. Check spam if you do not see the email.
+            After you click the link, you can sign in. Check spam if you do not see the email.
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-3">

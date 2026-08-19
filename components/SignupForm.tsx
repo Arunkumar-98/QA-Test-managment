@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2, Mail, Lock, Eye, EyeOff, User } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { friendlyAuthError } from '@/lib/auth-errors'
 
 interface SignupFormProps {
   onSwitchToLogin: () => void
@@ -82,7 +83,7 @@ export function SignupForm({ onSwitchToLogin, onSignupSuccess }: SignupFormProps
       const { error } = await signUp(email, password, name)
 
       if (error) {
-        setError(error.message || 'Failed to create account')
+        setError(friendlyAuthError(error.message) || 'Failed to create account')
         return
       }
 
