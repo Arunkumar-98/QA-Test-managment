@@ -53,6 +53,7 @@ import {
   PRIORITY_PILL,
   RETIRED_COLUMN_NAMES,
   STATUS_PILL,
+  canonicalStatus,
   formatCaseKey,
 } from '@/lib/case-schema'
 import { PRIORITY_OPTIONS } from '@/lib/constants'
@@ -104,9 +105,10 @@ const MAX_STEP_INDENT = 3
 const LIST_PREFIX = /^\s*(?:(?:\d+|[a-z]+|[ivxlcdm]+)[.)]|[•◦▪\-*])\s+/i
 
 function pillClass(columnName: string, value: string) {
-  if (columnName === 'status') return STATUS_PILL[value] || 'bg-slate-700/60 text-slate-200 border-slate-600'
-  if (columnName === 'priority') return PRIORITY_PILL[value] || 'bg-slate-700/60 text-slate-200 border-slate-600'
-  return 'bg-slate-800 text-slate-200 border-slate-700'
+  if (columnName === 'status') return STATUS_PILL[canonicalStatus(value)] || STATUS_PILL[value] || 'bg-slate-200 text-slate-800 border-slate-300 dark:bg-slate-700/60 dark:text-slate-200 dark:border-slate-600'
+  if (columnName === 'priority') return PRIORITY_PILL[value] || 'bg-slate-200 text-slate-800 border-slate-300 dark:bg-slate-700/60 dark:text-slate-200 dark:border-slate-600'
+  if (columnName === 'type') return 'bg-sky-500/15 text-sky-800 border-sky-500/40 dark:text-sky-200 dark:border-sky-400/30'
+  return 'bg-slate-200 text-slate-800 border-slate-300 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700'
 }
 
 function toAlpha(n: number) {
@@ -675,13 +677,20 @@ export function GoogleSheetsTable({
   }
 
   const persistCell = async (rowId: string, columnName: string, value: string | number | boolean | null) => {
-    const row = rows.find((item) => item.id === rowId)
-    if (!row) return
-    const current = row.dynamicFields[columnName]
-    if (String(current ?? '') === String(value ?? '')) return
+    let shouldSave = false
+    setRows((prev) => {
+      const row = prev.find((item) => item.id === rowId)
+      if (!row) return prev
+      if (String(row.dynamicFields[columnName] ?? '') === String(value ?? '')) return prev
+      shouldSave = true
+      return prev.map((item) =>
+        item.id === rowId
+          ? { ...item, dynamicFields: { ...item.dynamicFields, [columnName]: value } }
+          : item
+      )
+    })
+    if (!shouldSave) return
 
-    const nextFields = { ...row.dynamicFields, [columnName]: value }
-    setRows((prev) => prev.map((item) => (item.id === rowId ? { ...item, dynamicFields: nextFields } : item)))
     setSaveState('saving')
     try {
       if (shareToken) {
@@ -691,6 +700,8 @@ export function GoogleSheetsTable({
         try {
           await googleSheetsService.updateRow(rowId, { dynamicFields: { [columnName]: value } })
         } catch {
+          const latest = rows.find((item) => item.id === rowId)
+          const nextFields = { ...(latest?.dynamicFields || {}), [columnName]: value }
           if (suiteId) {
             await googleSheetsService.createRow(
               projectId,
@@ -1730,6 +1741,7 @@ function CellEditor({
   }
 
   if (column.type === 'select') {
+    const options = Array.from(new Set([...(column.options || []), value].filter((option) => option !== '')))
     return (
       <select
         ref={(node) => {
@@ -1738,13 +1750,14 @@ function CellEditor({
         className="min-h-10 w-full bg-white px-3 py-2 text-sm text-slate-900 outline-none dark:bg-slate-900 dark:text-white"
         value={value}
         onChange={(event) => {
-          onChange(event.target.value)
-          onCommit('stay', event.target.value)
+          const next = event.target.value
+          onChange(next)
+          onCommit('stay', next)
         }}
         onKeyDown={handleKeyDown}
       >
         <option value=""></option>
-        {(column.options || []).map((option) => (
+        {options.map((option) => (
           <option key={option} value={option}>
             {option}
           </option>

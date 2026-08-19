@@ -1,5 +1,5 @@
 import { customColumnService, testCaseService } from '@/lib/supabase-service'
-import { DEFAULT_CASE_COLUMNS, DEFAULT_ROW_VALUES, RETIRED_COLUMN_NAMES } from '@/lib/case-schema'
+import { DEFAULT_CASE_COLUMNS, DEFAULT_ROW_VALUES, RETIRED_COLUMN_NAMES, SELECT_COLUMN_DEFAULTS } from '@/lib/case-schema'
 import { getCurrentUser } from '@/lib/local-auth'
 import { applyDefaultHiddenColumns } from '@/lib/column-prefs'
 
@@ -152,6 +152,20 @@ export const googleSheetsService = {
       const existing = await this.dedupeColumns(projectId)
       const existingNames = new Set(existing.filter((column) => !column.ownerUserId).map((column) => column.name))
       const missing = DEFAULT_CASE_COLUMNS.filter((column) => !existingNames.has(column.name))
+      let repaired = false
+
+      for (const column of existing) {
+        const preset = SELECT_COLUMN_DEFAULTS[column.name]
+        if (!preset) continue
+        const hasAllOptions = preset.options.every((option) => (column.options || []).includes(option))
+        if (column.type === 'select' && hasAllOptions) continue
+        await this.updateColumn(column.id, {
+          type: 'select',
+          options: preset.options,
+          defaultValue: preset.defaultValue,
+        })
+        repaired = true
+      }
 
       for (const [index, column] of missing.entries()) {
         await this.createColumn(projectId, {
@@ -160,7 +174,7 @@ export const googleSheetsService = {
         })
       }
 
-      const columns = missing.length > 0 ? await this.dedupeColumns(projectId) : existing
+      const columns = missing.length > 0 || repaired ? await this.dedupeColumns(projectId) : existing
       const defaultOrder = DEFAULT_CASE_COLUMNS.map((column) => column.name)
       const shared = columns.filter((column) => !column.ownerUserId)
       const personal = columns.filter((column) => column.ownerUserId)

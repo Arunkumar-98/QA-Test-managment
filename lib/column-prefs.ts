@@ -2,7 +2,7 @@ import { createId, readCollection, writeCollection } from '@/lib/local-db'
 import { getCurrentUser } from '@/lib/local-auth'
 import { DEFAULT_HIDDEN_COLUMN_NAMES } from '@/lib/case-schema'
 
-const HIDDEN_DEFAULTS_VERSION = 1
+const HIDDEN_DEFAULTS_VERSION = 2
 const STICKY_DEFAULTS_VERSION = 1
 export const KEY_COLUMN_ID = '__key__'
 export const DEFAULT_KEY_WIDTH = 108
@@ -78,6 +78,7 @@ export function applyDefaultHiddenColumns(
   const hidden = new Set(pref?.hiddenColumnIds || [])
   for (const column of columns) {
     if (DEFAULT_HIDDEN_COLUMN_NAMES.includes(column.name)) hidden.add(column.id)
+    if (column.name === 'type' || column.name === 'status') hidden.delete(column.id)
   }
   const hiddenColumnIds = Array.from(hidden)
   patchPref(projectId, { hiddenColumnIds, hiddenDefaultsVersion: HIDDEN_DEFAULTS_VERSION })
