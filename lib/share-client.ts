@@ -59,8 +59,10 @@ export async function createShare(input: CreateShareInput) {
 }
 
 export async function fetchShare(token: string) {
+  const email = getShareEmail(token)
+  const params = email ? `?email=${encodeURIComponent(email)}` : ''
   return readJson<{ share: PublicShare }>(
-    await fetch(`/api/share/${token}`, {
+    await fetch(`/api/share/${token}${params}`, {
       cache: 'no-store',
       headers: shareHeaders(token),
     })

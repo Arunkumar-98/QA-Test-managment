@@ -19,7 +19,6 @@ import {
   type ShareRole,
 } from '@/lib/share-client'
 import { getLocalArtifactFile } from '@/lib/artifact-store'
-import { normalizeEmails } from '@/lib/share-access'
 import type { TestSuite } from '@/types/qa-types'
 
 interface ShareDialogProps {
@@ -54,7 +53,6 @@ export function ShareDialog({
   const [url, setUrl] = useState('')
   const [token, setToken] = useState('')
   const [copied, setCopied] = useState(false)
-  const [inviteText, setInviteText] = useState('')
 
   const title = kind === 'project' ? projectName : suite?.name || 'List'
   const subtitle = kind === 'project' ? 'Share every suite and bug list in this project.' : 'Share this list only.'
@@ -74,7 +72,6 @@ export function ShareDialog({
         setToken(result.share.token)
         setRole(result.share.role)
         setUrl(`${window.location.origin}/s/${result.share.token}`)
-        setInviteText((result.share.allowedEmails || []).join('\n'))
         rememberLocalShare({
           token: result.share.token,
           kind,
@@ -87,7 +84,6 @@ export function ShareDialog({
         setToken('')
         setUrl('')
         setRole('edit')
-        setInviteText('')
       }
     }).catch(() => {
       setToken('')
@@ -118,11 +114,6 @@ export function ShareDialog({
         rows.push(...listRows.map((row) => ({ ...row, suiteId: list.id })))
       }
 
-      const invited = normalizeEmails(inviteText)
-      const allowedEmails = invited.length > 0 && user.email
-        ? normalizeEmails([user.email, ...invited])
-        : invited
-
       const result = await createShare({
         kind,
         title,
@@ -131,7 +122,7 @@ export function ShareDialog({
         suiteId: suite?.id,
         role,
         createdBy: user.id,
-        allowedEmails,
+        allowedEmails: [],
         columns,
         lists: targetLists.map((list) => ({
           id: list.id,
@@ -156,9 +147,7 @@ export function ShareDialog({
       onChanged?.()
       toast({
         title: 'Share link ready',
-        description: allowedEmails.length
-          ? 'Only invited emails can open it. Images and videos are included.'
-          : 'Images and videos on this list are included.',
+        description: 'Anyone with this link can open it. Email it to the other person.',
       })
     } catch (error) {
       toast({
@@ -243,15 +232,9 @@ export function ShareDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-slate-700 dark:text-slate-300">Invite people</Label>
-            <textarea
-              value={inviteText}
-              onChange={(event) => setInviteText(event.target.value)}
-              placeholder="alex@company.com"
-              className="min-h-[84px] w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:placeholder:text-slate-600"
-            />
+            <Label className="text-xs font-medium text-slate-700 dark:text-slate-300">How it works</Label>
             <p className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-500">
-              Add emails, one per line. Invited people can open the link, update cases if you chose Edit or Full, and see images and videos. Leave blank if anyone with the link can open it.
+              Create the link, copy it, and send it by email. Anyone who opens the link can view or edit based on the access you picked above.
             </p>
           </div>
 

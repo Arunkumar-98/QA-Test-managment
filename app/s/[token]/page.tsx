@@ -33,7 +33,7 @@ export default function SharedLinkPage() {
       setShare(null)
       if (err instanceof ShareAccessError && err.requiresEmail) {
         setNeedsEmail(true)
-        setError(err.message)
+        setError('')
       } else {
         setNeedsEmail(false)
         setError(err instanceof Error ? err.message : 'Share not found')
