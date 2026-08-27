@@ -18,10 +18,7 @@ import { PRDToTestCases } from './PRDToTestCases'
 import { ImportPreviewDialog } from './ImportPreviewDialog'
 import { EnhancedImportDialog } from './EnhancedImportDialog'
 import { EnhancedPasteDialog } from './EnhancedPasteDialog'
-import { WelcomeProjectModal } from './WelcomeProjectModal'
-import { EmptyState } from './EmptyState'
 import { ActionGuard } from './ActionGuard'
-import { FullScreenWelcome } from './FullScreenWelcome'
 import { 
   TestCase, TestCaseStatus, TestSuite, Document, ImportantLink, Project,
   CreateDocumentInput, CreateImportantLinkInput, SharedProjectReference, CustomColumn
@@ -118,7 +115,6 @@ export function QAApplication() {
   const [isEnhancedImportDialogOpen, setIsEnhancedImportDialogOpen] = useState(false)
   const [isEnhancedPasteDialogOpen, setIsEnhancedPasteDialogOpen] = useState(false)
   const [importRawData, setImportRawData] = useState<any[]>([])
-  const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(false)
   const [isCreatingProject, setIsCreatingProject] = useState(false)
   const [pendingAction, setPendingAction] = useState<string | null>(null)
   const [projectsLoading, setProjectsLoading] = useState(true)
@@ -1630,8 +1626,7 @@ export function QAApplication() {
       <div className="flex h-screen flex-col overflow-hidden bg-gradient-to-b from-slate-950 via-slate-900 to-slate-800">
 
 
-        {/* Header - Only show when there are projects */}
-        {projects.length > 0 && (
+        {/* Header */}
           <div className="relative z-30 shrink-0 border-b border-slate-700/50 bg-slate-950/90">
           <div className="px-4">
             <div className="flex h-14 items-center justify-between">
@@ -1708,9 +1703,15 @@ export function QAApplication() {
             </div>
           </div>
         </div>
-        )}
 
-        {projects.length > 0 ? (
+        {projectsLoading ? (
+                <div className="flex flex-1 items-center justify-center">
+                  <div className="text-center">
+                    <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-blue-600"></div>
+                    <p className="text-slate-400">Loading your projects...</p>
+                  </div>
+                </div>
+              ) : (
           <div className="flex min-h-0 flex-1">
           <aside className="relative z-20 flex w-[272px] shrink-0 flex-col border-r border-slate-800 bg-slate-950/95">
               <div className="border-b border-slate-800 p-3">
@@ -2117,7 +2118,27 @@ export function QAApplication() {
           </aside>
           <main className="flex min-h-0 min-w-0 flex-1 flex-col">
         <div className="min-h-0 flex-1 overflow-hidden">
-                  {currentView === 'dashboard' ? (
+                  {projects.length === 0 ? (
+                    <div className="flex h-full items-center justify-center p-8">
+                      <div className="max-w-md text-center">
+                        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl border border-blue-400/30 bg-blue-500/15">
+                          <Briefcase className="h-6 w-6 text-blue-300" />
+                        </div>
+                        <h2 className="text-xl font-semibold text-white">Create a project to get started</h2>
+                        <p className="mt-2 text-sm text-slate-400">
+                          Projects organize your test suites, cases, and team shares in one place.
+                        </p>
+                        <Button
+                          className="mt-6 bg-blue-600 text-white hover:bg-blue-500"
+                          onClick={() => setIsProjectDialogOpen(true)}
+                          disabled={isCreatingProject}
+                        >
+                          <Plus className="mr-2 h-4 w-4" />
+                          Create project
+                        </Button>
+                      </div>
+                    </div>
+                  ) : currentView === 'dashboard' ? (
                     <div className="h-full overflow-auto">
                     <ProjectDashboard
                       project={{ id: currentProjectId, name: currentProject, createdAt: new Date() }}
@@ -2152,20 +2173,6 @@ export function QAApplication() {
         </div>
           </main>
           </div>
-        ) : projectsLoading ? (
-                <div className="flex flex-1 items-center justify-center">
-                  <div className="text-center">
-                    <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-blue-600"></div>
-                    <p className="text-slate-400">Loading your projects...</p>
-                  </div>
-                </div>
-              ) : (
-                <FullScreenWelcome 
-                  onCreateProject={handleAddProject}
-                  isLoading={isCreatingProject}
-                  onSignOut={signOut}
-                  user={user}
-                />
               )}
       </div>
 
