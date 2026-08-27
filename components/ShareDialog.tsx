@@ -20,7 +20,6 @@ import {
 } from '@/lib/share-client'
 import { getLocalArtifactFile } from '@/lib/artifact-store'
 import { normalizeEmails } from '@/lib/share-access'
-import { openTeamShareEmail } from '@/lib/share-email'
 import type { TestSuite } from '@/types/qa-types'
 
 interface ShareDialogProps {
@@ -107,6 +106,16 @@ export function ShareDialog({
       return
     }
 
+    const invited = normalizeEmails(inviteText)
+    if (invited.length === 0) {
+      toast({
+        title: 'Add teammate emails',
+        description: 'Enter at least one email. We will email them a link to open the cases.',
+        variant: 'destructive',
+      })
+      return
+    }
+
     setBusy(true)
     try {
       const columns = await googleSheetsService.ensureDefaultColumns(projectId)
@@ -117,16 +126,6 @@ export function ShareDialog({
       for (const list of targetLists) {
         const listRows = await googleSheetsService.getRows(projectId, list.id)
         rows.push(...listRows.map((row) => ({ ...row, suiteId: list.id })))
-      }
-
-      const invited = normalizeEmails(inviteText)
-      if (invited.length === 0) {
-        toast({
-          title: 'Add teammate emails',
-          description: 'Enter at least one email. We will open a message with the share link for you to send.',
-          variant: 'destructive',
-        })
-        return
       }
 
       const result = await createShare({
@@ -145,6 +144,8 @@ export function ShareDialog({
           kind: list.kind === 'bugs' ? 'bugs' : 'suite',
         })),
         rows,
+        senderName: user.user_metadata?.name || user.user_metadata?.full_name,
+        senderEmail: user.email,
       })
 
       await uploadArtifactsForRows(result.share.token, rows, getLocalArtifactFile).catch(() => undefined)
@@ -160,17 +161,14 @@ export function ShareDialog({
         suiteId: suite?.id,
       })
       onChanged?.()
-      openTeamShareEmail({
-        emails: invited,
-        url: nextUrl,
-        title,
-        senderName: user.user_metadata?.name || user.user_metadata?.full_name,
-        senderEmail: user.email,
-        role,
-      })
+
+      const emailed = result.emailed ?? invited.length
+      const failed = result.failed ?? 0
       toast({
-        title: 'Email ready to send',
-        description: `A message to ${invited.length} teammate${invited.length === 1 ? '' : 's'} opened with the share link. Click Send in your mail app.`,
+        title: failed ? 'Share created with some email issues' : 'Invite email sent',
+        description: failed
+          ? `Sent ${emailed} of ${invited.length}. Teammates who got mail can open the link to view cases.`
+          : `Emailed ${emailed} teammate${emailed === 1 ? '' : 's'}. They open the link to view the cases.`,
       })
     } catch (error) {
       toast({
@@ -263,7 +261,7 @@ export function ShareDialog({
               className="min-h-[84px] w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:placeholder:text-slate-600"
             />
             <p className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-500">
-              Add each teammate’s email, one per line. We create the link and open an email to them with that link. They can open it directly — no extra invite code.
+              Add each teammate’s email, one per line. We email them a link. They open it and see the cases.
             </p>
           </div>
 
@@ -319,7 +317,7 @@ export function ShareDialog({
               className="h-10 bg-sky-600 text-white hover:bg-sky-500"
             >
               {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Mail className="mr-2 h-4 w-4" />}
-              {token ? 'Update and email team' : 'Send link to team'}
+              {token ? 'Update and email team' : 'Email invite link'}
             </Button>
           </div>
         </div>

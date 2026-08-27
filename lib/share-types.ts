@@ -52,6 +52,8 @@ export type CreateShareInput = {
   columns: DynamicColumn[]
   lists: SharedList[]
   rows: SharedRow[]
+  senderName?: string
+  senderEmail?: string
 }
 
 export type PublicShare = Omit<ShareRecord, 'createdBy'> & {

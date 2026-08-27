@@ -49,7 +49,13 @@ async function readJson<T>(response: Response): Promise<T> {
 }
 
 export async function createShare(input: CreateShareInput) {
-  return readJson<{ share: PublicShare; url: string }>(
+  return readJson<{
+    share: PublicShare
+    url: string
+    emailed?: number
+    failed?: number
+    emailResults?: Array<{ email: string; ok: boolean; error?: string }>
+  }>(
     await fetch('/api/share', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

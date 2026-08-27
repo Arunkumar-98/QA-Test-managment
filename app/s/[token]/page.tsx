@@ -44,7 +44,14 @@ export default function SharedLinkPage() {
   }
 
   useEffect(() => {
-    if (token) void loadShare()
+    if (!token) return
+    const params = new URLSearchParams(window.location.search)
+    const emailFromLink = (params.get('email') || '').trim()
+    if (emailFromLink) {
+      setShareEmail(token, emailFromLink)
+      setEmail(emailFromLink)
+    }
+    void loadShare()
   }, [token])
 
   const handleEmailSubmit = async (event: FormEvent) => {
