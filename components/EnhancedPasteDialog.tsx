@@ -187,7 +187,13 @@ export function EnhancedPasteDialog({
       onImported({ suiteId, imported: result.imported })
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Paste failed')
+      const message = err instanceof Error ? err.message : 'Paste failed'
+      setError(message)
+      toast({
+        title: 'Paste failed',
+        description: message,
+        variant: 'destructive',
+      })
     } finally {
       setBusy(false)
     }

@@ -10,6 +10,7 @@ import {
   DynamicColumn,
   googleSheetsService,
 } from '@/lib/google-sheets-service'
+import { testCaseService } from '@/lib/supabase-service'
 import { parseHierarchicalTestCases } from '@/lib/hierarchical-parser'
 import { parseTextIntelligently } from '@/lib/utils'
 
@@ -390,18 +391,32 @@ export async function persistImportedCases(options: {
 
   let imported = 0
   let skipped = 0
+  const rowsToCreate: Array<{
+    projectId: string
+    suiteId: string
+    dynamicFields: Record<string, string>
+  }> = []
+
   for (const item of options.cases) {
     const title = cellText(item.dynamicFields.title)
     if (!title) {
       skipped += 1
       continue
     }
-    await googleSheetsService.createRow(
-      options.projectId,
-      { dynamicFields: item.dynamicFields },
-      { suiteId: options.suiteId, listKind: options.listKind }
-    )
-    imported += 1
+    rowsToCreate.push({
+      projectId: options.projectId,
+      suiteId: options.suiteId,
+      dynamicFields: {
+        ...DEFAULT_ROW_VALUES,
+        ...(options.listKind === 'bugs' ? { type: 'Bug' } : {}),
+        ...item.dynamicFields,
+      },
+    })
+  }
+
+  if (rowsToCreate.length > 0) {
+    await testCaseService.createMany(rowsToCreate)
+    imported = rowsToCreate.length
   }
 
   return { imported, extraColumns, skipped }

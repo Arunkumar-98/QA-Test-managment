@@ -46,23 +46,43 @@ export const testCaseService = {
   },
 
   async create(testCase: CreateTestCaseInput | any): Promise<TestCase> {
+    const [created] = await this.createMany([testCase])
+    return created
+  },
+
+  async createMany(testCases: Array<CreateTestCaseInput | any>): Promise<TestCase[]> {
+    if (testCases.length === 0) return []
     const items = readCollection<any>('test_cases')
-    const position =
-      typeof testCase.position === 'number'
-        ? testCase.position
-        : nextPosition(items.filter((item) => item.projectId === testCase.projectId))
     const now = new Date()
-    const created = {
-      ...testCase,
-      id: testCase.id || createId(),
-      position,
-      createdAt: now,
-      updatedAt: now,
-      dynamicFields: testCase.dynamicFields || {},
-    }
-    items.push(created)
+    const positionByProject = new Map<string, number>()
+    const built = testCases.map((testCase) => {
+      const projectId = testCase.projectId || ''
+      if (!positionByProject.has(projectId)) {
+        positionByProject.set(
+          projectId,
+          nextPosition(items.filter((item) => item.projectId === projectId))
+        )
+      }
+      const position =
+        typeof testCase.position === 'number'
+          ? testCase.position
+          : (positionByProject.get(projectId) as number)
+      if (typeof testCase.position !== 'number') {
+        positionByProject.set(projectId, position + 1)
+      }
+      const row = {
+        ...testCase,
+        id: testCase.id || createId(),
+        position,
+        createdAt: now,
+        updatedAt: now,
+        dynamicFields: testCase.dynamicFields || {},
+      }
+      items.push(row)
+      return row
+    })
     await writeCollection('test_cases', items)
-    return reviveDates(created)
+    return built.map((row) => reviveDates(row))
   },
 
   async getById(id: string): Promise<TestCase | null> {

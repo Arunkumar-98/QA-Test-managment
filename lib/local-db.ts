@@ -42,9 +42,30 @@ const EMPTY_STORE: Store = {
 let cache: Store = { ...EMPTY_STORE, projects: [] }
 let hydratedUserId: string | null = null
 const persistQueues: Partial<Record<CollectionName, Promise<void>>> = {}
+const dirtyCollections = new Set<CollectionName>()
+const hydrateWaiters: Array<() => void> = []
 
 function canUseStorage() {
   return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined'
+}
+
+function notifyHydrated() {
+  while (hydrateWaiters.length > 0) {
+    hydrateWaiters.shift()?.()
+  }
+}
+
+function whenHydrated(timeoutMs = 12000): Promise<void> {
+  if (hydratedUserId) return Promise.resolve()
+  return new Promise((resolve, reject) => {
+    const timer = window.setTimeout(() => {
+      reject(new Error('Workspace is still loading. Wait a moment and try again.'))
+    }, timeoutMs)
+    hydrateWaiters.push(() => {
+      window.clearTimeout(timer)
+      resolve()
+    })
+  })
 }
 
 export function createId() {
@@ -65,13 +86,27 @@ export async function hydrateCloudStore(userId: string) {
     const item = row.data && typeof row.data === 'object' ? { ...(row.data as object), id: row.id } : { id: row.id }
     next[name] = [...(next[name] || []), item]
   }
+
+  // Keep any writes that happened before cloud hydrate finished.
+  for (const name of dirtyCollections) {
+    next[name] = cache[name] || []
+  }
+
   cache = next
   hydratedUserId = userId
+  notifyHydrated()
+
+  const pending = [...dirtyCollections]
+  dirtyCollections.clear()
+  for (const name of pending) {
+    await persistCollection(name, cache[name] || [])
+  }
 }
 
 export function clearCloudStore() {
   cache = { ...EMPTY_STORE, projects: [] }
   hydratedUserId = null
+  dirtyCollections.clear()
 }
 
 export function readCollection<T = any>(name: CollectionName): T[] {
@@ -79,7 +114,9 @@ export function readCollection<T = any>(name: CollectionName): T[] {
 }
 
 async function persistCollection(name: CollectionName, items: any[]) {
-  if (!hydratedUserId) return
+  if (!hydratedUserId) {
+    throw new Error('Workspace is still loading. Wait a moment and try again.')
+  }
   const payload = JSON.parse(JSON.stringify(items))
   const { error } = await supabase.rpc('replace_collection', {
     p_collection: name,
@@ -100,9 +137,17 @@ export function writeCollection<T = any>(name: CollectionName, items: T[]) {
       // browser quota is fine; cloud persist is the source of truth
     }
   }
+
+  if (!hydratedUserId) {
+    dirtyCollections.add(name)
+    return whenHydrated().then(() => {
+      // Hydrate flushes dirty collections; nothing else to do here.
+    })
+  }
+
   const run = (persistQueues[name] || Promise.resolve())
     .catch(() => undefined)
-    .then(() => persistCollection(name, items))
+    .then(() => persistCollection(name, cache[name] || []))
   persistQueues[name] = run
   return run
 }

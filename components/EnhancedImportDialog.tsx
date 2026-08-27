@@ -63,7 +63,7 @@ export function EnhancedImportDialog({
   const [cases, setCases] = useState<MappedImportCase[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const [destination, setDestination] = useState(selectedSuiteId || '')
+  const [destination, setDestination] = useState(selectedSuiteId || '__new__')
   const [createKind, setCreateKind] = useState<ImportListKind>('suite')
   const [newListName, setNewListName] = useState('')
 
@@ -80,7 +80,7 @@ export function EnhancedImportDialog({
     setCases([])
     setBusy(false)
     setError('')
-    setDestination(selectedSuiteId || '')
+    setDestination(selectedSuiteId || '__new__')
     setCreateKind('suite')
     setNewListName('')
   }, [isOpen, selectedSuiteId])
@@ -174,7 +174,13 @@ export function EnhancedImportDialog({
       onImported({ suiteId, imported: result.imported })
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Import failed')
+      const message = err instanceof Error ? err.message : 'Import failed'
+      setError(message)
+      toast({
+        title: 'Import failed',
+        description: message,
+        variant: 'destructive',
+      })
     } finally {
       setBusy(false)
     }
