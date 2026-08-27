@@ -44,7 +44,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Settings, Eye, Trash2, LogOut, User, Share2, Plus, Upload, Clipboard, Download, X, Folder, Table, FileText, Share, RefreshCw, Mail, EyeOff, BarChart3, RotateCcw, ChevronDown, Briefcase, BookOpen, Users, Link, FileSpreadsheet, Filter, LayoutDashboard, Table2, Bug } from "lucide-react"
+import { Settings, Eye, Trash2, LogOut, User, Share2, Plus, Upload, Clipboard, Download, X, Folder, Table, FileText, Share, RefreshCw, Mail, EyeOff, BarChart3, RotateCcw, ChevronDown, Briefcase, BookOpen, Users, Link, FileSpreadsheet, Filter, LayoutDashboard, Bug } from "lucide-react"
 import { useAuth } from "./AuthProvider"
 import { CustomColumnDialog } from './CustomColumnDialog'
 import { ProjectDashboard } from './ProjectDashboard'
@@ -1732,9 +1732,9 @@ export function QAApplication() {
                 </div>
               ) : (
           <div className="flex min-h-0 flex-1">
-          <aside className="relative z-20 flex w-[272px] shrink-0 flex-col border-r border-slate-800 bg-slate-950/95">
-              <div className="border-b border-slate-800 p-3">
-                    <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-500">Project</p>
+          <aside className="relative z-20 flex w-[280px] shrink-0 flex-col border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/95">
+              <div className="border-b border-slate-200 px-3 py-3 dark:border-slate-800">
+                <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">Project</p>
                 <ProjectDropdown
                   ref={projectMenuRef}
                   currentProject={currentProject}
@@ -1751,63 +1751,51 @@ export function QAApplication() {
                 />
               </div>
 
-              <nav className="space-y-1 border-b border-slate-800 p-2">
+              <nav className="border-b border-slate-200 px-2 py-2 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={handleShowDashboard}
-                  className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
-                    currentView === 'dashboard'
+                  className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                    currentView === 'dashboard' && !selectedSuiteId
                       ? 'bg-blue-50 text-blue-800 dark:bg-blue-500/15 dark:text-blue-200'
-                      : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/80 dark:hover:text-white'
+                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/80 dark:hover:text-white'
                   }`}
                 >
-                  <LayoutDashboard className="h-4 w-4" />
+                  <LayoutDashboard className="h-4 w-4 shrink-0" />
                   Dashboard
-                </button>
-                <button
-                  type="button"
-                  onClick={handleShowTestCases}
-                  className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
-                    currentView === 'test-cases' && !selectedSuiteId
-                      ? 'bg-blue-50 text-blue-800 dark:bg-blue-500/15 dark:text-blue-200'
-                      : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/80 dark:hover:text-white'
-                  }`}
-                >
-                  <Table2 className="h-4 w-4" />
-                  Cases
                 </button>
               </nav>
 
-              <div className="min-h-0 flex-1 space-y-1 overflow-y-auto p-2">
+              <div className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-2 py-2">
                 {/* Test Suites accordion */}
                 <div>
                   <button
                     type="button"
-                    className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors ${
+                    className={`flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left transition-colors ${
                       selectedSuiteId && selectedList?.kind !== 'bugs'
-                        ? 'bg-emerald-500/15'
-                        : 'hover:bg-emerald-500/10'
+                        ? 'bg-emerald-50 dark:bg-emerald-500/15'
+                        : 'hover:bg-emerald-50/80 dark:hover:bg-emerald-500/10'
                     }`}
                     onClick={() => toggleDropdown('testSuites')}
                   >
-                    <div className="flex h-6 w-6 items-center justify-center rounded-lg border border-emerald-400/20 bg-emerald-500/20">
-                      <FileSpreadsheet className="h-3 w-3 text-emerald-300" />
+                    <div className="flex h-7 w-7 items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 dark:border-emerald-400/20 dark:bg-emerald-500/20">
+                      <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-300" />
                     </div>
                     <span className="flex-1 text-sm font-medium text-slate-800 dark:text-white">Test Suites</span>
-                    <Badge className="border-emerald-400/20 bg-emerald-500/20 px-2 py-0.5 text-xs text-emerald-300">
+                    <Badge className="min-w-5 justify-center rounded-full border-0 bg-emerald-100 px-1.5 py-0 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300">
                       {caseSuites.length}
                     </Badge>
-                    <ChevronDown className={`h-3 w-3 text-emerald-300 transition-transform ${activeDropdown === 'testSuites' ? 'rotate-180' : ''}`} />
+                    <ChevronDown className={`h-3.5 w-3.5 text-emerald-600 transition-transform dark:text-emerald-300 ${activeDropdown === 'testSuites' ? 'rotate-180' : ''}`} />
                   </button>
 
                   {activeDropdown === 'testSuites' && (
-                    <div className="mt-1 rounded-lg border border-emerald-500/15 bg-slate-900/60">
-                      <div className="flex items-center justify-between px-2 py-1.5">
-                        <p className="text-[10px] font-medium uppercase tracking-wide text-emerald-300/80">Suites</p>
+                    <div className="mb-1 mt-1 rounded-xl border border-emerald-100 bg-slate-50/80 dark:border-emerald-500/15 dark:bg-slate-900/60">
+                      <div className="flex items-center justify-between px-2.5 py-1.5">
+                        <p className="text-[10px] font-medium uppercase tracking-wide text-emerald-700/80 dark:text-emerald-300/80">Suites</p>
                         <button
                           type="button"
                           onClick={() => openListDialog('suite')}
-                          className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium text-emerald-300 hover:bg-emerald-500/15"
+                          className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium text-emerald-700 hover:bg-emerald-100 dark:text-emerald-300 dark:hover:bg-emerald-500/15"
                         >
                           <Plus className="h-3 w-3" />
                           New
@@ -1821,14 +1809,14 @@ export function QAApplication() {
                             <div
                               key={suite.id}
                               onClick={() => handleSuiteClick(suite.id)}
-                              className={`group mb-0.5 flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 ${
+                              className={`group mb-0.5 flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 ${
                                 selectedSuiteId === suite.id
-                                  ? 'bg-emerald-500/20 text-emerald-200'
-                                  : 'text-slate-200 hover:bg-white/5'
+                                  ? 'bg-emerald-100 text-emerald-900 dark:bg-emerald-500/20 dark:text-emerald-200'
+                                  : 'text-slate-700 hover:bg-white dark:text-slate-200 dark:hover:bg-white/5'
                               }`}
                             >
                               <FileSpreadsheet className={`h-3.5 w-3.5 shrink-0 ${
-                                selectedSuiteId === suite.id ? 'text-emerald-300' : 'text-slate-500'
+                                selectedSuiteId === suite.id ? 'text-emerald-600 dark:text-emerald-300' : 'text-slate-400'
                               }`} />
                               <div className="min-w-0 flex-1">
                                 <p className="truncate text-xs font-medium">{suite.name}</p>
@@ -1842,7 +1830,7 @@ export function QAApplication() {
                                   e.stopPropagation()
                                   handleOpenShareTestSuite(suite)
                                 }}
-                                className="rounded p-1 text-slate-500 opacity-0 hover:bg-sky-500/15 hover:text-sky-300 group-hover:opacity-100"
+                                className="rounded p-1 text-slate-400 opacity-0 hover:bg-sky-50 hover:text-sky-600 group-hover:opacity-100 dark:hover:bg-sky-500/15 dark:hover:text-sky-300"
                                 title="Share test suite"
                               >
                                 <Share2 className="h-3 w-3" />
@@ -1853,7 +1841,7 @@ export function QAApplication() {
                                   e.stopPropagation()
                                   deleteTestSuite(suite.id)
                                 }}
-                                className="rounded p-1 text-slate-500 opacity-0 hover:bg-red-500/15 hover:text-red-300 group-hover:opacity-100"
+                                className="rounded p-1 text-slate-400 opacity-0 hover:bg-rose-50 hover:text-rose-600 group-hover:opacity-100 dark:hover:bg-red-500/15 dark:hover:text-red-300"
                                 title="Delete test suite"
                               >
                                 <Trash2 className="h-3 w-3" />
@@ -1870,31 +1858,31 @@ export function QAApplication() {
                 <div>
                   <button
                     type="button"
-                    className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors ${
+                    className={`flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left transition-colors ${
                       selectedList?.kind === 'bugs'
-                        ? 'bg-rose-500/15'
-                        : 'hover:bg-rose-500/10'
+                        ? 'bg-rose-50 dark:bg-rose-500/15'
+                        : 'hover:bg-rose-50/80 dark:hover:bg-rose-500/10'
                     }`}
                     onClick={() => toggleDropdown('bugLists')}
                   >
-                    <div className="flex h-6 w-6 items-center justify-center rounded-lg border border-rose-400/20 bg-rose-500/20">
-                      <Bug className="h-3 w-3 text-rose-300" />
+                    <div className="flex h-7 w-7 items-center justify-center rounded-lg border border-rose-200 bg-rose-50 dark:border-rose-400/20 dark:bg-rose-500/20">
+                      <Bug className="h-3.5 w-3.5 text-rose-600 dark:text-rose-300" />
                     </div>
                     <span className="flex-1 text-sm font-medium text-slate-800 dark:text-white">Bug Lists</span>
-                    <Badge className="border-rose-400/20 bg-rose-500/20 px-2 py-0.5 text-xs text-rose-300">
+                    <Badge className="min-w-5 justify-center rounded-full border-0 bg-rose-100 px-1.5 py-0 text-[11px] font-semibold text-rose-700 dark:bg-rose-500/20 dark:text-rose-300">
                       {bugLists.length}
                     </Badge>
-                    <ChevronDown className={`h-3 w-3 text-rose-300 transition-transform ${activeDropdown === 'bugLists' ? 'rotate-180' : ''}`} />
+                    <ChevronDown className={`h-3.5 w-3.5 text-rose-600 transition-transform dark:text-rose-300 ${activeDropdown === 'bugLists' ? 'rotate-180' : ''}`} />
                   </button>
 
                   {activeDropdown === 'bugLists' && (
-                    <div className="mt-1 rounded-lg border border-rose-500/15 bg-slate-900/60">
-                      <div className="flex items-center justify-between px-2 py-1.5">
-                        <p className="text-[10px] font-medium uppercase tracking-wide text-rose-300/80">Lists</p>
+                    <div className="mb-1 mt-1 rounded-xl border border-rose-100 bg-slate-50/80 dark:border-rose-500/15 dark:bg-slate-900/60">
+                      <div className="flex items-center justify-between px-2.5 py-1.5">
+                        <p className="text-[10px] font-medium uppercase tracking-wide text-rose-700/80 dark:text-rose-300/80">Lists</p>
                         <button
                           type="button"
                           onClick={() => openListDialog('bugs')}
-                          className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium text-rose-300 hover:bg-rose-500/15"
+                          className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium text-rose-700 hover:bg-rose-100 dark:text-rose-300 dark:hover:bg-rose-500/15"
                         >
                           <Plus className="h-3 w-3" />
                           New
@@ -1908,14 +1896,14 @@ export function QAApplication() {
                             <div
                               key={suite.id}
                               onClick={() => handleSuiteClick(suite.id)}
-                              className={`group mb-0.5 flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 ${
+                              className={`group mb-0.5 flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 ${
                                 selectedSuiteId === suite.id
-                                  ? 'bg-rose-500/20 text-rose-200'
-                                  : 'text-slate-200 hover:bg-white/5'
+                                  ? 'bg-rose-100 text-rose-900 dark:bg-rose-500/20 dark:text-rose-200'
+                                  : 'text-slate-700 hover:bg-white dark:text-slate-200 dark:hover:bg-white/5'
                               }`}
                             >
                               <Bug className={`h-3.5 w-3.5 shrink-0 ${
-                                selectedSuiteId === suite.id ? 'text-rose-300' : 'text-slate-500'
+                                selectedSuiteId === suite.id ? 'text-rose-600 dark:text-rose-300' : 'text-slate-400'
                               }`} />
                               <div className="min-w-0 flex-1">
                                 <p className="truncate text-xs font-medium">{suite.name}</p>
@@ -1929,7 +1917,7 @@ export function QAApplication() {
                                   e.stopPropagation()
                                   handleOpenShareTestSuite(suite)
                                 }}
-                                className="rounded p-1 text-slate-500 opacity-0 hover:bg-sky-500/15 hover:text-sky-300 group-hover:opacity-100"
+                                className="rounded p-1 text-slate-400 opacity-0 hover:bg-sky-50 hover:text-sky-600 group-hover:opacity-100 dark:hover:bg-sky-500/15 dark:hover:text-sky-300"
                                 title="Share bug list"
                               >
                                 <Share2 className="h-3 w-3" />
@@ -1940,7 +1928,7 @@ export function QAApplication() {
                                   e.stopPropagation()
                                   deleteTestSuite(suite.id)
                                 }}
-                                className="rounded p-1 text-slate-500 opacity-0 hover:bg-red-500/15 hover:text-red-300 group-hover:opacity-100"
+                                className="rounded p-1 text-slate-400 opacity-0 hover:bg-rose-50 hover:text-rose-600 group-hover:opacity-100 dark:hover:bg-red-500/15 dark:hover:text-red-300"
                                 title="Delete bug list"
                               >
                                 <Trash2 className="h-3 w-3" />
@@ -1957,25 +1945,25 @@ export function QAApplication() {
                 <div>
                   <button
                     type="button"
-                    className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors ${
+                    className={`flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left transition-colors ${
                       activeDropdown === 'resources'
                         ? 'bg-indigo-50 dark:bg-indigo-500/15'
-                        : 'hover:bg-indigo-50 dark:hover:bg-indigo-500/10'
+                        : 'hover:bg-indigo-50/80 dark:hover:bg-indigo-500/10'
                     }`}
                     onClick={() => toggleDropdown('resources')}
                   >
-                    <div className="flex h-6 w-6 items-center justify-center rounded-lg border border-indigo-300 bg-indigo-100 dark:border-indigo-400/20 dark:bg-indigo-500/20">
-                      <BookOpen className="h-3 w-3 text-indigo-700 dark:text-indigo-300" />
+                    <div className="flex h-7 w-7 items-center justify-center rounded-lg border border-indigo-200 bg-indigo-50 dark:border-indigo-400/20 dark:bg-indigo-500/20">
+                      <BookOpen className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-300" />
                     </div>
                     <span className="flex-1 text-sm font-medium text-slate-800 dark:text-white">Resources</span>
-                    <Badge className="border-indigo-200 bg-indigo-100 px-2 py-0.5 text-xs text-indigo-700 dark:border-indigo-400/20 dark:bg-indigo-500/20 dark:text-indigo-300">
+                    <Badge className="min-w-5 justify-center rounded-full border-0 bg-indigo-100 px-1.5 py-0 text-[11px] font-semibold text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300">
                       {importantLinks.length + documents.length}
                     </Badge>
-                    <ChevronDown className={`h-3 w-3 text-indigo-600 transition-transform dark:text-indigo-300 ${activeDropdown === 'resources' ? 'rotate-180' : ''}`} />
+                    <ChevronDown className={`h-3.5 w-3.5 text-indigo-600 transition-transform dark:text-indigo-300 ${activeDropdown === 'resources' ? 'rotate-180' : ''}`} />
                   </button>
 
                   {activeDropdown === 'resources' && (
-                    <div className="mt-1 rounded-lg border border-indigo-200 bg-white dark:border-indigo-500/15 dark:bg-slate-900/60">
+                    <div className="mb-1 mt-1 rounded-xl border border-indigo-100 bg-slate-50/80 dark:border-indigo-500/15 dark:bg-slate-900/60">
                       <div className="max-h-52 overflow-y-auto px-1 py-1">
                         <p className="px-2 py-1 text-[10px] font-medium uppercase tracking-wide text-indigo-700 dark:text-indigo-300/80">Links</p>
                         {importantLinks.length === 0 ? (
@@ -2082,33 +2070,33 @@ export function QAApplication() {
                 </div>
               </div>
 
-              <div className="mt-auto space-y-3 border-t border-slate-800 p-3">
+              <div className="mt-auto border-t border-slate-200 p-3 dark:border-slate-800">
                   <div className="grid grid-cols-2 gap-2">
                     <Button 
                       variant="outline" 
                       size="sm"
                       onClick={() => setIsEnhancedImportDialogOpen(true)}
-                      className="h-8 justify-start border-emerald-300 bg-emerald-50 px-2.5 text-xs font-medium text-emerald-800 hover:border-emerald-400 hover:bg-emerald-100 hover:text-emerald-900 dark:border-emerald-400/30 dark:bg-emerald-500/20 dark:text-emerald-300 dark:hover:border-emerald-400/50 dark:hover:bg-emerald-500/30"
+                      className="h-9 justify-start border-emerald-200 bg-emerald-50/80 px-2.5 text-xs font-medium text-emerald-800 hover:border-emerald-300 hover:bg-emerald-100 dark:border-emerald-400/30 dark:bg-emerald-500/20 dark:text-emerald-300 dark:hover:bg-emerald-500/30"
                     >
-                      <Upload className="mr-1.5 h-3 w-3 text-emerald-700 dark:text-emerald-300" />
+                      <Upload className="mr-1.5 h-3.5 w-3.5 text-emerald-700 dark:text-emerald-300" />
                       Import
                     </Button>
                     <Button 
                       variant="outline" 
                       size="sm"
                       onClick={() => setIsEnhancedPasteDialogOpen(true)}
-                      className="h-8 justify-start border-blue-300 bg-blue-50 px-2.5 text-xs font-medium text-blue-800 hover:border-blue-400 hover:bg-blue-100 hover:text-blue-900 dark:border-blue-400/30 dark:bg-blue-500/20 dark:text-blue-300 dark:hover:border-blue-400/50 dark:hover:bg-blue-500/30"
+                      className="h-9 justify-start border-blue-200 bg-blue-50/80 px-2.5 text-xs font-medium text-blue-800 hover:border-blue-300 hover:bg-blue-100 dark:border-blue-400/30 dark:bg-blue-500/20 dark:text-blue-300 dark:hover:bg-blue-500/30"
                     >
-                      <Clipboard className="mr-1.5 h-3 w-3 text-blue-700 dark:text-blue-300" />
+                      <Clipboard className="mr-1.5 h-3.5 w-3.5 text-blue-700 dark:text-blue-300" />
                       Paste
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={handleExportToExcel}
-                      className="h-8 justify-start border-purple-300 bg-purple-50 px-2.5 text-xs font-medium text-purple-800 hover:border-purple-400 hover:bg-purple-100 hover:text-purple-900 dark:border-purple-400/30 dark:bg-purple-500/20 dark:text-purple-300 dark:hover:border-purple-400/50 dark:hover:bg-purple-500/30"
+                      className="h-9 justify-start border-violet-200 bg-violet-50/80 px-2.5 text-xs font-medium text-violet-800 hover:border-violet-300 hover:bg-violet-100 dark:border-purple-400/30 dark:bg-purple-500/20 dark:text-purple-300 dark:hover:bg-purple-500/30"
                     >
-                      <Download className="mr-1.5 h-3 w-3 text-purple-700 dark:text-purple-300" />
+                      <Download className="mr-1.5 h-3.5 w-3.5 text-violet-700 dark:text-purple-300" />
                       Export
                     </Button>
                     <Button 
@@ -2125,11 +2113,11 @@ export function QAApplication() {
                         setCurrentView('test-cases')
                         setGridFiltersOpen((open) => !open)
                       }}
-                      className={`h-8 justify-start border-orange-300 bg-orange-50 px-2.5 text-xs font-medium text-orange-800 hover:border-orange-400 hover:bg-orange-100 hover:text-orange-900 dark:border-orange-400/30 dark:bg-orange-500/20 dark:text-orange-300 dark:hover:border-orange-400/50 dark:hover:bg-orange-500/30 ${
+                      className={`h-9 justify-start border-orange-200 bg-orange-50/80 px-2.5 text-xs font-medium text-orange-800 hover:border-orange-300 hover:bg-orange-100 dark:border-orange-400/30 dark:bg-orange-500/20 dark:text-orange-300 dark:hover:bg-orange-500/30 ${
                         gridFiltersOpen ? 'border-orange-400 bg-orange-100 dark:border-orange-400/50 dark:bg-orange-500/30' : ''
                       }`}
                     >
-                      <Filter className="mr-1.5 h-3 w-3 text-orange-700 dark:text-orange-300" />
+                      <Filter className="mr-1.5 h-3.5 w-3.5 text-orange-700 dark:text-orange-300" />
                       Filters
                     </Button>
                   </div>
