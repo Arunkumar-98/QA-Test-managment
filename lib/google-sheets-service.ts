@@ -32,6 +32,7 @@ export interface DynamicColumn {
 export interface DynamicRow {
   id: string
   projectId: string
+  suiteId?: string | null
   position: number
   createdAt: Date
   updatedAt: Date
@@ -245,6 +246,7 @@ export const googleSheetsService = {
       .map((row: any) => ({
         id: row.id,
         projectId: row.projectId,
+        suiteId: row.suiteId,
         position: row.position,
         createdAt: row.createdAt,
         updatedAt: row.updatedAt,
@@ -271,6 +273,7 @@ export const googleSheetsService = {
     return {
       id: row.id,
       projectId: row.projectId,
+      suiteId: row.suiteId || options.suiteId || undefined,
       position: row.position,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
@@ -283,6 +286,7 @@ export const googleSheetsService = {
     return {
       id: row.id,
       projectId: row.projectId,
+      suiteId: row.suiteId,
       position: row.position,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,

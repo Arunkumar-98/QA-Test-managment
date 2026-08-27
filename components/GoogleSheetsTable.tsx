@@ -567,8 +567,10 @@ export function GoogleSheetsTable({
   const applySharePayload = useCallback(
     (columnData: DynamicColumn[], allRows: DynamicRow[]) => {
       const nextColumns = columnData.filter((column) => !RETIRED_COLUMN_NAMES.includes(column.name))
+      // Rows from getRows are already scoped to the active suite. Share payloads may
+      // include suiteId; keep rows that match or that were already suite-scoped.
       const nextRows = allRows
-        .filter((row: any) => !suiteId || row.suiteId === suiteId)
+        .filter((row: any) => !suiteId || row.suiteId == null || row.suiteId === suiteId)
         .sort((a, b) => (a.position || 0) - (b.position || 0))
       setColumns(nextColumns)
       setRows(nextRows)

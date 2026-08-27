@@ -2441,6 +2441,7 @@ export function QAApplication() {
           setIsEnhancedImportDialogOpen(false)
           handleSuiteClick(suiteId)
           setGridReloadNonce((value) => value + 1)
+          void reloadTestCases()
         }}
         projectId={currentProjectId}
         selectedSuiteId={selectedSuiteId || undefined}
@@ -2455,6 +2456,7 @@ export function QAApplication() {
           setIsEnhancedPasteDialogOpen(false)
           handleSuiteClick(suiteId)
           setGridReloadNonce((value) => value + 1)
+          void reloadTestCases()
         }}
         projectId={currentProjectId}
         selectedSuiteId={selectedSuiteId || undefined}
