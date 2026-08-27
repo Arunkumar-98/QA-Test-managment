@@ -38,6 +38,9 @@ import {
 } from '@/lib/case-import'
 import { toast } from '@/hooks/use-toast'
 
+const selectItemClass =
+  'cursor-pointer text-slate-800 focus:bg-emerald-50 focus:text-emerald-900 data-[highlighted]:bg-emerald-50 data-[highlighted]:text-emerald-900 dark:text-slate-100 dark:focus:bg-slate-800 dark:focus:text-white dark:data-[highlighted]:bg-slate-800'
+
 interface EnhancedImportDialogProps {
   isOpen: boolean
   onClose: () => void
@@ -46,6 +49,14 @@ interface EnhancedImportDialogProps {
   selectedSuiteId?: string
   testSuites?: TestSuite[]
   onCreateTestSuite?: (suite: CreateTestSuiteInput) => Promise<TestSuite>
+}
+
+function resolveDefaultDestination(selectedSuiteId: string | undefined, testSuites: TestSuite[]) {
+  if (selectedSuiteId && testSuites.some((suite) => suite.id === selectedSuiteId)) {
+    return selectedSuiteId
+  }
+  if (testSuites.length === 1) return testSuites[0].id
+  return '__new__'
 }
 
 export function EnhancedImportDialog({
@@ -63,14 +74,21 @@ export function EnhancedImportDialog({
   const [cases, setCases] = useState<MappedImportCase[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const [destination, setDestination] = useState(selectedSuiteId || '__new__')
+  const [destination, setDestination] = useState(() =>
+    resolveDefaultDestination(selectedSuiteId, testSuites)
+  )
   const [createKind, setCreateKind] = useState<ImportListKind>('suite')
   const [newListName, setNewListName] = useState('')
 
   const caseSuites = testSuites.filter((suite) => suite.kind !== 'bugs')
   const bugLists = testSuites.filter((suite) => suite.kind === 'bugs')
+  const hasLists = testSuites.length > 0
   const selectedList = testSuites.find((suite) => suite.id === destination)
-  const listKind: ImportListKind = selectedList?.kind === 'bugs' ? 'bugs' : createKind === 'bugs' && destination === '__new__' ? 'bugs' : 'suite'
+  const currentList = testSuites.find((suite) => suite.id === selectedSuiteId)
+  const listKind: ImportListKind =
+    selectedList?.kind === 'bugs' || (destination === '__new__' && createKind === 'bugs')
+      ? 'bugs'
+      : 'suite'
 
   useEffect(() => {
     if (!isOpen) return
@@ -80,9 +98,12 @@ export function EnhancedImportDialog({
     setCases([])
     setBusy(false)
     setError('')
-    setDestination(selectedSuiteId || '__new__')
-    setCreateKind('suite')
+    setDestination(resolveDefaultDestination(selectedSuiteId, testSuites))
+    const current = testSuites.find((suite) => suite.id === selectedSuiteId)
+    setCreateKind(current?.kind === 'bugs' ? 'bugs' : 'suite')
     setNewListName('')
+    // Only reset when the dialog opens or the current list changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, selectedSuiteId])
 
   const previewRows = useMemo(() => cases.slice(0, 5), [cases])
@@ -103,7 +124,10 @@ export function EnhancedImportDialog({
       }
       const columns = projectId ? await googleSheetsService.ensureDefaultColumns(projectId) : []
       const nextMappings = buildColumnMappings(parsed.headers, columns)
-      const kind = testSuites.find((suite) => suite.id === (destination || selectedSuiteId))?.kind === 'bugs' ? 'bugs' : 'suite'
+      const kind =
+        testSuites.find((suite) => suite.id === (destination || selectedSuiteId))?.kind === 'bugs'
+          ? 'bugs'
+          : 'suite'
       setTable(parsed)
       setMappings(nextMappings)
       setCases(mapImportRows(parsed.rows, nextMappings, kind))
@@ -154,8 +178,8 @@ export function EnhancedImportDialog({
         kind = created.kind === 'bugs' ? 'bugs' : 'suite'
       }
 
-      if (!suiteId) {
-        throw new Error('Pick a test suite or bug list first')
+      if (!suiteId || suiteId === '__new__') {
+        throw new Error(hasLists ? 'Pick a list, or create a new one' : 'Create a new list first')
       }
 
       const mapped = mapImportRows(table?.rows || [], mappings, kind)
@@ -186,7 +210,9 @@ export function EnhancedImportDialog({
     }
   }
 
-  const canImport = Boolean(projectId && cases.length && (destination === '__new__' ? newListName.trim() : destination))
+  const canImport = Boolean(
+    projectId && cases.length && (destination === '__new__' ? newListName.trim() : destination)
+  )
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose() }}>
@@ -204,7 +230,9 @@ export function EnhancedImportDialog({
               <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-emerald-700 dark:text-emerald-300/80">Cases</p>
               <DialogTitle className="text-[18px] font-semibold tracking-tight text-slate-900 dark:text-white">Import cases</DialogTitle>
               <DialogDescription className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-                Map spreadsheet columns to Title, Steps, Status, and the rest of the current grid.
+                {currentList
+                  ? `Imports into your current list by default (${currentList.name}).`
+                  : 'Choose a list, or create a new one if you do not have one yet.'}
               </DialogDescription>
             </div>
           </div>
@@ -235,34 +263,45 @@ export function EnhancedImportDialog({
             </Button>
           </div>
 
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <Label className="text-xs font-medium text-slate-700 dark:text-slate-300">Import into</Label>
+
+            {!hasLists && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100">
+                No test suite or bug list yet. Create a new list below, then import.
+              </div>
+            )}
+
+            {currentList && destination === currentList.id && (
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-100">
+                Using current list: <span className="font-semibold">{currentList.name}</span>
+              </div>
+            )}
+
             <Select value={destination} onValueChange={setDestination}>
               <SelectTrigger className="h-10 border-slate-300 bg-white text-slate-900 dark:border-slate-600/50 dark:bg-slate-800/50 dark:text-white">
-                <SelectValue placeholder="Choose a test suite or bug list" />
+                <SelectValue placeholder={hasLists ? 'Choose a list' : 'Create a new list'} />
               </SelectTrigger>
-              <SelectContent className="border-slate-200 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
-                {caseSuites.length > 0 && (
-                  <>
-                    {caseSuites.map((suite) => (
-                      <SelectItem key={suite.id} value={suite.id} className="text-slate-100 focus:bg-slate-800">
-                        <span className="inline-flex items-center gap-2">
-                          <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-300" />
-                          {suite.name}
-                        </span>
-                      </SelectItem>
-                    ))}
-                  </>
-                )}
-                {bugLists.map((suite) => (
-                  <SelectItem key={suite.id} value={suite.id} className="text-slate-100 focus:bg-slate-800">
+              <SelectContent className="z-[1000000] border border-slate-200 bg-white text-slate-900 shadow-lg dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+                {caseSuites.map((suite) => (
+                  <SelectItem key={suite.id} value={suite.id} className={selectItemClass}>
                     <span className="inline-flex items-center gap-2">
-                      <Bug className="h-3.5 w-3.5 text-rose-300" />
+                      <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-300" />
                       {suite.name}
+                      {suite.id === selectedSuiteId ? ' (current)' : ''}
                     </span>
                   </SelectItem>
                 ))}
-                <SelectItem value="__new__" className="text-slate-100 focus:bg-slate-800">
+                {bugLists.map((suite) => (
+                  <SelectItem key={suite.id} value={suite.id} className={selectItemClass}>
+                    <span className="inline-flex items-center gap-2">
+                      <Bug className="h-3.5 w-3.5 text-rose-600 dark:text-rose-300" />
+                      {suite.name}
+                      {suite.id === selectedSuiteId ? ' (current)' : ''}
+                    </span>
+                  </SelectItem>
+                ))}
+                <SelectItem value="__new__" className={selectItemClass}>
                   Create new list…
                 </SelectItem>
               </SelectContent>
@@ -270,27 +309,34 @@ export function EnhancedImportDialog({
           </div>
 
           {destination === '__new__' && (
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium text-slate-700 dark:text-slate-300">List type</Label>
-                <Select value={createKind} onValueChange={(value) => setCreateKind(value as ImportListKind)}>
-                  <SelectTrigger className="h-10 border-slate-300 bg-white text-slate-900 dark:border-slate-600/50 dark:bg-slate-800/50 dark:text-white">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="border-slate-200 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
-                    <SelectItem value="suite">Test suite</SelectItem>
-                    <SelectItem value="bugs">Bug list</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium text-slate-700 dark:text-slate-300">Name</Label>
-                <Input
-                  value={newListName}
-                  onChange={(event) => setNewListName(event.target.value)}
-                  placeholder={createKind === 'bugs' ? 'Login bugs' : 'Regression suite'}
-                  className="h-10 border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 dark:border-slate-600/50 dark:bg-slate-800/50 dark:text-white"
-                />
+            <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900/50">
+              <p className="text-xs text-slate-600 dark:text-slate-400">
+                {hasLists
+                  ? 'Create a new list and import cases into it.'
+                  : 'Name your first list to continue.'}
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium text-slate-700 dark:text-slate-300">List type</Label>
+                  <Select value={createKind} onValueChange={(value) => setCreateKind(value as ImportListKind)}>
+                    <SelectTrigger className="h-10 border-slate-300 bg-white text-slate-900 dark:border-slate-600/50 dark:bg-slate-800/50 dark:text-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="z-[1000000] border border-slate-200 bg-white text-slate-900 shadow-lg dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+                      <SelectItem value="suite" className={selectItemClass}>Test suite</SelectItem>
+                      <SelectItem value="bugs" className={selectItemClass}>Bug list</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium text-slate-700 dark:text-slate-300">Name</Label>
+                  <Input
+                    value={newListName}
+                    onChange={(event) => setNewListName(event.target.value)}
+                    placeholder={createKind === 'bugs' ? 'Login bugs' : 'Regression suite'}
+                    className="h-10 border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 dark:border-slate-600/50 dark:bg-slate-800/50 dark:text-white"
+                  />
+                </div>
               </div>
             </div>
           )}
@@ -350,7 +396,7 @@ export function EnhancedImportDialog({
             type="button"
             onClick={handleImport}
             disabled={!canImport || busy}
-            className="h-10 bg-emerald-600 text-white hover:bg-emerald-500"
+            className="h-10 bg-emerald-600 text-white hover:bg-emerald-500 disabled:opacity-50"
           >
             {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             Import {cases.length || ''} cases
