@@ -38,18 +38,7 @@ export async function POST(request: NextRequest) {
     }
 
     const allowedEmails = normalizeEmails(body.allowedEmails || [])
-    if (allowedEmails.length === 0) {
-      return NextResponse.json({ error: 'Add at least one teammate email' }, { status: 400 })
-    }
-    if (!isMailConfigured()) {
-      return NextResponse.json(
-        {
-          error:
-            'Invite email is not configured. Add RESEND_API_KEY so teammates receive the share link by email.',
-        },
-        { status: 503 }
-      )
-    }
+    const sendEmail = Boolean(body.sendEmail) && allowedEmails.length > 0
 
     const share = await shareStore.create({
       kind: body.kind,
@@ -66,33 +55,38 @@ export async function POST(request: NextRequest) {
     })
 
     const url = shareUrl(request, share.token)
-    const emailResults = await sendShareInviteEmails(allowedEmails, {
-      title: share.title,
-      url,
-      role: share.role,
-      senderName: body.senderName,
-      senderEmail: body.senderEmail,
-    })
 
-    const failed = emailResults.filter((item) => !item.ok)
-    if (failed.length === allowedEmails.length) {
-      return NextResponse.json(
-        {
-          error: failed[0]?.error || 'Could not send invite emails',
+    // Optional: only if Resend is configured AND caller asked to email.
+    let emailed = 0
+    let failed = 0
+    let emailResults: Array<{ email: string; ok: boolean; error?: string }> = []
+    if (sendEmail) {
+      if (!isMailConfigured()) {
+        return NextResponse.json({
           share,
           url,
-          emailResults,
-        },
-        { status: 502 }
-      )
+          emailed: 0,
+          failed: allowedEmails.length,
+          warning: 'Link created. Email sending is not configured, so copy the link and share it yourself.',
+        })
+      }
+      emailResults = await sendShareInviteEmails(allowedEmails, {
+        title: share.title,
+        url,
+        role: share.role,
+        senderName: body.senderName,
+        senderEmail: body.senderEmail,
+      })
+      emailed = emailResults.filter((item) => item.ok).length
+      failed = emailResults.filter((item) => !item.ok).length
     }
 
     return NextResponse.json({
       share,
       url,
       emailResults,
-      emailed: emailResults.filter((item) => item.ok).length,
-      failed: failed.length,
+      emailed,
+      failed,
     })
   } catch (error) {
     console.error(error)

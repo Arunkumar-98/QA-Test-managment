@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
-import { Check, Copy, Loader2, Mail, Share2 } from 'lucide-react'
+import { Check, Copy, Loader2, Link2, Share2 } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
 import { getCurrentUser } from '@/lib/local-auth'
 import { googleSheetsService } from '@/lib/google-sheets-service'
@@ -95,7 +95,7 @@ export function ShareDialog({
     })
   }, [isOpen, kind, projectId, suite?.id])
 
-  const handlePublish = async () => {
+  const handleCreateLink = async () => {
     const user = getCurrentUser()
     if (!user) {
       toast({ title: 'Sign in required', variant: 'destructive' })
@@ -107,14 +107,6 @@ export function ShareDialog({
     }
 
     const invited = normalizeEmails(inviteText)
-    if (invited.length === 0) {
-      toast({
-        title: 'Add teammate emails',
-        description: 'Enter at least one email. We will email them a link to open the cases.',
-        variant: 'destructive',
-      })
-      return
-    }
 
     setBusy(true)
     try {
@@ -162,13 +154,18 @@ export function ShareDialog({
       })
       onChanged?.()
 
-      const emailed = result.emailed ?? invited.length
-      const failed = result.failed ?? 0
+      try {
+        await navigator.clipboard.writeText(nextUrl)
+        setCopied(true)
+      } catch {
+        // Clipboard can fail; link still shows in the dialog.
+      }
+
       toast({
-        title: failed ? 'Share created with some email issues' : 'Invite email sent',
-        description: failed
-          ? `Sent ${emailed} of ${invited.length}. Teammates who got mail can open the link to view cases.`
-          : `Emailed ${emailed} teammate${emailed === 1 ? '' : 's'}. They open the link to view the cases.`,
+        title: 'Share link ready',
+        description: invited.length
+          ? 'Link copied. Only the emails you listed can open it.'
+          : 'Link copied. Send it to your teammate — they open it to see the cases.',
       })
     } catch (error) {
       toast({
@@ -253,21 +250,23 @@ export function ShareDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-slate-700 dark:text-slate-300">Team emails</Label>
+            <Label className="text-xs font-medium text-slate-700 dark:text-slate-300">
+              Restrict to emails <span className="font-normal text-slate-500">(optional)</span>
+            </Label>
             <textarea
               value={inviteText}
               onChange={(event) => setInviteText(event.target.value)}
               placeholder="alex@company.com"
-              className="min-h-[84px] w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:placeholder:text-slate-600"
+              className="min-h-[72px] w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:placeholder:text-slate-600"
             />
             <p className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-500">
-              Add each teammate’s email, one per line. We email them a link. They open it and see the cases.
+              Leave empty so anyone with the link can open it. Or add emails so only those people can open.
             </p>
           </div>
 
           {url && (
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-slate-700 dark:text-slate-300">Link</Label>
+              <Label className="text-xs font-medium text-slate-700 dark:text-slate-300">Share link</Label>
               <div className="flex gap-2">
                 <input
                   readOnly
@@ -283,6 +282,9 @@ export function ShareDialog({
                   {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                 </Button>
               </div>
+              <p className="text-[11px] text-slate-500">
+                Send this link in WhatsApp, Slack, or email. Teammate opens it and sees the cases.
+              </p>
             </div>
           )}
         </div>
@@ -312,12 +314,12 @@ export function ShareDialog({
             </Button>
             <Button
               type="button"
-              onClick={handlePublish}
+              onClick={handleCreateLink}
               disabled={busy}
               className="h-10 bg-sky-600 text-white hover:bg-sky-500"
             >
-              {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Mail className="mr-2 h-4 w-4" />}
-              {token ? 'Update and email team' : 'Email invite link'}
+              {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Link2 className="mr-2 h-4 w-4" />}
+              {token ? 'Update link' : 'Create link'}
             </Button>
           </div>
         </div>
