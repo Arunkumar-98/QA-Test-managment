@@ -27,9 +27,14 @@ export default function AuthCallbackPage() {
       const next = firstParam(url.searchParams, hash, 'next')
       const accessToken = hash.get('access_token')
       const refreshToken = hash.get('refresh_token')
+      const isRecovery = next === 'reset' || type === 'recovery'
+
+      if (isRecovery) {
+        sessionStorage.setItem('qa-password-recovery', '1')
+      }
 
       if (error) {
-        setMessage(errorDescription || error)
+        setMessage(errorDescription?.replace(/\+/g, ' ') || error)
         return
       }
 
@@ -48,32 +53,39 @@ export default function AuthCallbackPage() {
           type,
         })
         if (verifyError) {
-          setMessage(verifyError.message)
+          setMessage(
+            /expired|invalid/i.test(verifyError.message)
+              ? 'This link has expired. Go back and request a new confirmation or reset email.'
+              : verifyError.message
+          )
           return
         }
       } else if (code) {
         const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
         if (exchangeError) {
           setMessage(
-            'Open Confirm email address in the same browser where you signed up, or go back and request a new confirmation email after this update.'
+            'This confirmation link is outdated. Request a new email, then click Confirm email address again.'
           )
           return
         }
       } else {
+        // Implicit flow may already be handled by detectSessionInUrl
+        await new Promise((resolve) => setTimeout(resolve, 250))
         const { data } = await supabase.auth.getSession()
         if (!data.session) {
-          setMessage('This confirmation link is missing its sign-in details. Request a new email and click Confirm email address.')
+          setMessage(
+            'This link is missing sign-in details. Request a new email and open it again.'
+          )
           return
+        }
+        if (data.session && (hash.get('type') === 'recovery' || next === 'reset')) {
+          sessionStorage.setItem('qa-password-recovery', '1')
         }
       }
 
-      const isRecovery = next === 'reset' || type === 'recovery'
-      if (isRecovery) {
-        sessionStorage.setItem('qa-password-recovery', '1')
-      }
-
-      window.history.replaceState({}, '', '/auth/callback')
-      router.replace('/')
+      sessionStorage.removeItem('pendingEmailConfirmation')
+      window.history.replaceState({}, '', isRecovery ? '/?reset=1' : '/')
+      router.replace(isRecovery ? '/?reset=1' : '/')
     }
 
     void run()

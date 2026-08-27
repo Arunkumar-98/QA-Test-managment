@@ -137,7 +137,10 @@ export async function signIn(email: string, password: string) {
     await supabase.auth.signOut()
     clearSession()
     return {
-      error: { message: 'Confirm your email before signing in. Enter the code we sent, or open the confirmation link.' },
+      error: {
+        message:
+          'Confirm your email before signing in. Open the Confirm email address link we sent, then try again.',
+      },
       user: null,
       needsVerification: true,
     }

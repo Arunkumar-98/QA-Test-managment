@@ -89,7 +89,7 @@ export function SignupForm({ onSwitchToLogin, onSignupSuccess }: SignupFormProps
 
       toast({
         title: 'Check your email',
-        description: 'Open the email and click Confirm email address. There is no numeric code in that message. You cannot sign in until that is done.',
+        description: 'Open the message and click Confirm email address. You cannot sign in until that is done.',
       })
 
       sessionStorage.setItem('pendingEmailConfirmation', email.trim().toLowerCase())

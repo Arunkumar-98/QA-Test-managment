@@ -75,10 +75,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let cancelled = false
 
+    const isRecoveryMode = () => {
+      if (typeof window === 'undefined') return false
+      if (sessionStorage.getItem('qa-password-recovery') === '1') return true
+      const params = new URLSearchParams(window.location.search)
+      if (params.get('reset') === '1' || params.get('next') === 'reset') return true
+      const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+      return hash.get('type') === 'recovery'
+    }
+
     const boot = async () => {
       try {
-        if (typeof window !== 'undefined' && sessionStorage.getItem('qa-password-recovery') === '1') {
+        if (isRecoveryMode()) {
           setPasswordRecovery(true)
+          sessionStorage.setItem('qa-password-recovery', '1')
         }
         const current = await loadSessionFromSupabase()
         if (cancelled) return
@@ -100,7 +110,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const { data } = supabase.auth.onAuthStateChange((event, nextSession) => {
       if (event === 'INITIAL_SESSION') return
-      if (event === 'PASSWORD_RECOVERY') {
+      if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && isRecoveryMode())) {
         setPasswordRecovery(true)
         sessionStorage.setItem('qa-password-recovery', '1')
       }
@@ -111,7 +121,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return
       }
       const raw = nextSession?.user ?? null
-      if (raw && !isEmailConfirmed(raw) && event !== 'PASSWORD_RECOVERY') {
+      if (raw && !isEmailConfirmed(raw) && event !== 'PASSWORD_RECOVERY' && !isRecoveryMode()) {
         void supabase.auth.signOut()
         return
       }

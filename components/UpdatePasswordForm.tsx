@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2, Lock } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { friendlyAuthError } from '@/lib/auth-errors'
 
 export function UpdatePasswordForm() {
   const [password, setPassword] = useState('')
@@ -38,13 +39,18 @@ export function UpdatePasswordForm() {
     try {
       const { error } = await completePasswordReset(password)
       if (error) {
-        setError(error.message)
+        setError(friendlyAuthError(error.message))
         return
       }
       toast({
         title: 'Password updated',
-        description: 'You can now use your new password.',
+        description: 'You are signed in with your new password.',
       })
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href)
+        url.searchParams.delete('reset')
+        window.history.replaceState({}, '', url.pathname)
+      }
     } catch {
       setError('Could not update the password')
     } finally {

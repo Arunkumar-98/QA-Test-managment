@@ -21,6 +21,11 @@ export function AuthPage() {
     }
   }, [])
 
+  const goLogin = () => {
+    sessionStorage.removeItem('pendingEmailConfirmation')
+    setAuthMode('login')
+  }
+
   const renderAuthForm = () => {
     switch (authMode) {
       case 'login':
@@ -37,7 +42,7 @@ export function AuthPage() {
       case 'signup':
         return (
           <SignupForm
-            onSwitchToLogin={() => setAuthMode('login')}
+            onSwitchToLogin={goLogin}
             onSignupSuccess={(email) => {
               setPendingEmail(email)
               setAuthMode('verify-email')
@@ -45,18 +50,9 @@ export function AuthPage() {
           />
         )
       case 'forgot-password':
-        return (
-          <ForgotPasswordForm
-            onSwitchToLogin={() => setAuthMode('login')}
-          />
-        )
+        return <ForgotPasswordForm onSwitchToLogin={goLogin} />
       case 'verify-email':
-        return (
-          <VerifyEmailForm
-            email={pendingEmail}
-            onSwitchToLogin={() => setAuthMode('login')}
-          />
-        )
+        return <VerifyEmailForm email={pendingEmail} onSwitchToLogin={goLogin} />
       default:
         return null
     }

@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2, Mail, ArrowLeft, CheckCircle } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { friendlyAuthError } from '@/lib/auth-errors'
 
 interface ForgotPasswordFormProps {
   onSwitchToLogin: () => void
@@ -38,7 +39,7 @@ export function ForgotPasswordForm({ onSwitchToLogin, onEmailSent }: ForgotPassw
       const { error } = await resetPassword(email)
 
       if (error) {
-        setError(error.message)
+        setError(friendlyAuthError(error.message))
       } else {
         setSuccess(true)
         onEmailSent?.(email)
