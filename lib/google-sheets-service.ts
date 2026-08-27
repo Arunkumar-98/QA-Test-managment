@@ -237,7 +237,6 @@ export const googleSheetsService = {
 
   async getRows(projectId: string, suiteId?: string | null): Promise<DynamicRow[]> {
     if (!suiteId) {
-      await testCaseService.deleteUnassigned(projectId)
       return []
     }
     const rows = await testCaseService.getAll(projectId)

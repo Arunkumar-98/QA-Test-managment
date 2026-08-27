@@ -20,7 +20,8 @@ export const useTestCases = (currentProjectId: string) => {
       return
     }
     try {
-      await testCaseService.deleteUnassigned(currentProjectId)
+      // Do not auto-delete "unassigned" rows on every load — that was wiping imports
+      // that briefly lacked suiteId / raced with cloud hydrate.
       const data = await testCaseService.getAll(currentProjectId)
       setTestCases(data)
     } catch (error) {
