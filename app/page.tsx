@@ -7,7 +7,7 @@ import { UpdatePasswordForm } from "@/components/UpdatePasswordForm"
 import { Loader2 } from "lucide-react"
 
 function AppContent() {
-  const { user, loading, passwordRecovery } = useAuth()
+  const { user, loading, passwordRecovery, clearInvalidSession } = useAuth()
 
   if (loading) {
     return (
@@ -18,6 +18,13 @@ function AppContent() {
           </div>
           <h2 className="text-lg font-semibold text-white mb-2">Loading...</h2>
           <p className="text-white/80">Please wait while we set up your workspace</p>
+          <button
+            type="button"
+            onClick={() => void clearInvalidSession()}
+            className="mt-4 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm transition-colors"
+          >
+            Continue to sign in
+          </button>
         </div>
       </div>
     )

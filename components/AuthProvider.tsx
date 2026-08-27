@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import {
   LocalSession,
   LocalUser,
@@ -41,13 +41,32 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-async function activateUser(nextUser: LocalUser | null) {
-  if (!nextUser) {
-    clearCloudStore()
-    return
-  }
-  sessionStorage.removeItem('pendingEmailConfirmation')
-  await hydrateCloudStore(nextUser.id)
+const BOOT_TIMEOUT_MS = 4000
+const HYDRATE_TIMEOUT_MS = 8000
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new Error(`${label} timed out`)), ms)
+    promise.then(
+      (value) => {
+        window.clearTimeout(timer)
+        resolve(value)
+      },
+      (error) => {
+        window.clearTimeout(timer)
+        reject(error)
+      }
+    )
+  })
+}
+
+function isRecoveryMode() {
+  if (typeof window === 'undefined') return false
+  if (sessionStorage.getItem('qa-password-recovery') === '1') return true
+  const params = new URLSearchParams(window.location.search)
+  if (params.get('reset') === '1' || params.get('next') === 'reset') return true
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+  return hash.get('type') === 'recovery'
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -55,12 +74,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<LocalSession | null>(null)
   const [loading, setLoading] = useState(true)
   const [passwordRecovery, setPasswordRecovery] = useState(false)
+  const hydrateSeq = useRef(0)
 
-  const applyUser = async (nextUser: LocalUser | null) => {
+  const hydrateInBackground = (nextUser: LocalUser) => {
+    const seq = ++hydrateSeq.current
+    void withTimeout(hydrateCloudStore(nextUser.id), HYDRATE_TIMEOUT_MS, 'Workspace load')
+      .then(() => {
+        if (seq !== hydrateSeq.current) return
+      })
+      .catch((error) => {
+        console.error('Could not load workspace data', error)
+      })
+  }
+
+  const applyUser = async (nextUser: LocalUser | null, options?: { awaitHydrate?: boolean }) => {
     setAuthMemory(nextUser)
-    await activateUser(nextUser)
+    if (!nextUser) {
+      hydrateSeq.current += 1
+      clearCloudStore()
+      setUser(null)
+      setSession(null)
+      return
+    }
+
+    sessionStorage.removeItem('pendingEmailConfirmation')
     setUser(nextUser)
-    setSession(nextUser ? { user: nextUser } : null)
+    setSession({ user: nextUser })
+
+    if (options?.awaitHydrate) {
+      try {
+        await withTimeout(hydrateCloudStore(nextUser.id), HYDRATE_TIMEOUT_MS, 'Workspace load')
+      } catch (error) {
+        console.error('Could not load workspace data', error)
+      }
+      return
+    }
+
+    hydrateInBackground(nextUser)
   }
 
   const clearInvalidSession = async () => {
@@ -70,19 +120,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     sessionStorage.removeItem('qa-password-recovery')
     setSession(null)
     setUser(null)
+    setLoading(false)
   }
 
   useEffect(() => {
     let cancelled = false
-
-    const isRecoveryMode = () => {
-      if (typeof window === 'undefined') return false
-      if (sessionStorage.getItem('qa-password-recovery') === '1') return true
-      const params = new URLSearchParams(window.location.search)
-      if (params.get('reset') === '1' || params.get('next') === 'reset') return true
-      const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''))
-      return hash.get('type') === 'recovery'
-    }
 
     const boot = async () => {
       try {
@@ -90,9 +132,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setPasswordRecovery(true)
           sessionStorage.setItem('qa-password-recovery', '1')
         }
-        const current = await loadSessionFromSupabase()
+        const current = await withTimeout(
+          loadSessionFromSupabase(),
+          BOOT_TIMEOUT_MS,
+          'Session restore'
+        )
         if (cancelled) return
-        await applyUser(current)
+        // Show login/app immediately; hydrate workspace after.
+        setAuthMemory(current)
+        setUser(current)
+        setSession(current ? { user: current } : null)
+        if (current) {
+          sessionStorage.removeItem('pendingEmailConfirmation')
+          hydrateInBackground(current)
+        } else {
+          clearCloudStore()
+        }
       } catch (error) {
         console.error('Could not restore session', error)
         if (!cancelled) {
@@ -109,23 +164,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     boot()
 
     const { data } = supabase.auth.onAuthStateChange((event, nextSession) => {
-      if (event === 'INITIAL_SESSION') return
-      if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && isRecoveryMode())) {
-        setPasswordRecovery(true)
-        sessionStorage.setItem('qa-password-recovery', '1')
-      }
-      if (event === 'SIGNED_OUT') {
-        setPasswordRecovery(false)
-        sessionStorage.removeItem('qa-password-recovery')
-        void applyUser(null)
-        return
-      }
-      const raw = nextSession?.user ?? null
-      if (raw && !isEmailConfirmed(raw) && event !== 'PASSWORD_RECOVERY' && !isRecoveryMode()) {
-        void supabase.auth.signOut()
-        return
-      }
-      void applyUser(toLocalUser(raw))
+      // Defer to avoid known getSession/onAuthStateChange deadlocks.
+      window.setTimeout(() => {
+        if (event === 'INITIAL_SESSION') return
+        if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && isRecoveryMode())) {
+          setPasswordRecovery(true)
+          sessionStorage.setItem('qa-password-recovery', '1')
+        }
+        if (event === 'SIGNED_OUT') {
+          setPasswordRecovery(false)
+          sessionStorage.removeItem('qa-password-recovery')
+          void applyUser(null)
+          return
+        }
+        const raw = nextSession?.user ?? null
+        if (raw && !isEmailConfirmed(raw) && event !== 'PASSWORD_RECOVERY' && !isRecoveryMode()) {
+          void supabase.auth.signOut()
+          return
+        }
+        void applyUser(toLocalUser(raw))
+      }, 0)
     })
 
     return () => {
@@ -137,7 +195,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signIn = async (email: string, password: string) => {
     const result = await localSignIn(email, password)
     if (!result.error && result.user) {
-      await applyUser(result.user)
+      await applyUser(result.user, { awaitHydrate: true })
     }
     return { error: result.error, needsVerification: result.needsVerification }
   }
@@ -162,7 +220,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const verifyEmailCode = async (email: string, token: string) => {
     const result = await verifySignupOtp(email, token)
     if (!result.error && result.user) {
-      await applyUser(result.user)
+      await applyUser(result.user, { awaitHydrate: true })
     }
     return { error: result.error }
   }
