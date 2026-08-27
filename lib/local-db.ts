@@ -101,6 +101,18 @@ export async function hydrateCloudStore(userId: string) {
   for (const name of pending) {
     await persistCollection(name, cache[name] || [])
   }
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('qa-cloud-ready'))
+  }
+}
+
+export function isCloudReady() {
+  return Boolean(hydratedUserId)
+}
+
+export async function whenCloudReady(timeoutMs = 12000) {
+  await whenHydrated(timeoutMs)
 }
 
 export function clearCloudStore() {

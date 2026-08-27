@@ -34,6 +34,7 @@ import { loadingStateManager, LOADING_TYPES } from "@/lib/loading-states"
 import { GlobalLoadingIndicator } from "@/components/ui/loading-indicator"
 
 import { projectService, documentService, importantLinkService, platformService, commentService, sharedProjectReferenceService, customColumnService } from "@/lib/supabase-service"
+import { whenCloudReady } from "@/lib/local-db"
 import {
   Dialog,
   DialogContent,
@@ -249,38 +250,45 @@ export function QAApplication() {
     deleteSavedFilter
   } = useSearchAndFilter(testCases)
 
-  // Load initial data from Supabase on mount
+  // Load initial data once workspace hydrate is ready (and again if hydrate finishes later)
   useEffect(() => {
+    let cancelled = false
     const loadingId = loadingStateManager.startLoading(
       'APP_INITIALIZATION',
       { component: 'QAApplication' },
       'Initializing application...'
     )
-    
-    // Add a small delay to ensure localStorage is loaded first
-    const timer = setTimeout(async () => {
+
+    const initialize = async () => {
       try {
-    // Load projects from Supabase
+        try {
+          await whenCloudReady()
+        } catch (error) {
+          console.warn('Workspace hydrate still pending; loading available projects', error)
+        }
+        if (cancelled) return
         await loadProjectsFromSupabase()
-    
-    // Clean up any test projects
         await cleanupTestProjects()
-    
-    // Test cases are loaded by useTestCases hook when currentProjectId changes
-    // Other data can be loaded here if needed
-        
         loadingStateManager.completeLoading(loadingId, 'Application initialized successfully')
       } catch (error) {
+        if (cancelled) return
         const appError = createSupabaseError(error, {
           component: 'QAApplication',
           action: 'initialization'
         })
-        
         loadingStateManager.completeLoadingWithError(loadingId, error, appError.userMessage)
       }
-    }, 100)
+    }
 
-    return () => clearTimeout(timer)
+    void initialize()
+    const onCloudReady = () => {
+      void loadProjectsFromSupabase()
+    }
+    window.addEventListener('qa-cloud-ready', onCloudReady)
+    return () => {
+      cancelled = true
+      window.removeEventListener('qa-cloud-ready', onCloudReady)
+    }
   }, [])
 
   // On app load, try to restore last selected project from localStorage
@@ -497,45 +505,50 @@ export function QAApplication() {
     }
   }
 
-  // Load projects from Supabase
+  // Load projects from cloud store
   const loadProjectsFromSupabase = async () => {
     try {
       setProjectsLoading(true)
-  
+      try {
+        await whenCloudReady()
+      } catch {
+        // Still try to read whatever is in cache
+      }
+
       const projectsData = await projectService.getAll()
-      
       setProjects(projectsData)
-      
-      // Load shared project references
+
       try {
         const sharedRefs = await sharedProjectReferenceService.getAll()
         setSharedProjectReferences(sharedRefs)
       } catch (error) {
         console.error('Error loading shared project references:', error)
-        // Don't show error toast for this as it might be expected if table doesn't exist yet
       }
-      
-      // Only set current project if none is currently selected
-      if (projectsData.length > 0 && (!currentProjectId || currentProjectId.trim() === '' || !currentProject || currentProject.trim() === '')) {
-        const defaultProject = projectsData.find(p => p.name === DEFAULT_PROJECT) || projectsData[0]
-        console.log('Setting default project:', defaultProject.name, 'ID:', defaultProject.id)
-        setCurrentProjectId(defaultProject.id)
-        setCurrentProject(defaultProject.name)
-      } else if (projectsData.length === 0) {
-        // No projects exist - full screen welcome will be shown in main content
-        console.log('📝 No projects found - showing full screen welcome')
-        
-        // Clear current project state
+
+      const savedProjectId =
+        typeof window !== 'undefined' ? localStorage.getItem('selectedProjectId') : null
+
+      if (projectsData.length > 0) {
+        const selected =
+          projectsData.find((project) => project.id === currentProjectId) ||
+          projectsData.find((project) => project.id === savedProjectId) ||
+          projectsData.find((project) => project.name === DEFAULT_PROJECT) ||
+          projectsData[0]
+
+        if (!currentProjectId || currentProjectId !== selected.id || currentProject !== selected.name) {
+          setCurrentProjectId(selected.id)
+          setCurrentProject(selected.name)
+        }
+      } else {
         setCurrentProjectId('')
         setCurrentProject('')
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('selectedProjectId')
+          localStorage.removeItem('selectedProjectName')
+        }
       }
     } catch (error) {
       console.error('❌ Failed to load projects from Supabase:', error)
-      console.error('❌ Error details:', {
-        message: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : 'No stack trace',
-        error
-      })
       toast({
         title: "Error Loading Projects",
         description: `Failed to load projects from database: ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -638,23 +651,21 @@ export function QAApplication() {
       })
       
       console.log('Project created successfully:', newProject)
-      
-      // If this is the first project, automatically select it
-      if (projects.length === 0) {
-        setCurrentProjectId(newProject.id)
-        setCurrentProject(newProject.name)
-        
-        // Save to localStorage
-        localStorage.setItem('selectedProjectId', newProject.id)
-        localStorage.setItem('selectedProjectName', newProject.name)
-      }
-      
-      // Reload projects from Supabase
+
+      setProjects((prev) => {
+        if (prev.some((project) => project.id === newProject.id)) return prev
+        return [newProject, ...prev]
+      })
+      setCurrentProjectId(newProject.id)
+      setCurrentProject(newProject.name)
+      localStorage.setItem('selectedProjectId', newProject.id)
+      localStorage.setItem('selectedProjectName', newProject.name)
+
       await loadProjectsFromSupabase()
       
       toast({
         title: "Project Added",
-        description: `Project "${projectName}" has been added${projects.length === 0 ? ' and selected' : ''}.`
+        description: `Project "${projectName}" has been added and selected.`,
       })
     } catch (error) {
       console.error('Failed to add project:', error)
@@ -1610,6 +1621,14 @@ export function QAApplication() {
   }
 
   const openListDialog = (kind: 'suite' | 'bugs') => {
+    if (!currentProjectId) {
+      toast({
+        title: 'No project selected',
+        description: 'Create or select a project first.',
+        variant: 'destructive',
+      })
+      return
+    }
     setSuiteDialogKind(kind)
     setActiveDropdown(kind === 'bugs' ? 'bugLists' : 'testSuites')
     setIsSuiteDialogOpen(true)
@@ -2118,7 +2137,7 @@ export function QAApplication() {
           </aside>
           <main className="flex min-h-0 min-w-0 flex-1 flex-col">
         <div className="min-h-0 flex-1 overflow-hidden">
-                  {projects.length === 0 ? (
+                  {!currentProjectId ? (
                     <div className="flex h-full items-center justify-center p-8">
                       <div className="max-w-md text-center">
                         <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl border border-blue-400/30 bg-blue-500/15">
@@ -2202,13 +2221,34 @@ export function QAApplication() {
         onClose={() => setIsSuiteDialogOpen(false)}
         listKind={suiteDialogKind}
         onSubmit={async (suite) => {
-          const created = await createTestSuite({
-            ...suite,
-            projectId: currentProjectId || suite.projectId,
-            kind: suiteDialogKind,
-          })
-          if (created?.id) {
-            handleSuiteClick(created.id)
+          if (!currentProjectId) {
+            toast({
+              title: 'No project selected',
+              description: 'Create or select a project first.',
+              variant: 'destructive',
+            })
+            throw new Error('No project selected')
+          }
+          try {
+            const created = await createTestSuite({
+              ...suite,
+              projectId: currentProjectId,
+              kind: suiteDialogKind,
+            })
+            if (created?.id) {
+              handleSuiteClick(created.id)
+              toast({
+                title: suiteDialogKind === 'bugs' ? 'Bug list created' : 'Test suite created',
+                description: `"${created.name}" is ready.`,
+              })
+            }
+          } catch (error) {
+            toast({
+              title: suiteDialogKind === 'bugs' ? 'Could not create bug list' : 'Could not create test suite',
+              description: error instanceof Error ? error.message : 'Try again.',
+              variant: 'destructive',
+            })
+            throw error
           }
         }}
         testSuites={testSuites}

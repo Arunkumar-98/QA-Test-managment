@@ -12,7 +12,9 @@ import { Bug, FileSpreadsheet, User } from "lucide-react"
 interface TestSuiteDialogProps {
   isOpen: boolean
   onClose: () => void
-  onSubmit: (suite: Omit<TestSuite, 'id' | 'createdAt' | 'updatedAt' | 'totalTests' | 'passedTests' | 'failedTests' | 'pendingTests'>) => void
+  onSubmit: (
+    suite: Omit<TestSuite, 'id' | 'createdAt' | 'updatedAt' | 'totalTests' | 'passedTests' | 'failedTests' | 'pendingTests'>
+  ) => void | Promise<void>
   testSuites: TestSuite[]
   testCases: TestCase[]
   onAddTestCaseToSuite: (testCaseId: string, suiteId: string) => void
@@ -29,6 +31,7 @@ export function TestSuiteDialog({
   listKind = 'suite',
 }: TestSuiteDialogProps) {
   const isBugs = listKind === 'bugs'
+  const [busy, setBusy] = useState(false)
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -38,6 +41,7 @@ export function TestSuiteDialog({
 
   useEffect(() => {
     if (!isOpen) return
+    setBusy(false)
     setFormData({
       name: testSuite?.name || "",
       description: testSuite?.description || "",
@@ -46,22 +50,29 @@ export function TestSuiteDialog({
     })
   }, [isOpen, testSuite])
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const name = formData.name.trim()
-    if (!name) return
-    onSubmit({
-      ...formData,
-      name,
-      description: formData.description.trim(),
-      owner: formData.owner.trim(),
-      projectId: "",
-      kind: listKind,
-      testCaseIds: [],
-      isActive: true
-    })
-    setFormData({ name: "", description: "", tags: [], owner: "" })
-    onClose()
+    if (!name || busy) return
+    setBusy(true)
+    try {
+      await onSubmit({
+        ...formData,
+        name,
+        description: formData.description.trim(),
+        owner: formData.owner.trim(),
+        projectId: "",
+        kind: listKind,
+        testCaseIds: [],
+        isActive: true
+      })
+      setFormData({ name: "", description: "", tags: [], owner: "" })
+      onClose()
+    } catch {
+      // Parent shows the error toast; keep dialog open for retry.
+    } finally {
+      setBusy(false)
+    }
   }
 
   const title = testSuite
@@ -171,13 +182,14 @@ export function TestSuiteDialog({
           <Button
             type="submit"
             form="test-suite-form"
+            disabled={busy || !formData.name.trim()}
             className={`h-9 text-white shadow-sm ${
               isBugs
                 ? 'bg-rose-600 hover:bg-rose-500'
                 : 'bg-emerald-600 hover:bg-emerald-500'
             }`}
           >
-            {submitLabel}
+            {busy ? 'Saving…' : submitLabel}
           </Button>
         </div>
       </DialogContent>

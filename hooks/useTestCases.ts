@@ -15,7 +15,10 @@ export const useTestCases = (currentProjectId: string) => {
   const [deleteLoading, setDeleteLoading] = useState(false)
 
   const reloadTestCases = useCallback(async () => {
-    if (!currentProjectId) return
+    if (!currentProjectId) {
+      setTestCases([])
+      return
+    }
     try {
       await testCaseService.deleteUnassigned(currentProjectId)
       const data = await testCaseService.getAll(currentProjectId)

@@ -6,10 +6,30 @@ export const useTestSuites = (currentProjectId: string) => {
   const [testSuites, setTestSuites] = useState<TestSuite[]>([])
   const [loading, setLoading] = useState(false)
 
+  const createTestSuite = useCallback(async (suite: CreateTestSuiteInput) => {
+    if (!suite.projectId && !currentProjectId) {
+      throw new Error('Create or select a project before adding a test suite or bug list.')
+    }
+    try {
+      const newSuite = await testSuiteService.create({
+        ...suite,
+        projectId: suite.projectId || currentProjectId
+      })
+      setTestSuites(prev => [newSuite, ...prev])
+      return newSuite
+    } catch (error) {
+      console.error('Failed to create test suite:', error)
+      throw error
+    }
+  }, [currentProjectId])
+
   // Load test suites from Supabase
   useEffect(() => {
     const loadTestSuites = async () => {
-      if (!currentProjectId) return
+      if (!currentProjectId) {
+        setTestSuites([])
+        return
+      }
       
       setLoading(true)
       try {
@@ -25,20 +45,6 @@ export const useTestSuites = (currentProjectId: string) => {
     }
 
     loadTestSuites()
-  }, [currentProjectId])
-
-  const createTestSuite = useCallback(async (suite: CreateTestSuiteInput) => {
-    try {
-      const newSuite = await testSuiteService.create({
-        ...suite,
-        projectId: suite.projectId || currentProjectId
-      })
-      setTestSuites(prev => [newSuite, ...prev])
-      return newSuite
-    } catch (error) {
-      console.error('Failed to create test suite:', error)
-      throw error
-    }
   }, [currentProjectId])
 
   const updateTestSuite = useCallback(async (id: string, updates: Partial<TestSuite>) => {
